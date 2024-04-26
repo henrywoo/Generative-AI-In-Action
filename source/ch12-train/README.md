@@ -7,6 +7,8 @@
 [Youtube Music📀▶️](https://music.youtube.com/playlist?list=OLAK5uy_mxQFu_bdbL9nplWkvmsBfowqsgzXoJKCc) | 
 [Amazon Music📀▶](https://music.amazon.com/tracks/B0D2M61V61?marketplaceId=ATVPDKIKX0DER&musicTerritory=US&ref=dm_sh_2DPOGOaQWe6BMUmCjVcMP5lpi)
 
+## Initialization
+
 ## The Vanishing/Exploding Gradients Problems
 
 ### Vanishing
@@ -29,5 +31,22 @@ To demonstrate the exploding gradient problem, let's set up a simple recurrent n
 
 ![](gradient_explosion_deepnet.png)
 
-## Initialization
+## Activation
+
+![](activations.png)
+
+## Normalization
+
+## Regularization
+
+## Optimizer
+
+## LR Scheduler
+
+
+
+
+
+
+
 
