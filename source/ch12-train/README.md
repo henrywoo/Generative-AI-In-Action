@@ -9,6 +9,8 @@
 
 ## Initialization
 
+Weight Initialization was first discussed as a "trick" (LeCun et al; 1998) to prevent certain undesirable behaviours during neural network training. The initial values of the weights can have a significant impact on the training process.
+
 ## The Vanishing/Exploding Gradients Problems
 
 ### Vanishing
@@ -34,6 +36,25 @@ To demonstrate the exploding gradient problem, let's set up a simple recurrent n
 ## Activation
 
 ![](activations.png)
+
+
+A SiwGLU activation used in LLaMA.
+
+```angular2html
+class SwiGLU(nn.Module):
+    
+    def __init__(self, w1, w2, w3) -> None:
+        super().__init__()
+        self.w1 = w1
+        self.w2 = w2
+        self.w3 = w3
+    
+    def forward(self, x):
+        x1 = F.linear(x, self.w1.weight)
+        x2 = F.linear(x, self.w2.weight)
+        hidden = F.silu(x1) * x2
+        return F.linear(hidden, self.w3.weight)
+```
 
 ## Normalization
 
