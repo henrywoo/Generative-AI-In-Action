@@ -1,6 +1,8 @@
-# Learn Generative AI with Pop Music (唱着歌儿学AI)
+# Learn AI with Pop Music (唱着歌儿学AI)
 
-## AI 123 ⌛
+
+
+## AI 101 ⌛
 
 - MLP(1965), Backprop(1970)
 
@@ -21,6 +23,8 @@
 ## LLM (2021) ⌛
 
 ## RL (1950s) ✅
+
+
 
 ## Let's Run The Model ⌛
 
