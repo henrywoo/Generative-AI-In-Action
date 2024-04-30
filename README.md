@@ -1,4 +1,7 @@
-# Generative AI In Action
+# Learn Generative AI with Pop Music
+
+
+
 
 
 
