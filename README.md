@@ -1,4 +1,4 @@
-# Learn Generative AI with Pop Music
+# Learn Generative AI with Pop Music (唱着歌儿学AI)
 
 
 
