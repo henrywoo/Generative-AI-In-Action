@@ -143,11 +143,7 @@ The name "Long Short-Term Memory" highlights its unique ability to retain and pr
 
 ### Why use Sigmoid and Tanh in LSTM? 
 
-![](https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/LSTM_Cell.svg/1920px-LSTM_Cell.svg.png)
-
-https://g.co/gemini/share/5b4eae455d5a
-https://g.co/gemini/share/7604d43df0d1
-
+<img src="https://miro.medium.com/v2/resize:fit:1039/1*QiLYco0hB8EterWYTyyv4g.png" width="400" height="220" alt="LSTM">
 
 Here's a breakdown of why sigmoid and tanh functions are used within LSTM (Long Short-Term Memory) cells:
 
@@ -206,11 +202,6 @@ Technically, you could try replacing the tanh function in an LSTM with the sigmo
 * The tanh function's properties are generally more suitable for regulating the cell state values within an LSTM. 
 * Substituting sigmoid would likely hinder performance rather than improving it.
 
-**Would you be interested in exploring other potential activation function replacements that might have a better chance of success?**
-
-
-The more unroll, the more explosion.
-
 ### In LSTM, what is cell state? What does it mean to regulate the cell state values within an LSTM?
 
 Here's a breakdown of the cell state in an LSTM and what it means to regulate its values:
@@ -246,9 +237,50 @@ Regulating the cell state allows the LSTM to update this knowledge with new word
 
 https://g.co/gemini/share/3fbdb14b2a78
 
+### In LSTM, what is the difference between hidden states and cell states?
+
+Cell state for long memory, and hidden state for short memory.
+
+Here's a breakdown of the difference between hidden states and cell states in Long Short-Term Memory (LSTM) networks:
+
+**Cell State (Long-term Memory)**
+
+* **Purpose:** The cell state is the core "memory" of an LSTM cell. It functions like a conveyor belt carrying information across time steps, selectively being modified to retain long-term dependencies.
+* **Mechanism:** The cell state is carefully regulated by the LSTM's gates (forget, input, and output gates). These gates control what information gets removed (forgotten), added (input), and used for output (output). 
+* **Persistence:** Information can be stored in the cell state for many time steps, allowing LSTMs to overcome the vanishing gradient problem common in basic RNNs.
+
+**Hidden State (Short-term Working Memory)**
+
+* **Purpose:**  The hidden state represents the short-term working memory of the LSTM cell.  It encapsulates the network's understanding of the most recent inputs and their context, making it useful for prediction.
+* **Mechanism:** The hidden state is generated from a combination of the current input and the cell state, both processed through the output gate.
+* **Output:** The hidden state serves as the main output of the LSTM cell at a given time step and is passed on to the next time step.
+
+**Key Points:**
+
+* **Scope:** The cell state maintains long-term memory, while the hidden state captures short-term dependencies.
+* **Transmission:** The hidden state is passed to the next LSTM cell, while the cell state can persist across a whole sequence.
+* **Output vs. Memory:** The hidden state is the output of the LSTM unit, while the cell state remains an internal mechanism for information storage.
+
+**Analogy:**
+
+Think of the cell state like a long-term memory notebook where you store important information from past experiences. The hidden state is like your working memory when doing a task, where you use both recently learned information and relevant long-term memory from your notebook.
+
+Thus, in an LSTM, the cell state is designed to carry relevant information across longer sequences, mitigating the vanishing gradient problem common in earlier recurrent neural network architectures, while the hidden state handles information pertinent to the current and immediate past context, influencing both outputs and the next cell state.
+
+### Are hidden states and cell states are node weights? If no, what is the difference?
+
+No, hidden states and cell states are not the same as node weights in neural networks like LSTMs. Here's a breakdown of the differences:
+
+- **Hidden States and Cell States**: These are values that represent the internal state of the network at each time step. They are dynamically computed based on the input data at each step, the previous hidden states, and the previous cell states (in the case of LSTMs). These states are what the network "remembers" of the input data as it processes a sequence, allowing it to make decisions based on both recent and more distant information in the sequence.
+
+- **Weights**: These are the parameters of the neural network that are learned during training. Weights in an LSTM are used in the gates (input, output, and forget gates) and in computing the new candidate values for the cell states. The weights determine how the inputs and the previous states affect the current state and the output.
+
+In simpler terms, **weights** are fixed parameters that the network learns during training, which determine how input data and states influence each other, while **hidden states** and **cell states** are variable outputs of the network's computation, changing with each input over time. They are part of what makes recurrent networks capable of handling sequences where context and the order of data points matter.
+
 ### Difference between GRU and LSTM?
 
-![](https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Gated_Recurrent_Unit%2C_base_type.svg/1920px-Gated_Recurrent_Unit%2C_base_type.svg.png)
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Gated_Recurrent_Unit%2C_base_type.svg/1920px-Gated_Recurrent_Unit%2C_base_type.svg.png" width="400" height="220" alt="Gated Recurrent Unit">
+
 
 GRUs (Gated Recurrent Units) simplify the LSTM architecture in a few key ways:
 
