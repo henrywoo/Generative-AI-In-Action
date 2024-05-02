@@ -1,5 +1,9 @@
 # Autoregressive Model
 
+- Cast: RNN, LSTM, GRU, Transformer
+- Song: Autogressive Model
+
+
 Let's break down the world of autoregressive models in AI:
 
 **What are Autoregressive Models?**
