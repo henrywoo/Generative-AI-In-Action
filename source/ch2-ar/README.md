@@ -1,7 +1,7 @@
 # Autoregressive Model
 
 - Cast: RNN, LSTM, GRU, Transformer
-- Song: Autogressive Model
+- Song: [RNN](https://www.youtube.com/watch?v=g_tvY_pVwKI), [Attention Is All You Need](https://www.youtube.com/watch?v=g_tvY_pVwKI)
 
 
 Let's break down the world of autoregressive models in AI:
