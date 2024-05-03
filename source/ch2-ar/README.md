@@ -59,6 +59,38 @@ Autoregressive models shine in a variety of AI tasks where sequences matter:
 
 ## RNN
 
+### What is `Gates` in RNN?
+
+In Recurrent Neural Networks (RNNs), "gates" are mechanisms that control the flow of information through the network's cells. They play a crucial role in addressing a common issue with standard RNNs called the vanishing/exploding gradient problem.
+
+**Types of Gates in RNNs**
+
+The most common RNN architectures that use gates are:
+
+* **Long Short-Term Memory (LSTM):** 
+    * **Forget Gate:** Decides what information from the previous cell state should be discarded.
+    * **Input Gate:** Determines which new information from the current input should be added to the cell state.
+    * **Output Gate:** Controls which parts of the updated cell state become the output.
+
+* **Gated Recurrent Unit (GRU):**
+    * **Reset Gate:** Determines how much of the past information to forget.
+    * **Update Gate:** Acts like a combination of LSTM's forget and input gates, deciding what information to keep and what new information to add.
+
+**How Gates Work**
+
+* **Neural Networks with Sigmoid:** Each gate is a small neural network with a sigmoid activation function. The sigmoid function squashes outputs between 0 and 1.
+* **Controlling Information:**  A value closer to 0 means "let nothing through" while a value closer to 1 means "let almost everything through".  
+* **Selective Memory:** This allows the network to learn which information is important to keep for longer periods and which information can be discarded, improving long-term memory capabilities.
+
+**Addressing the Vanishing/Exploding Gradients Problem**
+
+Gates help mitigate the vanishing/exploding gradient problem in RNNs. Without them, gradients (used for updating weights during training) can either shrink towards zero (vanish) or become extremely large (explode). This makes learning long-term dependencies within sequences difficult. Gates make training more stable, enabling RNNs to process longer sequences effectively.
+
+**In Summary**
+
+Gates in RNNs are like adjustable valves that regulate what information is retained, updated, and passed further within the network. They are essential for RNNs to learn and manage long-term dependencies in sequential data. 
+
+
 ### What is the difference between BPTT(backprop through time) and normal backprop?
 
 Here's a breakdown of the key differences between Backpropagation Through Time (BPTT) and normal backpropagation:
