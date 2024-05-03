@@ -8,7 +8,7 @@
 
 ## Let's Train The Model ✅
 
-## RNN (1970s) ⌛
+## RNN (1970s) ✅
 
 ## CNN (1980s) ✅
 
