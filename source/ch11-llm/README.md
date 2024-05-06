@@ -1,5 +1,10 @@
 # Large Language Model
 
+- Cast: LLM, Transformer
+- Song: [Large Language Model](https://www.youtube.com/watch?v=59UIVmFkxbs), [Attention Is All You Need](https://www.youtube.com/watch?v=g_tvY_pVwKI)
+
+
+
 LLMs are advanced artificial intelligence models trained on massive amounts of text data. They can generate realistic text, translate languages, write different kinds of creative content, and answer your questions in informative ways. An LLM's power comes from its training process.  It "learns" to understand and produce language by analyzing enormous amounts of text – think millions of books, articles, and code repositories. Most LLMs are built on a neural network architecture called a transformer. Transformers excel at handling sequential data (like words in a sentence) and pinpointing complex relationships within language.
 
 LLMs streamline how we use search engines, get help from virtual assistants, and even create content. LLMs are still evolving, but the potential is huge. They could revolutionize education, healthcare, customer service, and more.
@@ -43,9 +48,6 @@ These factors make them the preferred architecture for building powerful LLMs.
 
 ----
 
-Adjusted logits = \frac{\text{original logits}}{T}
-
-
 ###  🌡️ What is temperatures and how does it work under the hood?
 
 Temperature is a parameter used in language models, particularly in models that generate text, to control the **randomness of predictions** by scaling the logits (the outputs of the final linear layer) before applying the softmax function to convert these logits into probabilities. Here's a step-by-step explanation of how temperature affects the generation probability under the hood:
@@ -70,6 +72,132 @@ Temperature is a parameter used in language models, particularly in models that 
    - **Temperature of 1**: This retains the original logits, leading to a balance between randomness and determinism based on the model's original training.
 
 Temperature effectively adjusts the "confidence" of the model's predictions, allowing for control over the diversity and creativity of the generated text. This makes it a crucial tool for fine-tuning the output of language models, especially in applications where varying levels of creativity or adherence to typical responses are desired.
+
+----
+
+### What is Chinchilla scaling Law? Why is it important?
+
+In general, a neural model can be characterized by 4 parameters: size of the model, size of the training dataset, cost of training, performance after training. Each of these four variables can be precisely defined into a real number, and they are empirically found to be related by simple statistical laws, called "scaling laws".
+
+In simpler terms, the Chinchilla scaling law for training Transformer language models suggests that when given an increased budget (in FLOPs), to achieve compute-optimal, the number of model parameters (N) and the number of tokens for training the model (D) should scale in approximately equal proportions. This conclusion differs from the previous scaling law for neural language models, which states that N should be scaled faster than D. The discrepancy arises from setting different cycle lengths for cosine learning rate schedulers. In estimating the Chinchilla scaling, the authors set the cycle length to be the same as the training steps, as experimental results indicate that larger cycles overestimate the loss of the models.
+
+The Chinchilla scaling law is described in the paper titled "Training Compute-Optimal Large Language Models" by researchers at DeepMind. This paper presents a detailed analysis of how the scaling of data and model size affects the performance of large language models, leading to the development of the Chinchilla model. It provides insights into the optimal allocation of computing resources for training these models, emphasizing the importance of using larger datasets relative to model size for enhanced performance. This work has contributed significantly to the ongoing discussions and strategies around the development of AI language models.
+
+**LLaMA3** (https://ai.meta.com/blog/meta-llama-3/):
+
+> To effectively leverage our pretraining data in Llama 3 models, we put substantial effort into scaling up pretraining. Specifically, we have developed a series of detailed scaling laws for downstream benchmark evaluations. These scaling laws enable us to select an optimal data mix and to make informed decisions on how to best use our training compute. Importantly, scaling laws allow us to predict the performance of our largest models on key tasks (for example, code generation as evaluated on the HumanEval benchmark—see above) before we actually train the models. This helps us ensure strong performance of our final models across a variety of use cases and capabilities.
+> 
+> We made several new observations on scaling behavior during the development of Llama 3. For example, while the Chinchilla-optimal amount of training compute for an 8B parameter model corresponds to ~200B tokens, we found that model performance continues to improve even after the model is trained on two orders of magnitude more data. Both our 8B and 70B parameter models continued to improve log-linearly after we trained them on up to 15T tokens. Larger models can match the performance of these smaller models with less training compute, but smaller models are generally preferred because they are much more efficient during inference.
+
+**QA**
+
+* **Q:** With a 2T tokens for training, what is the optimal size of an LLM considering cost-cost efficiency?
+* **A:** According to `Chinchilla Scaling Law`, the optimal model size is 2T/20 = 100B.
+
+
+https://en.wikipedia.org/wiki/Neural_scaling_law
+https://www.aisafetybook.com/textbook/2-4 
+https://www.youtube.com/watch?v=joZaCw5PxYs&ab_channel=AICoffeeBreakwithLetitia
+https://www.zhihu.com/question/628395521/answer/3270617687
+
+----
+
+### Why most LLM are decoder-only?
+
+Here's a breakdown of the reasons why most large language models (LLMs) favor a decoder-only architecture:
+
+**1. Task Suitability**
+
+* **Causal Language Modeling:** The primary objective of LLMs has traditionally been generative text tasks. This means predicting the next word or token given a sequence of previous words. Decoder-only architectures are a natural fit for this causal language modeling setup, as they only have access to past context.
+* **Efficiency:**  In tasks like translation or summarization, where the input and output sequences have strong dependencies, bidirectional attention (encoder-decoder) might be more beneficial.  However, pure generative text tasks benefit from the computational efficiency of decoder-only models.
+
+**2. Training Advantages**
+
+* **Parallelism:** Decoder-only models enable highly efficient parallelization during training. Since each position attends only to the past, computations for different tokens can happen simultaneously, leading to faster training times.
+* **Data Availability:**  Massive text datasets are readily available. Training solely on this type of data aligns perfectly with the causal prediction capabilities of decoder-only models.
+
+**3. The Low-Rank Issue**
+
+![](https://d3i71xaburhd42.cloudfront.net/995afe47244913ac8d1b4f09bbfacd407f1b4a7b/4-Figure2-1.png)
+
+* **Expressivity Concerns:** Bidirectional attention can introduce the low-rank problem, potentially reducing the LLM's ability to represent complex relationships in the input. Decoder-only LLMs avoid this issue, ensuring strong baseline performance.
+
+**4. Performance Success**
+
+* **Empirical Evidence:**  Decoder-only models like GPT-3 have achieved impressive results on various language tasks, demonstrating that they can learn rich linguistic representations even with the unidirectional constraint.
+* **Refinement over Replacement:** Much of the recent research has focused on refining decoder-only LLMs (scaling, efficient attention mechanisms, etc.) rather than fundamentally shifting towards bidirectional architectures for pure language generation tasks.
+
+**Important Considerations**
+
+* **Not Universal:**  While decoder-only models dominate, there are scenarios where bidirectional attention (encoder-decoder) is beneficial.  Tasks that require understanding the entirety of the input sequence, like machine translation or question answering, often use encoder-decoder architectures.
+* **Evolving Landscape:** Research is ongoing. New techniques for mitigating the limitations of bidirectional attention or hybrid approaches combining the strengths of both architectures could emerge in the future.
+
+**In Summary**
+
+The dominance of decoder-only LLMs stems from a combination of factors: their natural alignment with generative text tasks, training efficiency, avoidance of potential expressiveness limitations, and the sheer success they've achieved.
+
+https://www.zhihu.com/question/588325646/answers/updated
+
+
+### What is Group Query Attention?
+
+![](https://picx.zhimg.com/70/v2-6f6e56cc3f801fa47831a295a0ced703_1440w.avis?source=172ae18b&biz_tag=Post)
+
+- https://zhuanlan.zhihu.com/p/647130255 👍
+- https://zhuanlan.zhihu.com/p/667259791
+
+
+### What is RMSProp?
+
+https://towardsdatascience.com/understanding-rmsprop-faster-neural-network-learning-62e116fcf29a
+
+![](https://miro.medium.com/v2/resize:fit:640/format:webp/0*o9jCrrX4umP7cTBA)
+
+### What is Prefix Decoder Architecture?
+
+![](https://cdn.labellerr.com/language%20models-4/Screenshot%202023-05-21%20233029.webp)
+
+https://www.labellerr.com/blog/exploring-architectures-and-configurations-for-large-language-models-llms/ 👍
+
+### What is an MoE layer?
+
+https://stackoverflow.blog/2024/04/04/how-do-mixture-of-experts-layers-affect-transformer-models/
+
+https://github.com/XueFuzhao/OpenMoE
+
+## LLM in Production
+
+### Why BitLinear can quantize LLM model to 1.58 bit without much loss on performance?
+
+Here's a breakdown of why BitLinear can quantize LLM models to 1.58 bits, along with the principles behind this technique:
+
+**Understanding BitLinear**
+
+* **Beyond 8-bit Quantization:** Traditional quantization often scales parameters to 8-bit integers for efficiency. BitLinear goes further by considering the importance of different parameters within the LLM. 
+* **Ternary Representation:**  It assigns higher precision to parameters that have a larger impact on the model's output, and lower precision to those with less impact.  In BitLinear, weights are stored in a ternary format of [-1, 0, +1].
+* **1.58 Bits on Average:**  Due to the mix of precisions in ternary representation, the *average* storage per parameter comes out to about 1.58 bits. 
+
+**Why It Works**
+
+1. **LLM Redundancy:** Large language models have an inherent level of redundancy.  Not every parameter is equally crucial for accurate output.
+2. **Sparsity:**  Introducing 0 values in the ternary representation creates sparsity, further aiding computational efficiency.
+3. **Simple Operations:**  Since matrix weights are limited to -1, 0, and +1, the underlying multiplications are replaced by simple additions and subtractions – these are much faster to compute.
+
+**Results**
+
+* **Significant Compression:** BitLinear can drastically reduce model size compared to standard 32-bit floating-point representations.
+* **Memory Savings:**  This leads to reduced memory consumption, potentially allowing for larger models to be deployed on resource-constrained devices.
+* **Computational Speedups:** The simplified operations in BitLinear can lead to faster inference times.
+
+**Important Considerations**
+
+* **Accuracy Tradeoff:**  While BitLinear achieves good compression, there is often a slight decrease in model accuracy compared to the full-precision version. Researchers continually fine-tune the method to minimize this gap.
+* **Not a Universal Solution:**  The optimal quantization strategy depends on the specific model architecture and the task at hand.
+
+**Paper Reading**
+
+- [The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits](https://arxiv.org/abs/2402.17764)
+
 
 
 ## Prompt Engineering
