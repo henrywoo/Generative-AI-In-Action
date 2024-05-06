@@ -20,13 +20,11 @@
 
 ## Diffusion (2020) ✅
 
-## LLM (2021) ⌛
+## LLM (2021) ✅
 
 ## RL (1950s) ✅
 
-
-
-## Let's Run The Model ⌛
+## Generative AI ⌛
 
 
 
