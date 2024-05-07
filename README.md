@@ -24,9 +24,15 @@
 
 ## RL (1950s) ✅
 
+## Multimodal AI ⌛
+
+https://cloud.google.com/use-cases/multimodal-ai?hl=en
+
+A multimodal model is capable of understanding and processing virtually any input, combining different types of information, and generating almost any output.
+
 ## Generative AI ⌛
 
-
+Generative AI is an umbrella term for the use of ML models to create new content, like text, images, music, audio, and videos typically from a prompt of a single type. Multimodal AI expands on these generative capabilities, processing information from multiple modalities, including images, videos, and text. Multimodality can be thought of as giving AI the ability to process and understand different sensory modes. Practically this means users are not limited to one input and one output type and can prompt a model with virtually any input to generate virtually any content type.
 
 
 
