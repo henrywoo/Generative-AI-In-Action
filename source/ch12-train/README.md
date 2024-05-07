@@ -60,6 +60,32 @@ class SwiGLU(nn.Module):
 
 ## Regularization
 
+
+> Question: What is wrong with the graph below? How to fix the issue?
+
+![](model_loss_train_val.png)
+
+From the graph you've shown, there are a few observations and potential reasons why the validation loss might show fluctuations and periodic increases:
+
+1. **Model Overfitting**: The steady decrease in training loss combined with spikes in validation loss suggests that the model might be overfitting the training data. Essentially, the model is learning patterns specific to the training data which don't generalize well to unseen data in the validation set.
+
+2. **Learning Rate**: If the learning rate is too high, the model might be making too large updates, leading to erratic jumps in validation loss. It might help to lower the learning rate or implement learning rate scheduling to decrease the rate as training progresses.
+
+3. **Batch Size**: A small batch size can sometimes cause the training process to be unstable, leading to fluctuations in validation loss. Increasing the batch size might help stabilize the loss curves.
+
+4. **Data Split or Shuffling**: If the validation set does not represent the overall data distribution well, or if there are issues with how the data is shuffled and split between training and validation, it could cause inconsistencies in validation performance.
+
+5. **Regularization Techniques**: Implementing regularization techniques such as dropout, L2 regularization (weight decay), or early stopping might help in controlling overfitting. Early stopping, for instance, would halt training when the validation loss begins to rise, potentially avoiding overfitting.
+
+To address these issues, you might consider the following steps:
+- **Implement Early Stopping**: Monitor the validation loss and stop training when it begins to degrade.
+- **Adjust the Learning Rate**: Lower the learning rate or use learning rate schedulers like step decay, exponential decay, or cyclical learning rates.
+- **Increase Batch Size**: If feasible, increasing the batch size could lead to more stable estimates of the gradient.
+- **Review Data Splitting**: Ensure that the train-validation split is random and representative of the overall dataset.
+- **Use Regularization**: Introduce dropout in your model or increase L2 regularization factor in your optimizer.
+
+These steps should help in stabilizing the validation loss and improving the model's generalization to unseen data.
+
 ## Optimizer
 
 ## LR Scheduler
