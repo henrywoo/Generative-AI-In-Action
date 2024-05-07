@@ -57,9 +57,30 @@ def load_data():
     return train_loader, val_loader
 
 
+def plot_losses(train_losses, val_losses):
+    plt.style.use('ggplot')
+    plt.figure(figsize=(10, 5))
+    plt.plot(np.arange(1, NUM_EPOCHS + 1), train_losses, marker='o', label='Training Loss', alpha=0.5)
+    plt.plot(np.arange(1, NUM_EPOCHS + 1), val_losses, marker='x', label='Validation Loss', alpha=0.5)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss')
+    plt.legend()
+    plt.savefig("model_lenet5_train_val_loss.png")
+    plt.show()
+
+
 def train_and_validate(model, train_loader, val_loader, optimizer, scheduler):
+    import copy
     train_losses = []
     val_losses = []
+    best_val_loss = float('inf')
+    best_model = None
+    patience = 10
+    patience_counter = 0
+    ema_decay = 0.999
+    ema_state_dict = copy.deepcopy(model.state_dict())
+
     for epoch in range(1, NUM_EPOCHS + 1):
         model.train()
         train_loss = 0
@@ -70,8 +91,16 @@ def train_and_validate(model, train_loader, val_loader, optimizer, scheduler):
             loss = F.cross_entropy(output, target)
             loss.backward()
             optimizer.step()
+
+            # EMA update for the model parameters
+            with torch.no_grad():
+                for ema_param, param in zip(ema_state_dict.values(), model.parameters()):
+                    ema_param.mul_(ema_decay).add_(param, alpha=1 - ema_decay)
+
             train_loss += loss.item()
 
+        # Validation phase with EMA weights
+        model.load_state_dict(ema_state_dict)
         model.eval()
         val_loss = 0
         with torch.no_grad():
@@ -89,29 +118,31 @@ def train_and_validate(model, train_loader, val_loader, optimizer, scheduler):
 
         print(f'Epoch: {epoch}, Training Loss: {train_loss:.6f}, Validation Loss: {val_loss:.6f}')
 
-    return train_losses, val_losses
+        # Checkpoint the best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_model = copy.deepcopy(model.state_dict())
+            patience_counter = 0  # reset patience counter
+        else:
+            patience_counter += 1
 
+        # Early stopping
+        if patience_counter >= patience:
+            print("Stopping early due to no improvement!")
+            break
 
-def plot_losses(train_losses, val_losses):
-    plt.style.use('ggplot')
-    plt.figure(figsize=(10, 5))
-    plt.plot(np.arange(1, NUM_EPOCHS + 1), train_losses, marker='o', label='Training Loss', alpha=0.5)
-    plt.plot(np.arange(1, NUM_EPOCHS + 1), val_losses, marker='x', label='Validation Loss', alpha=0.5)
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Loss')
-    plt.legend()
-    plt.savefig("model_lenet5_train_val_loss.png")
-    plt.show()
+        # Load the last best model weights back into the model
+        model.load_state_dict(best_model)
 
+    return train_losses, val_losses, best_model
 
 def main():
     model, optimizer, scheduler = initialize_model()
     train_loader, val_loader = load_data()
-    train_losses, val_losses = train_and_validate(model, train_loader, val_loader, optimizer, scheduler)
+    train_losses, val_losses, best_model = train_and_validate(model, train_loader, val_loader, optimizer, scheduler)
     plot_losses(train_losses, val_losses)
-    torch.save(model.state_dict(), "model_lenet5.pth")
-
+    torch.save(best_model, "model_lenet5_best.pth")
 
 if __name__ == "__main__":
     main()
+
