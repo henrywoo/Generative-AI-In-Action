@@ -1,6 +1,15 @@
 import torch
 import torch.nn as nn
 
+# Class names for PASCAL VOC dataset
+class_names = [
+    "Background", "Aeroplane", "Bicycle", "Bird", "Boat",
+    "Bottle", "Bus", "Car", "Cat", "Chair",
+    "Cow", "Dining table", "Dog", "Horse", "Motorbike",
+    "Person", "Potted plant", "Sheep", "Sofa", "Train",
+    "TV/monitor", "Void"  # Assuming 255 is used for 'Void'
+]
+
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
     def __init__(self, in_channels, out_channels):

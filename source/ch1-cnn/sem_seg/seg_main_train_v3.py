@@ -4,12 +4,53 @@ import torch.optim as optim
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import VOCSegmentation
-import matplotlib.pyplot as plt
-from unet import UNet
+import numpy as np
+from unet import UNet, class_names
 import argparse
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import copy
 import os
+import matplotlib.pyplot as plt
+import torchvision.transforms.functional as TF
+
+
+def show_images_and_masks(data_loader, num_images=5):
+    fig, ax = plt.subplots(2, num_images, figsize=(25, 10))  # Adjusted for 2 rows and number of images columns
+
+    for i, (images, masks) in enumerate(data_loader):
+        if i >= num_images:
+            break
+        image = TF.to_pil_image(images[0])
+        mask_tensor = masks[0].squeeze(0).to(torch.uint8)
+        mask = TF.to_pil_image(mask_tensor)
+
+        # Convert mask to numpy for manipulation
+        mask_np = np.array(mask)
+
+        # Prepare the mask display with class labels
+        mask_display = np.zeros((mask_np.shape[0], mask_np.shape[1], 3), dtype=np.uint8)
+        present_classes = []
+        for idx, name in enumerate(class_names):
+            if idx in mask_np and idx != 0:  # Skip background and void
+                present_classes.append(name)
+                mask_display[mask_np == idx] = np.random.randint(0, 255, 3)  # Assign random colors
+
+        # Display original image
+        ax[0, i].imshow(image)
+        ax[0, i].set_title('Original Image')
+        ax[0, i].axis('off')
+
+        # Display mask image with overlay
+        ax[1, i].imshow(image)
+        ax[1, i].imshow(mask_display, alpha=0.6)  # Overlay mask
+        mask_title = ','.join(present_classes) if present_classes else 'Background'
+        ax[1, i].set_title(f'Mask: {mask_title}')
+        ax[1, i].axis('off')
+
+    plt.tight_layout()
+    plt.savefig("pascal_voc_segmentation.png")
+    plt.show()
+
 
 def get_dataloader(batch_size):
     transform = transforms.Compose([
@@ -17,13 +58,21 @@ def get_dataloader(batch_size):
         transforms.ToTensor(),
     ])
 
-    train_set = VOCSegmentation(root='./data', year='2012', image_set='train', download=False, transform=transform, target_transform=transform)
+    target_transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.PILToTensor(),  # This converts PIL Image to tensor without changing label values
+    ])
+
+    train_set = VOCSegmentation(root='./data', year='2012', image_set='train', download=False, transform=transform,
+                                target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
-    val_set = VOCSegmentation(root='./data', year='2012', image_set='val', download=False, transform=transform, target_transform=transform)
+    val_set = VOCSegmentation(root='./data', year='2012', image_set='val', download=False, transform=transform,
+                              target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
+
 
 def train_model(model, train_loader, val_loader, device, epochs, lr, patience, checkpoint_path=None):
     model.to(device)
@@ -114,6 +163,12 @@ def train_model(model, train_loader, val_loader, device, epochs, lr, patience, c
     plt.savefig('training_validation_loss_curve.png')
     plt.show()
 
+def inspect_mask_values(data_loader):
+    for images, masks in data_loader:
+        unique_values = torch.unique(masks)
+        print("Unique values in mask:", unique_values)
+        break  # Only check the first batch for simplicity
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a segmentation model')
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
@@ -125,4 +180,9 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet(num_classes=21)  # PASCAL VOC has 20 classes + background
     train_loader, val_loader = get_dataloader(batch_size=args.batch_size)
+    # Call this function in your main script where appropriate
+    inspect_mask_values(train_loader)
+
+    show_images_and_masks(train_loader)
+
     train_model(model, train_loader, val_loader, device, args.epochs, args.lr, args.patience, checkpoint_path='seg_best.pth')
