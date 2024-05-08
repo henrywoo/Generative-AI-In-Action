@@ -165,6 +165,19 @@ https://stackoverflow.blog/2024/04/04/how-do-mixture-of-experts-layers-affect-tr
 
 https://github.com/XueFuzhao/OpenMoE
 
+
+## LLM Finetuning
+
+### What is ORPO?
+
+During SFT, the probability of generating undesirable responses along with preferred ones also increases.
+
+Preference alignment is then employed to address this issue. It aims to increase the likelihood of generating preferred responses and decrease the likelihood of generating rejected responses. Traditionally, preference alignment is achieved through techniques like Reinforcement Learning with Human Feedback (RLHF) or Direct Preference Optimization (DPO). However, these methods require a separate reference model, increasing computational complexity.
+
+ORPO elegantly solves this problem by combining SFT and preference alignment into a single objective function. It modifies the standard language modeling loss by incorporating an odds ratio (OR) term. 
+
+
+
 ## LLM in Production
 
 ### Why BitLinear can quantize LLM model to 1.58 bit without much loss on performance?
