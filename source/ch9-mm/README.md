@@ -55,3 +55,11 @@ In the Segment Anything Model (SAM), text embeddings and image embeddings are fu
 * **Informative Fusion:** By combining information directly at the embedding level, SAM forces its learning process to find meaningful relationships between visual features and linguistic concepts.
 
 Refer: https://learnopencv.com/segment-anything/
+
+----
+
+Reference:
+
+- https://blog.csdn.net/qq_37015327/article/details/134222044 简述多模态学习中，对齐、融合和表示
+- https://blog.csdn.net/weixin_52471370/article/details/129798870
+- 
