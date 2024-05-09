@@ -166,7 +166,102 @@ https://stackoverflow.blog/2024/04/04/how-do-mixture-of-experts-layers-affect-tr
 https://github.com/XueFuzhao/OpenMoE
 
 
-## LLM Finetuning
+## LLM Pretraining and Finetuning
+
+### Why do we need RL after pre-training LLM? Isn't SFT enough?
+
+Supervised learning can be effective when the task has well-defined labels or quality metrics. However, for tasks where human preferences are complex and subjective (like judging the quality or helpfulness of generated text), supervised learning can struggle.
+
+**Supervised Learning:**
+
+* **Focuses on data patterns:** Supervised learning algorithms are trained on labeled data, where each data point has a corresponding label or target value. The goal is to learn a mapping function that can accurately predict labels for new, unseen data.
+* **Limited Generalization:** However, supervised learning can struggle with generalization, especially when the training data is limited or does not fully represent the distribution of real-world data. This can lead to poor performance on unseen data.
+
+RLHF with a reward model can provide a way to incorporate these subjective preferences into the training process. However, the effectiveness of RLHF depends heavily on the quality and relevance of the human feedback data used to train the reward model. There's an ongoing debate in the field regarding the interpretability and potential biases of reward models in RLHF settings.
+
+**Reinforcement Learning:**
+
+* **Feedback-driven:** RL algorithms operate in an interactive environment, receiving feedback (rewards or penalties) based on their actions. The goal is to learn a policy that maximizes the cumulative reward over time.
+* **Stronger Generalization:** RL's ability to learn from feedback can lead to stronger generalization because it's not limited to patterns in the training data. Instead, it can adapt to new situations and tasks based on the feedback it receives.
+
+
+In LLM pre-training, the target is to predict next token, without considering the output's 3H(helpful, honest, harmless). That is why we need to align it with human's preference. And because human preferences are complex and subjective, RL comes into play.
+
+
+* **Generalization and Transferability:** The main takeaway is that RL's feedback-driven nature can lead to better generalization and transferability to new data forms compared to supervised learning. This is particularly beneficial in situations where the training data is limited or the target task is difficult to define precisely.
+
+**Real-world Example:**
+
+Imagine training a language model using supervised learning to generate text in a specific style. If the training data is limited or doesn't cover the full range of desired styles, the model might struggle to generalize well to new prompts or contexts.
+
+In contrast, an RL approach could be used to train the language model by providing feedback on its generated text. This feedback could come from human evaluators or other metrics that assess the quality or style of the text. By learning from this feedback, the RL-trained model could adapt to different styles and generalize better to new tasks.
+
+**Conclusion:**
+
+The statement accurately captures the distinction between supervised learning and RL in terms of generalization. RL's emphasis on feedback and adaptation makes it a promising approach for tasks with complex or subjective evaluation criteria.
+
+
+
+### In RLHF+PPO, why do we need a reward model?
+
+In RLHF (Reinforcement Learning from Human Feedback) with PPO (Proximal Policy Optimization), a reward model is essential for several reasons:
+
+**1. Dealing with Sparse and Delayed Rewards:**
+
+* **Sparsity:**  In many real-world tasks like dialogue or text generation, the only natural reward signal might be at the very end of a long text sequence (e.g., was the overall text helpful? Did it fulfill the user's goal?). This makes traditional RL methods difficult.
+* **Delay:** The reward signal for a specific action/word choice might only become obvious much later in the text sequence.
+
+**2.  Scalable Human Feedback:**
+
+* **Direct Feedback is Expensive:**  Getting humans to rank or score every single variation of text a large language model can generate is time-consuming and impractical.  
+* **Reward Model as Proxy:**  A reward model trained on a smaller dataset of human preferences can be used to provide estimated rewards at scale. This makes it computationally feasible to guide the RL optimization.
+
+**3. Shaping the Model's Behavior:**
+
+* **Beyond Supervised Learning:** While supervised fine-tuning on a dataset helps a language model learn basic patterns, the reward model allows you to incorporate more nuanced aspects of human preference.
+* **Safety and Alignment:** The reward model can learn signals related to harmlessness, avoiding bias, or being truthful, which are difficult to capture directly in a standard language modeling dataset.
+
+**How It Works in the RLHF + PPO Context**
+
+1. **Human Feedback Dataset:** You collect a dataset of text samples with human ratings or pairwise comparisons (which text is "better").
+2. **Train the Reward Model:** You train a model (like the `GPTRewardModel`) to predict reward scores that try to mimic these human judgments. 
+3. **PPO with the Reward Model:** The PPO algorithm then acts to update a policy (in this case, the large language model itself) in a direction that maximizes the expected reward _according to the trained reward model_.
+
+**Important Note:** The reward model is never perfect. It's continuously improved as you gather more human feedback or see failures of the language model, forming an iterative cycle of enhancement.
+
+
+### How the reward score is calculated in the reward model?
+
+Here's a breakdown of how the reward score is calculated:
+
+**1. Language Model as Feature Extractor:**
+
+* The pretrained language model acts as a powerful text feature extractor. As input text flows through its transformer layers, it produces hidden states at each position corresponding to each token. 
+* These hidden states contain rich contextual information about the text. 
+
+**2. The Linear Layer (v_head):**
+
+* The `v_head` is a simple linear layer that takes these hidden states as input.
+* Its role is to learn a mapping (a linear transformation) that projects the language model's hidden representation of each token into a single reward score.
+
+**3. Training Process Teaches Reward Assignment**
+
+* During training, the model sees pairs of "chosen" (good) and "rejected" (bad) text.
+* The goal is to force the model to assign higher reward scores to tokens in the "chosen" sequences compared to the "rejected" sequences. 
+* The training loss function (`-torch.log(torch.sigmoid(c_truncated_reward - r_truncated_reward))`) pushes the model in this direction.
+
+**At Inference Time**
+
+* After training, you give the model a new text sample.
+* Hidden states are generated by the language model.
+* The `v_head` layer transforms these hidden states into reward scores for each token.
+
+**Key Points**
+
+* The reward scores are not absolute values. Their primary purpose is relative comparisons. 
+* What constitutes "good" vs. "bad" quality is entirely defined by the dataset you train the model on.
+
+
 
 ### What is ORPO?
 
@@ -282,3 +377,13 @@ However, if we were to discuss the computational cost of generating a response b
 
 **Paper**:
 - https://arxiv.org/pdf/2301.00234
+
+
+
+**Reference Links**:
+- https://zhuanlan.zhihu.com/p/660759033
+- 多epochs是否会降低大模型性能 https://mp.weixin.qq.com/s/DBP_eafGeKMEuSIma9Z9Tg
+- 强化学习（RLHF）与直接偏好学习（DPO） https://zhuanlan.zhihu.com/p/649337044
+- 大模型的PPO、DPO偏好优化算法玩不起？那建议你看一下ORPO（更有性价比！）https://zhuanlan.zhihu.com/p/688583797
+- RLHF的替代之DPO原理解析：从RLHF、Claude的RAILF到DPO、Zephyr https://blog.csdn.net/v_JULY_v/article/details/134242910
+- 天下苦RLHF久矣！来看看不同的训练方式！Direct Preference Optimization, Your Language Model is Secretly a Reward Model https://zhuanlan.zhihu.com/p/633539131
