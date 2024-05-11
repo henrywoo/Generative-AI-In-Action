@@ -353,3 +353,5 @@ GRUs (Gated Recurrent Units) simplify the LSTM architecture in a few key ways:
 https://www.youtube.com/watch?v=AsNTP8Kwu80 (RNN from StarQuest)
 
 ## Transformer
+
+### What is positional encoding and embedding?

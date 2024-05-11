@@ -79,6 +79,8 @@ Temperature effectively adjusts the "confidence" of the model's predictions, all
 
 In general, a neural model can be characterized by 4 parameters: size of the model, size of the training dataset, cost of training, performance after training. Each of these four variables can be precisely defined into a real number, and they are empirically found to be related by simple statistical laws, called "scaling laws".
 
+![](chinchilla.gif)
+
 In simpler terms, the Chinchilla scaling law for training Transformer language models suggests that when given an increased budget (in FLOPs), to achieve compute-optimal, the number of model parameters (N) and the number of tokens for training the model (D) should scale in approximately equal proportions. This conclusion differs from the previous scaling law for neural language models, which states that N should be scaled faster than D. The discrepancy arises from setting different cycle lengths for cosine learning rate schedulers. In estimating the Chinchilla scaling, the authors set the cycle length to be the same as the training steps, as experimental results indicate that larger cycles overestimate the loss of the models.
 
 The Chinchilla scaling law is described in the paper titled "Training Compute-Optimal Large Language Models" by researchers at DeepMind. This paper presents a detailed analysis of how the scaling of data and model size affects the performance of large language models, leading to the development of the Chinchilla model. It provides insights into the optimal allocation of computing resources for training these models, emphasizing the importance of using larger datasets relative to model size for enhanced performance. This work has contributed significantly to the ongoing discussions and strategies around the development of AI language models.
@@ -168,6 +170,8 @@ https://github.com/XueFuzhao/OpenMoE
 
 ## LLM Pretraining and Finetuning
 
+![LLM Development Life Cycle](llm_lc.png)
+
 ### Why do we need RL after pre-training LLM? Isn't SFT enough?
 
 Supervised learning can be effective when the task has well-defined labels or quality metrics. However, for tasks where human preferences are complex and subjective (like judging the quality or helpfulness of generated text), supervised learning can struggle.
@@ -200,7 +204,18 @@ In contrast, an RL approach could be used to train the language model by providi
 
 The statement accurately captures the distinction between supervised learning and RL in terms of generalization. RL's emphasis on feedback and adaptation makes it a promising approach for tasks with complex or subjective evaluation criteria.
 
+### How PPO works?
 
+Fine-tuning a language model via PPO consists of roughly three steps:
+
+- Rollout: The language model generates a response or continuation based on query which could be the start of a sentence.
+- Evaluation: The query and response are evaluated with a function, model, human feedback or some combination of them. The important thing is that this process should yield a scalar value for each query/response pair.
+- Optimization: This is the most complex part. In the optimisation step the query/response pairs are used to calculate the log-probabilities of the tokens in the sequences. This is done with the model that is trained and a reference model, which is usually the pre-trained model before fine-tuning. The KL-divergence between the two outputs is used as an additional reward signal to make sure the generated responses don’t deviate too far from the reference language model. The active language model is then trained with PPO.
+This process is illustrated in the sketch below:
+
+![](https://huggingface.co/datasets/trl-internal-testing/example-images/resolve/main/images/trl_overview.png)
+
+https://github.com/openai/spinningup/blob/master/spinup/algos/pytorch/ppo/ppo.py#L269
 
 ### In RLHF+PPO, why do we need a reward model?
 
@@ -261,7 +276,11 @@ Here's a breakdown of how the reward score is calculated:
 * The reward scores are not absolute values. Their primary purpose is relative comparisons. 
 * What constitutes "good" vs. "bad" quality is entirely defined by the dataset you train the model on.
 
+## What is DPO?
 
+https://huggingface.co/datasets/trl-internal-testing/hh-rlhf-trl-style
+
+- DPO: Direct Preference Optimization 论文解读及代码实践 https://zhuanlan.zhihu.com/p/642569664
 
 ### What is ORPO?
 

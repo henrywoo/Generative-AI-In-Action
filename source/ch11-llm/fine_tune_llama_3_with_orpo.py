@@ -20,8 +20,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.cuda.set_device(device)  # Ensure this matches the device in error message if modifying
 
 # Model
-base_model = "meta-llama/Meta-Llama-3-8B"
-new_model = "OrpoLlama-3-8B"
+ref_model = "meta-llama/Meta-Llama-3-8B"
+active_model = "OrpoLlama-3-8B"
 
 # Set torch dtype and attention implementation
 if torch.cuda.get_device_capability()[0] >= 8:
@@ -51,11 +51,11 @@ peft_config = LoraConfig(
 )
 
 # Load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(base_model)
+tokenizer = AutoTokenizer.from_pretrained(ref_model)
 
 # Load model and ensure it is on the right device
 model = AutoModelForCausalLM.from_pretrained(
-    base_model,
+    ref_model,
     quantization_config=bnb_config,
     device_map="auto",
     attn_implementation=attn_implementation
@@ -107,7 +107,7 @@ trainer = ORPOTrainer(
 )
 
 trainer.train()
-trainer.save_model(new_model)
+trainer.save_model(active_model)
 
 # Flush memory
 del trainer, model
@@ -116,9 +116,9 @@ gc.collect()
 torch.cuda.empty_cache()
 
 # Reload tokenizer and model, ensuring all components are on the same device
-tokenizer = AutoTokenizer.from_pretrained(base_model)
+tokenizer = AutoTokenizer.from_pretrained(ref_model)
 fp16_model = AutoModelForCausalLM.from_pretrained(
-    base_model,
+    ref_model,
     low_cpu_mem_usage=True,
     return_dict=True,
     torch_dtype=torch.float16,
@@ -128,8 +128,8 @@ fp16_model = AutoModelForCausalLM.from_pretrained(
 fp16_model, tokenizer = setup_chat_format(fp16_model, tokenizer)
 
 # Merge adapter with base model
-model = PeftModel.from_pretrained(fp16_model, new_model).to(device)
+model = PeftModel.from_pretrained(fp16_model, active_model).to(device)
 model = model.merge_and_unload()
 
-model.push_to_hub(new_model, use_temp_dir=False)
-tokenizer.push_to_hub(new_model, use_temp_dir=False)
+model.push_to_hub(active_model, use_temp_dir=False)
+tokenizer.push_to_hub(active_model, use_temp_dir=False)

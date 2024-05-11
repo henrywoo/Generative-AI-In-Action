@@ -117,3 +117,44 @@ The Gumbel-Softmax trick is particularly important in scenarios where:
 - **Gradient Backpropagation**: The model involves discrete choices, and you want to use standard gradient-based learning techniques, which require differentiability.
 
 This approach is widely used in reinforcement learning, variational autoencoders (VAEs) for discrete latent variables, and other areas of machine learning where modeling and learning discrete distributions in a differentiable manner are crucial.
+
+
+## What is the difference between Kullback–Leibler (KL) divergence and cross-entropy?
+
+The Kullback–Leibler (KL) divergence and cross-entropy are two related concepts in the field of information theory, commonly used to measure the difference between two probability distributions.
+
+![](kl_vs_ce.png)
+
+### Kullback–Leibler (KL) Divergence
+KL divergence measures the amount of information lost when approximating one probability distribution with another. It is defined for two probability distributions \( P \) and \( Q \) as:
+\[ D_{KL}(P \parallel Q) = \sum_{i} P(i) \log \left(\frac{P(i)}{Q(i)}\right) \]
+It is not symmetric, meaning \( D_{KL}(P \parallel Q) \neq D_{KL}(Q \parallel P) \), and it is non-negative, where a value of 0 indicates that the two distributions are identical.
+
+### Cross-Entropy
+Cross-entropy measures the average number of bits needed to identify an event from a set of possibilities if a coding scheme used for the set is based on a different probability distribution \( Q \) rather than the true distribution \( P \). It is defined as:
+\[ H(P, Q) = -\sum_{i} P(i) \log(Q(i)) \]
+Cross-entropy is often used in machine learning for classification problems, where \( P \) represents the true labels and \( Q \) the predicted probabilities.
+
+> Note that the cross-entropy loss is equivalent to the KL divergence plus the entropy of P.
+
+> As for the naming convention, probability starts with `P` so P is for true probablity. `Q` is next to `P`, so it is for prediction probability.
+
+
+## Can we use KL Divergence to replace Cross Entropy as the loss function in classification problems?
+
+Although KL divergence and cross-entropy are closely related, and minimizing cross-entropy is equivalent to minimizing KL divergence (when the true distribution is fixed), cross-entropy is more commonly used as a loss function in machine learning, especially in classification problems.
+
+Here are some reasons why:
+
+* **Computational Efficiency:** In classification problems, true labels are usually represented with one-hot encoding, meaning only one category is 1, and the rest are 0. In this case, calculating cross-entropy is simpler and more efficient than calculating KL divergence.
+* **Numerical Stability:** Calculating cross-entropy involves logarithms, which can lead to numerical instability when predicted probabilities approach 0. The cross-entropy formula itself includes logarithms, which can avoid this problem.
+* **More Direct Interpretation:** In classification problems, cross-entropy can be directly interpreted as the difference between the predicted probability distribution and the true label distribution. KL divergence, on the other hand, focuses more on information loss between two distributions, making it relatively abstract to interpret.
+
+In summary, while KL divergence can be used to measure the difference between two distributions, cross-entropy is more practical as a loss function in classification problems because it is computationally more efficient, numerically more stable, and has a more direct interpretation.
+
+Of course, KL divergence can also be a suitable loss function in certain cases, such as:
+
+* **Generative Models:**  When training generative models, the goal is to learn the data distribution. KL divergence can be used to measure the difference between the generated distribution and the true distribution.
+* **Reinforcement Learning:** In reinforcement learning, KL divergence can be used to measure the difference between policies before and after policy updates.
+
+Therefore, the choice of loss function depends on the specific task and objectives.
