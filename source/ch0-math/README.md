@@ -1,4 +1,6 @@
-# AI Basics
+# AI Math
+
+![](euler.png)
 
 ## Cosine Similarity
 

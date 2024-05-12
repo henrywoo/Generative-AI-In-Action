@@ -96,4 +96,5 @@ In Q-learning, a classic off-policy algorithm, the agent follows a behavior poli
 - 从0开始实现LLM：7、RLHF/PPO/DPO原理和代码简读 https://zhuanlan.zhihu.com/p/686217468
 - 强化学习中的重要性采样(Importance Sampling) https://zhuanlan.zhihu.com/p/371156865
 - 重要性采样(Importance Sampling)详细学习笔记 https://zhuanlan.zhihu.com/p/342936969
+- 【强化学习】直通PPO算法 https://zhuanlan.zhihu.com/p/643751150
 
