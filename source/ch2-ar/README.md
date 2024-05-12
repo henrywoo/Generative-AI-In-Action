@@ -347,12 +347,11 @@ GRUs (Gated Recurrent Units) simplify the LSTM architecture in a few key ways:
 
 **Important Note:** The choice between GRU and LSTM is often task-dependent. There's no single "best" choice for all scenarios. Experimentation is often needed to see which performs better for your specific needs!
 
-
-
-
 https://www.youtube.com/watch?v=AsNTP8Kwu80 (RNN from StarQuest)
 
 ## Transformer
+
+![](transformer_ar.webp)
 
 ### How to preserve Token Order in High-Dimensional Space? Why we can add position and token embedding?
 
@@ -479,3 +478,6 @@ for epoch in range(2):
 
 Transformers can be a powerful tool for time series prediction like stock prices, provided that they are carefully adapted and tuned for the specific characteristics and requirements of financial data. Their ability to capture complex dependencies and integrate diverse types of data makes them an intriguing option for advanced forecasting models.
 
+## Reference
+
+- Transformer升级之路：1、Sinusoidal位置编码追根溯源 https://kexue.fm/archives/8231

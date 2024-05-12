@@ -406,3 +406,4 @@ However, if we were to discuss the computational cost of generating a response b
 - 大模型的PPO、DPO偏好优化算法玩不起？那建议你看一下ORPO（更有性价比！）https://zhuanlan.zhihu.com/p/688583797
 - RLHF的替代之DPO原理解析：从RLHF、Claude的RAILF到DPO、Zephyr https://blog.csdn.net/v_JULY_v/article/details/134242910
 - 天下苦RLHF久矣！来看看不同的训练方式！Direct Preference Optimization, Your Language Model is Secretly a Reward Model https://zhuanlan.zhihu.com/p/633539131
+- 拆解大语言模型RLHF中的PPO https://zhuanlan.zhihu.com/p/645225982

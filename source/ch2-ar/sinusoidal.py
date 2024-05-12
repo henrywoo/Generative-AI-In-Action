@@ -1,38 +1,30 @@
-import numpy as np
+# https://towardsdatascience.com/master-positional-encoding-part-i-63c05d90a0c3
+import torch
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
+def positional_encoding(max_position, d_model, min_freq=1e-4):
+    position = torch.arange(max_position, dtype=torch.float32)
+    mask = torch.arange(d_model)
+    sin_mask = (mask % 2).float()
+    cos_mask = 1 - sin_mask
+    exponent = 2 * (mask // 2)
+    exponent = exponent.float() / d_model
+    freqs = min_freq ** exponent
+    angles = position[:, None] * freqs[None, :]
+    pos_enc = torch.cos(angles) * cos_mask + torch.sin(angles) * sin_mask
+    return pos_enc
 
-d = 12
-positions = np.arange(1, 21)
-dimensions = np.arange(0, d, 2)
+### Plotting
+d_model = 128
+max_pos = 256
+pos_enc_matrix = positional_encoding(max_pos, d_model).numpy()  # Convert to NumPy array for plotting
 
-# Create meshgrid for positions and dimensions
-X, Y = np.meshgrid(positions, dimensions)
-
-def rope_sinusoid(position, i, d):
-    """Calculates the sinusoidal value for a given position and dimension."""
-    exponent = -2 * (i // 2) / d
-    theta = position / (10000 ** exponent)
-    return np.sin(theta) if i % 2 == 0 else np.cos(theta)
-
-# Calculate Z values for each position and dimension
-Z = np.array([[rope_sinusoid(pos, i, d) for pos in positions] for i in dimensions])
-
-# Create 3D plot
-fig = plt.figure(figsize=(18, 10))
-ax = fig.add_subplot(111, projection='3d')
-
-# Plot the surface
-surf = ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none')
-
-# Add colorbar
-fig.colorbar(surf, shrink=0.5, aspect=5)
-
-# Customize plot
-ax.set_xlabel('Position')
-ax.set_ylabel('Dimension Index (i)')
-ax.set_zlabel('Sinusoidal Value')
-ax.set_title(f"Sinusoidal Positional Encoding (d={d})")
-
+plt.style.use('ggplot')
+plt.figure(figsize=(10, 8))
+plt.pcolormesh(pos_enc_matrix, cmap='viridis')
+plt.xlabel('Depth')
+plt.xlim((0, d_model))
+plt.ylabel('Position')
+plt.title("Positional Encoding Matrix Heat Map")
+plt.colorbar()
 plt.show()
