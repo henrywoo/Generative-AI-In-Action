@@ -55,6 +55,50 @@ https://towardsdatascience.com/proximal-policy-optimization-tutorial-part-2-2-ga
 
 The policy gradient theorem provides the theoretical foundation for learning policies in reinforcement learning.
 
+The Policy Gradient Theorem is a fundamental result in reinforcement learning (RL) that provides a way to directly optimize a parameterized policy to maximize the expected reward. In simpler terms, it tells us how to adjust the parameters of a policy (which determines the agent's actions) in order to increase the expected cumulative reward over time.
+
+**Key Idea:**
+
+The core idea behind the policy gradient theorem is to express the gradient of the expected reward with respect to the policy parameters as an expectation of the product of the following terms:
+
+* **The reward:** A scalar value indicating how good the agent's action was in a given state.
+* **The gradient of the log probability of the action:** This indicates how much a small change in the policy parameters would affect the probability of taking that action.
+
+**Mathematical Formulation:**
+
+The policy gradient theorem can be stated mathematically as follows:
+
+∇J(θ) = E[∇log π(a|s, θ) * Q(s, a)]
+
+where:
+
+* J(θ) is the expected reward (the objective function we want to maximize).
+* θ represents the policy parameters.
+* π(a|s, θ) is the probability of taking action 'a' in state 's' given the policy parameters θ.
+* Q(s, a) is the action-value function, representing the expected cumulative reward of taking action 'a' in state 's' and following the policy thereafter.
+
+**Implications:**
+
+The policy gradient theorem has several important implications for RL:
+
+* **Direct Policy Optimization:** It allows us to directly optimize the policy parameters without needing to explicitly estimate the value function (which can be challenging).
+* **Stochastic Policies:** It works with stochastic policies, where the agent has a probability distribution over actions rather than always choosing the same action deterministically.
+* **Wide Applicability:** It forms the basis for various policy gradient algorithms, such as REINFORCE, Actor-Critic, and PPO, which are widely used in RL research and applications.
+
+**Intuitive Explanation:**
+
+Intuitively, the policy gradient theorem suggests that to improve the policy, we should increase the probability of actions that lead to higher rewards and decrease the probability of actions that lead to lower rewards. The gradient of the log probability term tells us how to adjust the policy parameters to achieve this.
+
+**Limitations:**
+
+While the policy gradient theorem is powerful, it has some limitations:
+
+* **High Variance:** Policy gradient estimates can have high variance, which can make learning slow and unstable.
+* **Sample Inefficiency:** It may require a large number of samples from the environment to get accurate estimates of the policy gradient.
+
+Despite these limitations, the policy gradient theorem remains a cornerstone of modern RL, and various techniques have been developed to address its shortcomings.
+
+
 ## What are behavior policy and target policy?
 
 In reinforcement learning, behavior policy and target policy are two distinct concepts that play a crucial role, particularly in off-policy learning methods.
@@ -97,4 +141,6 @@ In Q-learning, a classic off-policy algorithm, the agent follows a behavior poli
 - 强化学习中的重要性采样(Importance Sampling) https://zhuanlan.zhihu.com/p/371156865
 - 重要性采样(Importance Sampling)详细学习笔记 https://zhuanlan.zhihu.com/p/342936969
 - 【强化学习】直通PPO算法 https://zhuanlan.zhihu.com/p/643751150
+- Reinforcement Learning for Language Models https://gist.github.com/yoavg/6bff0fecd65950898eba1bb321cfbd81
+- 一些RLHF的平替汇总（2023.11）https://zhuanlan.zhihu.com/p/667152180
 

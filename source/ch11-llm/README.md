@@ -48,36 +48,66 @@ These factors make them the preferred architecture for building powerful LLMs.
 
 ----
 
-###  🌡️ What is temperatures and how does it work under the hood?
+###  🌡️ What is temperatures in LLM and how does it work under the hood?
 
-Temperature is a parameter used in language models, particularly in models that generate text, to control the **randomness of predictions** by scaling the logits (the outputs of the final linear layer) before applying the softmax function to convert these logits into probabilities. Here's a step-by-step explanation of how temperature affects the generation probability under the hood:
+In large language models (LLMs), temperature is a hyperparameter that controls the randomness of the model's output. It influences the creativity and diversity of the generated text.
 
-1. **Logits Calculation**: The model computes logits, which are essentially raw predictions of the next token given the input. These logits represent the unnormalized log probabilities of each token in the model's vocabulary.
+**How it works under the hood:**
 
-2. **Scaling by Temperature**: The temperature parameter \( T \) is used to scale the logits. The formula used is:
-   \[
-   \text{adjusted logits} = \frac{\text{original logits}}{T}
-   \]
-   Here, \( T > 0 \). A temperature of 1 means no scaling; the logits are used as they are. Temperatures greater than 1 make the logits smaller, and temperatures less than 1 make the logits larger.
+1. **Logits:** LLMs produce a probability distribution over the entire vocabulary for each word it generates. The raw, unscaled output scores representing these probabilities are called logits.
 
-3. **Softmax Function**: After scaling the logits with the temperature, a softmax function is applied to convert these logits into probabilities. The softmax function is defined as:
-   \[
-   P_i = \frac{e^{\text{adjusted logits}_i}}{\sum_j e^{\text{adjusted logits}_j}}
-   \]
-   where \( P_i \) is the probability of the \( i \)-th token.
+2. **Softmax:** To convert logits into actual probabilities, LLMs use a function called softmax. This function normalizes the logits, ensuring that the probabilities of all possible words sum up to 1.
 
-4. **Effect of Temperature**:
-   - **High Temperature (\( T > 1 \))**: This makes the distribution of logits more uniform (closer to each other), leading to a flatter distribution of probabilities. As a result, the model generates text with more randomness and creativity, as less likely tokens gain a relatively higher probability of being chosen.
-   - **Low Temperature (\( T < 1 \))**: This makes the distribution of logits more peaky as differences between logits are amplified. Consequently, the probability distribution becomes sharper, meaning the model's output becomes more deterministic and repetitive, favoring more likely tokens.
-   - **Temperature of 1**: This retains the original logits, leading to a balance between randomness and determinism based on the model's original training.
+3. **Temperature Scaling:** Before applying softmax, the temperature parameter scales the logits. The formula for this is:
+   
+   ```
+   scaled_logits = logits / temperature
+   ```
 
-Temperature effectively adjusts the "confidence" of the model's predictions, allowing for control over the diversity and creativity of the generated text. This makes it a crucial tool for fine-tuning the output of language models, especially in applications where varying levels of creativity or adherence to typical responses are desired.
+4. **Probability Distribution:** The scaled logits are then passed through the softmax function, producing the final probability distribution over the vocabulary.
+
+**Effects of Temperature:**
+
+* **Low Temperature (e.g., 0.2):** The model becomes more conservative and deterministic. It will favor the most likely words according to its training data, resulting in more predictable and focused outputs. This is often desirable for tasks that require factual accuracy or specific answers.
+* **High Temperature (e.g., 1.5):** The model becomes more creative and diverse. It is more likely to sample less probable words, leading to unexpected and imaginative outputs. This is useful for tasks like creative writing or brainstorming where originality is valued.
+* **Temperature = 1:** This is the default setting for many LLMs, providing a balance between predictability and creativity.
+
+**Choosing the Right Temperature:**
+
+The optimal temperature depends on the specific task and desired output. Some general guidelines include:
+
+* **Factual Tasks:** Lower temperatures are preferred when accuracy and conciseness are important.
+* **Creative Tasks:** Higher temperatures are useful for generating diverse and original text.
+* **Experimentation:** It's often best to experiment with different temperatures to find the one that works best for your specific application.
 
 ----
 
 ### What is Chinchilla scaling Law? Why is it important?
 
 In general, a neural model can be characterized by 4 parameters: size of the model, size of the training dataset, cost of training, performance after training. Each of these four variables can be precisely defined into a real number, and they are empirically found to be related by simple statistical laws, called "scaling laws".
+
+The Chinchilla scaling law is an empirical relationship that describes the optimal allocation of compute resources between model size (number of parameters, N) and training data size (number of tokens, D) for large language models.
+
+**Formula:**
+
+The Chinchilla scaling law can be approximated by the following equation:
+
+```
+Loss(N, D) = 406.4N^-0.34 + 410.7D^-0.28 + 1.69
+```
+
+This equation implies that:
+
+* The loss decreases with increasing model size (N) and increasing training data size (D).
+* The effect of increasing model size diminishes as the model gets larger.
+* The effect of increasing training data size diminishes as the dataset gets larger.
+
+**Implication:**
+
+The Chinchilla scaling law suggests that, for a fixed compute budget, the optimal way to allocate resources is to scale the model size and training data size equally. In other words, for every doubling of model size, the number of training tokens should also be doubled.
+
+This finding challenges the previous trend of primarily focusing on increasing model size while keeping training data relatively constant. By adhering to the Chinchilla scaling law, researchers can train more efficient models that outperform larger models trained on fewer data.
+
 
 ![](chinchilla.gif)
 
@@ -97,10 +127,10 @@ The Chinchilla scaling law is described in the paper titled "Training Compute-Op
 * **A:** According to `Chinchilla Scaling Law`, the optimal model size is 2T/20 = 100B.
 
 
-https://en.wikipedia.org/wiki/Neural_scaling_law
-https://www.aisafetybook.com/textbook/2-4 
-https://www.youtube.com/watch?v=joZaCw5PxYs&ab_channel=AICoffeeBreakwithLetitia
-https://www.zhihu.com/question/628395521/answer/3270617687
+- https://en.wikipedia.org/wiki/Neural_scaling_law
+- https://www.aisafetybook.com/textbook/2-4 
+- https://www.youtube.com/watch?v=joZaCw5PxYs&ab_channel=AICoffeeBreakwithLetitia
+- https://www.zhihu.com/question/628395521/answer/3270617687
 
 ----
 
@@ -143,7 +173,71 @@ https://www.zhihu.com/question/588325646/answers/updated
 
 ### What is Group Query Attention?
 
+Grouped-Query Attention (GQA) is a method that interpolates between multi-query attention (MQA) and multi-head attention (MHA), two common attention mechanisms used in transformer models 
+ like large language models (LLMs).
+
 ![](https://picx.zhimg.com/70/v2-6f6e56cc3f801fa47831a295a0ced703_1440w.avis?source=172ae18b&biz_tag=Post)
+
+**Key points of GQA:**
+
+* **Interpolation:** GQA aims to achieve the quality of MHA (which is known for its expressiveness) while maintaining the speed of MQA (which is more efficient due to shared key-value projections).
+* **Grouping:** The core idea is to divide the query heads into groups, with each group sharing a single key and value head. This reduces the number of key-value projections, leading to faster computation.
+* **Flexibility:** The number of groups (G) is a hyperparameter. When G=1, GQA becomes MQA, and when G equals the number of heads (H), GQA becomes MHA.
+
+**Illustrative Code (PyTorch):**
+
+```python
+import torch
+import torch.nn as nn
+
+class GroupedQueryAttention(nn.Module):
+    def __init__(self, d_model, num_heads, num_groups):
+        super().__init__()
+        assert num_heads % num_groups == 0, "Num heads must be divisible by num groups"
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.num_groups = num_groups
+        self.head_dim = d_model // num_heads
+
+        self.q_proj = nn.Linear(d_model, d_model)
+        self.k_proj = nn.Linear(d_model, d_model // num_groups)
+        self.v_proj = nn.Linear(d_model, d_model // num_groups)
+        self.out_proj = nn.Linear(d_model, d_model)
+
+    def forward(self, q, k, v, mask=None):
+        batch_size, seq_len, _ = q.shape
+
+        q = self.q_proj(q).view(batch_size, seq_len, self.num_heads, self.head_dim)
+        k = self.k_proj(k).view(batch_size, seq_len, self.num_groups, self.head_dim)
+        v = self.v_proj(v).view(batch_size, seq_len, self.num_groups, self.head_dim)
+
+        q = q.transpose(1, 2)  # [batch_size, num_heads, seq_len, head_dim]
+        k = k.transpose(1, 2)  # [batch_size, num_groups, seq_len, head_dim]
+        v = v.transpose(1, 2)  # [batch_size, num_groups, seq_len, head_dim]
+
+        attn_scores = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim ** 0.5)
+        if mask is not None:
+            attn_scores = attn_scores.masked_fill(mask == 0, float("-inf"))
+        attn_probs = torch.softmax(attn_scores, dim=-1)
+
+        attn_output = torch.matmul(attn_probs, v)  # [batch_size, num_heads, seq_len, head_dim]
+        attn_output = attn_output.transpose(1, 2).reshape(batch_size, seq_len, self.d_model)
+        attn_output = self.out_proj(attn_output)
+
+        return attn_output
+```
+
+**Explanation:**
+
+1. `__init__`: Initializes the linear projections for queries (q_proj), keys (k_proj), values (v_proj), and output (out_proj). Note that `k_proj` and `v_proj` project to a smaller dimension (`d_model // num_groups`) since keys and values are shared within groups.
+
+2. `forward`:
+   * Projects the queries, keys, and values.
+   * Reshapes them for multi-head/grouped-query attention.
+   * Calculates attention scores and applies the softmax function.
+   * Applies the mask (if provided).
+   * Calculates the attention output and projects it back to the original dimension.
 
 - https://zhuanlan.zhihu.com/p/647130255 👍
 - https://zhuanlan.zhihu.com/p/667259791
@@ -151,11 +245,119 @@ https://www.zhihu.com/question/588325646/answers/updated
 
 ### What is RMSProp?
 
-https://towardsdatascience.com/understanding-rmsprop-faster-neural-network-learning-62e116fcf29a
+RMSProp (Root Mean Square Propagation) is an optimization algorithm used in machine learning, particularly for training deep neural networks. It addresses some limitations of traditional gradient descent by adapting the learning rate for each parameter based on the historical magnitudes of their gradients. This can lead to faster convergence and better performance in scenarios where the loss landscape has varying curvature.
 
 ![](https://miro.medium.com/v2/resize:fit:640/format:webp/0*o9jCrrX4umP7cTBA)
 
+**Key Idea:**
+
+RMSProp maintains a moving average of the squared gradients for each parameter. This moving average is used to normalize the gradient updates, effectively reducing the learning rate for parameters with large gradients and increasing it for parameters with small gradients.
+
+**Mathematical Formulation:**
+
+The update rule for RMSProp is as follows:
+
+```
+E[g²]_t = β * E[g²]_(t-1) + (1 - β) * g²_t
+θ_t = θ_(t-1) - α * g_t / (√E[g²]_t + ε)
+```
+
+Where:
+
+* E[g²]_t: Moving average of squared gradients at time step t
+* β: Decay factor (typically between 0.9 and 0.99)
+* g_t: Gradient at time step t
+* θ_t: Parameter value at time step t
+* α: Learning rate
+* ε: Small constant to prevent division by zero (e.g., 1e-8)
+
+**Illustrative Code (PyTorch):**
+
+```python
+import torch
+
+# Example parameters
+params = [torch.randn(10, 5), torch.randn(5, 10)]  # Two weight matrices
+lr = 0.01  # Learning rate
+beta = 0.9  # Decay factor
+eps = 1e-8  # Epsilon
+num_iterations = 1000
+# Initialize squared gradient averages
+square_avg = [torch.zeros_like(p) for p in params]
+
+for t in range(num_iterations):
+    # ... (Compute gradients for params based on your loss function)
+    for i, param in enumerate(params):
+        square_avg[i] = beta * square_avg[i] + (1 - beta) * param.grad ** 2
+        param -= lr * param.grad / (square_avg[i].sqrt() + eps)
+```
+
+**Explanation:**
+
+1. Initialize: Create empty tensors to store the squared gradient averages.
+
+2. Iterate: For each iteration:
+
+   * Compute Gradients: Calculate gradients for your model's parameters using backpropagation.
+   * Update Squared Averages: Update the moving average of squared gradients using the decay factor `beta`.
+   * Update Parameters: Update each parameter using the RMSProp update rule, dividing the gradient by the square root of the corresponding squared average (plus epsilon).
+
+
+
+https://towardsdatascience.com/understanding-rmsprop-faster-neural-network-learning-62e116fcf29a
+
+
+
 ### What is Prefix Decoder Architecture?
+
+A prefix decoder architecture is a type of transformer-based language model that modifies the traditional causal decoder's masking mechanism to allow bidirectional attention over a fixed set of prefix tokens. This enables the model to better utilize contextual information while still maintaining the autoregressive generation process.
+
+**Key Points of Prefix Decoder Architecture:**
+
+* **Prefix Tokens:** A set of special tokens at the beginning of the input sequence, visible to all subsequent tokens in the sequence through bidirectional attention.
+* **Causal Masking:** Applied after the prefix tokens, restricting each token to attend only to its past (including the prefix tokens).
+* **Benefits:** Enables better utilization of context for improved generation quality, while retaining the autoregressive nature of language modeling.
+
+**Code Example (PyTorch with Hugging Face Transformers):**
+
+```python
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+# Load pre-trained model and tokenizer
+model_name = "gpt2"
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+model = GPT2LMHeadModel.from_pretrained(model_name)
+
+# Prepare input with prefix tokens
+prefix_text = "This is a prefix."
+input_text = "This is the main text to be processed."
+input_ids = tokenizer.encode(prefix_text + input_text, return_tensors="pt")
+
+# Generate output
+output = model.generate(input_ids, max_length=100)
+generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+```
+
+**Explanation:**
+
+1. Load Model & Tokenizer: Load a pre-trained GPT-2 model and tokenizer from Hugging Face.
+2. Prepare Input: Concatenate the prefix and main text, then tokenize it.
+3. Generate: Use the `model.generate` method with the input IDs to generate text.
+4. Decode: Convert the generated token IDs back to text.
+
+**Note:**
+
+* The example above assumes the pre-trained model is already capable of handling prefix tokens. If not, you'd need to fine-tune the model with appropriate data and configuration.
+
+**Paper Link:**
+
+A key paper introducing the prefix decoder concept is "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer" (T5) by Raffel et al. (2019). You can find it here: [https://arxiv.org/abs/1910.10683](https://arxiv.org/abs/1910.10683)
+
+**Further Notes:**
+
+* Prefix decoders have been used in various language models like GLM-130B and U-PaLM.
+* They can be extended using mixture-of-experts (MoE) scaling techniques for improved performance.
+* Prefix decoder architectures are an active area of research with ongoing advancements.
 
 ![](https://cdn.labellerr.com/language%20models-4/Screenshot%202023-05-21%20233029.webp)
 
@@ -163,9 +365,90 @@ https://www.labellerr.com/blog/exploring-architectures-and-configurations-for-la
 
 ### What is an MoE layer?
 
-https://stackoverflow.blog/2024/04/04/how-do-mixture-of-experts-layers-affect-transformer-models/
+A Mixture-of-Experts (MoE) layer is a type of neural network architecture where multiple "experts" (sub-networks) are combined to solve a problem. A "gating network" (router) determines which experts to consult for each input, allowing the model to leverage the strengths of different experts for different parts of the input space.
 
-https://github.com/XueFuzhao/OpenMoE
+**Key Points of MoE Layers:**
+
+* **Experts:** Each expert is a neural network specialized in a particular aspect of the problem.
+* **Gating Network:** The gating network learns to route inputs to the most appropriate experts.
+* **Sparse Activation:** Typically, only a few experts are activated for each input, improving efficiency.
+* **Benefits:** MoE layers can achieve higher accuracy and efficiency compared to single-expert models for complex tasks.
+
+**Code Example (PyTorch with Tensorflow Mesh):**
+
+```python
+import torch
+import torch.nn as nn
+from torch_scatter import scatter
+from transformers.models.t5.modeling_t5 import T5LayerNorm
+from torch.utils.checkpoint import checkpoint
+
+
+# Create expert class (can be any neural network architecture)
+class Expert(nn.Module):
+    def __init__(self, d_model, d_ff):
+        super().__init__()
+        self.fc1 = nn.Linear(d_model, d_ff)
+        self.fc2 = nn.Linear(d_ff, d_model)
+        self.act = nn.ReLU()
+
+    def forward(self, x):
+        return self.fc2(self.act(self.fc1(x)))
+
+# Create MoE layer
+class MoELayer(nn.Module):
+    def __init__(self, d_model, d_ff, num_experts, k=2):
+        super().__init__()
+        self.experts = nn.ModuleList([Expert(d_model, d_ff) for _ in range(num_experts)])
+        self.gate = nn.Linear(d_model, num_experts)
+        self.k = k
+        self.norm = T5LayerNorm(d_model)
+
+    def forward(self, x):
+        gate_output = self.gate(x)
+        top_expert_indices = torch.topk(gate_output, self.k, dim=-1).indices
+
+        expert_outputs = [checkpoint(expert, x) for expert in self.experts]
+        expert_outputs = torch.stack(expert_outputs, dim=1)
+
+        x = scatter(
+            expert_outputs[torch.arange(x.size(0)).unsqueeze(1), top_expert_indices],
+            top_expert_indices.view(-1),
+            dim=0,
+            reduce="mean",
+        ).view(x.shape)
+
+        return self.norm(x)
+```
+
+**Explanation:**
+
+1. `Expert`: A simple feed-forward network is used as the expert in this example. You can replace it with more complex architectures like transformers.
+
+2. `MoELayer`:
+   * Initializes a list of `num_experts` experts.
+   * Creates a linear gate to compute logits for routing.
+   * Defines `k`, the number of experts to use for each input.
+   * Includes layer normalization for stability.
+
+3. `forward`:
+   * Computes gate logits and selects top-k experts for each input.
+   * Computes expert outputs using checkpointing for memory efficiency.
+   * Gathers the outputs of the selected experts for each input and averages them.
+   * Applies layer normalization.
+
+**Important Note:**
+
+* The code above provides a basic MoE implementation. In practice, more sophisticated techniques like **_load balancing_** and **_auxiliary losses_** are often used to improve training and performance.
+* Libraries like Tensorflow Mesh offer specialized tools for building and training MoE models efficiently.
+
+**Paper Link:**
+
+A seminal paper on MoE is "Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer" by Shazeer et al. (2017). You can find it here: [https://arxiv.org/abs/1701.06538](https://arxiv.org/abs/1701.06538)
+
+- https://huggingface.co/blog/moe
+- https://stackoverflow.blog/2024/04/04/how-do-mixture-of-experts-layers-affect-transformer-models/
+- https://github.com/XueFuzhao/OpenMoE
 
 
 ## LLM Pretraining and Finetuning
@@ -204,16 +487,16 @@ In contrast, an RL approach could be used to train the language model by providi
 
 The statement accurately captures the distinction between supervised learning and RL in terms of generalization. RL's emphasis on feedback and adaptation makes it a promising approach for tasks with complex or subjective evaluation criteria.
 
-### How PPO works?
+### How Fine-tuning with PPO works?
 
 Fine-tuning a language model via PPO consists of roughly three steps:
 
 - Rollout: The language model generates a response or continuation based on query which could be the start of a sentence.
 - Evaluation: The query and response are evaluated with a function, model, human feedback or some combination of them. The important thing is that this process should yield a scalar value for each query/response pair.
-- Optimization: This is the most complex part. In the optimisation step the query/response pairs are used to calculate the log-probabilities of the tokens in the sequences. This is done with the model that is trained and a reference model, which is usually the pre-trained model before fine-tuning. The KL-divergence between the two outputs is used as an additional reward signal to make sure the generated responses don’t deviate too far from the reference language model. The active language model is then trained with PPO.
+- Optimization: This is the most complex part. In the optimization step the query/response pairs are used to calculate the log-probabilities of the tokens in the sequences. This is done with the model that is trained and a reference model, which is usually the pre-trained model before fine-tuning. The KL-divergence between the two outputs is used as an additional reward signal to make sure the generated responses don’t deviate too far from the reference language model. The active language model is then trained with PPO.
 This process is illustrated in the sketch below:
 
-![](https://huggingface.co/datasets/trl-internal-testing/example-images/resolve/main/images/trl_overview.png)
+![RLHF](https://huggingface.co/datasets/trl-internal-testing/example-images/resolve/main/images/trl_overview.png)
 
 https://github.com/openai/spinningup/blob/master/spinup/algos/pytorch/ppo/ppo.py#L269
 
@@ -278,6 +561,62 @@ Here's a breakdown of how the reward score is calculated:
 
 ## What is DPO?
 
+Direct Preference Optimization (DPO) is a method for fine-tuning language models (LLMs) that directly optimizes the model to align with human preferences, without the need for explicit reward modeling or reinforcement learning. It works by training the model on pairs of its own outputs, where one is preferred over the other based on human feedback.
+
+In the most common DPO implementations, you need both an active model and a reference model. The reference model provides a stable baseline to compare against, while the active model is the one being fine-tuned to better align with human preferences.
+
+Here's a PyTorch code example demonstrating DPO with active and reference models:
+
+```python
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from torch.nn.functional import kl_div
+
+# Load pre-trained models and tokenizer
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+active_model = GPT2LMHeadModel.from_pretrained("gpt2")
+reference_model = GPT2LMHeadModel.from_pretrained("gpt2")  # Typically a copy of the active model before fine-tuning
+reference_model.eval()  # Set reference model to evaluation mode (no gradients)
+
+# Prepare preferred and less preferred outputs (same as before)
+winner_output = tokenizer("This is the preferred response.", return_tensors="pt")
+loser_output = tokenizer("This is a less preferred response.", return_tensors="pt")
+
+# Compute loss and optimize
+with torch.no_grad():
+    reference_logits = reference_model(winner_output.input_ids).logits
+
+active_logits = active_model(winner_output.input_ids).logits
+loss = kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1), reduction="batchmean")
+
+active_logits = active_model(loser_output.input_ids).logits
+loss -= kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1), reduction="batchmean")
+
+loss.backward()
+optimizer.step()
+```
+
+**Key Changes:**
+
+* **Reference Model:** A separate `reference_model` is loaded. 
+* **KL Divergence:** The loss is now calculated using the KL divergence between the probability distributions of the `active_model` and the `reference_model` outputs.
+* **No Gradients for Reference Model:** The `reference_model` is put into evaluation mode (`model.eval()`) to ensure its parameters are not updated during training.
+
+**Explanation:**
+
+1. **Load Models:** Load both `active_model` and `reference_model`, often initialized with the same weights.
+2. **Prepare Outputs:** Tokenize the preferred and less preferred responses.
+3. **Compute Loss:**
+    * Get logits from both models for the preferred output.
+    * Calculate the KL divergence between the active model's logits and the reference model's logits.
+    * Repeat for the less preferred output.
+    * The final loss is the difference between the KL divergences for the preferred and less preferred outputs.
+4. **Optimize:** Backpropagate the loss and update the `active_model` parameters.
+
+**Why Reference Model?**
+
+The reference model serves as a stabilizing factor during training. By comparing the active model's outputs to the reference model's, the KL divergence term in the loss helps to prevent the active model from deviating too far from the initial distribution while still allowing it to learn from the preference data.
+
 https://huggingface.co/datasets/trl-internal-testing/hh-rlhf-trl-style
 
 - DPO: Direct Preference Optimization 论文解读及代码实践 https://zhuanlan.zhihu.com/p/642569664
@@ -288,8 +627,68 @@ During SFT, the probability of generating undesirable responses along with prefe
 
 Preference alignment is then employed to address this issue. It aims to increase the likelihood of generating preferred responses and decrease the likelihood of generating rejected responses. Traditionally, preference alignment is achieved through techniques like Reinforcement Learning with Human Feedback (RLHF) or Direct Preference Optimization (DPO). However, these methods require a separate reference model, increasing computational complexity.
 
-ORPO elegantly solves this problem by combining SFT and preference alignment into a single objective function. It modifies the standard language modeling loss by incorporating an odds ratio (OR) term. 
+ORPO elegantly solves this problem by **_combining SFT and preference alignment into a single objective function_**. It modifies the standard language modeling loss by incorporating an **_odds ratio (OR)_** term.
 
+**Core Idea of ORPO:**
+
+The central idea is to modify the loss function during SFT to include an odds ratio term that encourages the model to prefer **chosen** responses to **rejected** ones. This _eliminates the need for a separate reference model_, simplifying the process and reducing computational complexity.
+
+**PyTorch Code Example (Conceptual):**
+
+```python
+import torch
+import torch.nn as nn
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+# Load pre-trained model and tokenizer
+model = GPT2LMHeadModel.from_pretrained("gpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+
+# Prepare preferred (chosen) and rejected responses as datasets
+optimizer = None # TODO
+chosen_dataset = None # TODO
+rejected_dataset = None # TODO
+
+for batch in chosen_dataset:
+    chosen_logits = model(batch["input_ids"]).logits
+    chosen_logprobs = nn.functional.log_softmax(chosen_logits, dim=-1)
+
+    # Calculate SFT loss
+    labels = batch["labels"]  # Assuming labels are included in the dataset
+    shift_logits = chosen_logits[..., :-1, :].contiguous()  # Shift logits to align with labels
+    shift_labels = labels[..., 1:].contiguous()  # Shift labels to align with logits
+    sft_loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+for batch in rejected_dataset:
+    rejected_logits = model(batch["input_ids"]).logits
+    rejected_logprobs = nn.functional.log_softmax(rejected_logits, dim=-1)
+
+# Calculate ORPO loss
+orpo_loss = torch.mean(chosen_logprobs - rejected_logprobs)
+
+# Optimize the model (combine ORPO loss with standard SFT loss)
+total_loss = orpo_loss + sft_loss
+total_loss.backward()
+optimizer.step()
+```
+
+**Explanation:**
+
+1. **Load Model and Tokenizer:** Start with a pre-trained model and tokenizer.
+2. **Prepare Datasets:** Gather a dataset of preferred (chosen) responses and rejected responses.
+3. **Calculate Log Probabilities:** For each response in both datasets, calculate the log probabilities of the model generating those responses.
+4. The **sft_loss** would typically be calculated using the _standard cross-entropy loss_ between the model's predicted logits and the true labels (the chosen responses in the SFT dataset).
+5. **ORPO Loss:** Calculate the mean difference between the log probabilities of chosen and rejected responses. This represents the **OR (Odds Ratio)** term, pushing the model to favor chosen responses.
+6. **Optimize:** Combine the ORPO loss with your standard SFT loss (e.g., cross-entropy loss) and backpropagate to update the model parameters.
+
+**Important Notes:**
+
+* The provided code is a conceptual illustration. Actual ORPO implementations may involve additional techniques like temperature scaling and label smoothing.
+* You would need to iterate over batches from your datasets and accumulate the ORPO loss over multiple steps.
+
+**Paper Link:**
+
+- [ORPO: Monolithic Odds Ratio Preference Optimization without Reference Model](https://arxiv.org/abs/2403.07691)
 
 
 ## LLM in Production
