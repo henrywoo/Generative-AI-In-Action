@@ -180,14 +180,15 @@ for iters in range(len(chosen_input_ids_list) // batch_size):
     chosen_batch_inputids_padding_list = []
     for i in range(batch_size):
         chosen_batch_inputids_padding_list.append(torch.nn.functional.pad(torch.tensor(chosen_batch_inputids[i]), (
-        0, chosen_max_dim - len(chosen_batch_inputids[i])), mode='constant', value=model.generation_config.eos_token_id[
-            -1]).tolist())  # 右补
+            0, chosen_max_dim - len(chosen_batch_inputids[i])), mode='constant',
+                                                                          value=model.generation_config.eos_token_id[
+                                                                              -1]).tolist())  # 右补
     chosen_batch_inputids_tensor = torch.tensor(chosen_batch_inputids_padding_list)
     ### 非偏好数据padding填充
     rejected_batch_inputids_padding_list = []
     for i in range(batch_size):
         rejected_batch_inputids_padding_list.append(torch.nn.functional.pad(torch.tensor(rejected_batch_inputids[i]), (
-        0, rejected_max_dim - len(rejected_batch_inputids[i])), mode='constant',
+            0, rejected_max_dim - len(rejected_batch_inputids[i])), mode='constant',
                                                                             value=model.generation_config.eos_token_id[
                                                                                 -1]).tolist())  # 右补
     rejected_batch_inputids_tensor = torch.tensor(rejected_batch_inputids_padding_list)
@@ -239,8 +240,7 @@ for iters in range(len(chosen_input_ids_list) // batch_size):
         dim=-1) / rejected_assistant_answer_mask.sum(dim=-1)
     ## Calculate log odds
     log_odds = (pos_prob - neg_prob) - (torch.log(1 - torch.exp(pos_prob)) - torch.log(1 - torch.exp(neg_prob)))
-    sig_ratio = torch.nn.functional.sigmoid(log_odds)
-    ratio = torch.log(sig_ratio)
+    ratio = torch.logsigmoid(log_odds)
     ## Calculate the Final Loss, 参考论文的方式，只是新增了梯度积累的操作
     loss = torch.nanmean(pos_loss - alpha * ratio) / (gradient_accumulation_steps)
 

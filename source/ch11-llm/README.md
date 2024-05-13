@@ -669,7 +669,7 @@ Here's a breakdown of how the reward score is calculated:
 * The reward scores are not absolute values. Their primary purpose is relative comparisons. 
 * What constitutes "good" vs. "bad" quality is entirely defined by the dataset you train the model on.
 
-### What is DPO?
+### What is Direct Preference Optimization (DPO)?
 
 Direct Preference Optimization (DPO) is a method for fine-tuning language models (LLMs) that directly optimizes the model to align with human preferences, _without the need for explicit reward modeling or reinforcement learning_. It works by training the model on pairs of its own outputs, where one is preferred over the other based on human feedback.
 
@@ -733,18 +733,18 @@ reference_model = GPT2LMHeadModel.from_pretrained("gpt2").eval()
 
 optimizer = torch.optim.Adam(active_model.parameters(), lr=0.001)
 # Prepare preferred and less preferred outputs (same as before)
-winner_output = tokenizer("This is a winner response.", return_tensors="pt")
-loser_output = tokenizer("This is a loser response.", return_tensors="pt")
+winning_output = tokenizer("This is a winning response.", return_tensors="pt")
+losing_output = tokenizer("This is a losing response.", return_tensors="pt")
 
 # Compute loss and optimize
 with torch.no_grad():
-    reference_logits = reference_model(winner_output.input_ids).logits
+    reference_logits = reference_model(winning_output.input_ids).logits
 
-active_logits = active_model(winner_output.input_ids).logits
+active_logits = active_model(winning_output.input_ids).logits
 loss = kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1),
               reduction="batchmean")
 
-active_logits = active_model(loser_output.input_ids).logits
+active_logits = active_model(losing_output.input_ids).logits
 loss -= kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1),
                reduction="batchmean")
 
@@ -775,19 +775,50 @@ https://huggingface.co/datasets/trl-internal-testing/hh-rlhf-trl-style
 
 - DPO: Direct Preference Optimization 论文解读及代码实践 https://zhuanlan.zhihu.com/p/642569664
 
-### What is ORPO?
+### What is Odds Ratio Preference Optimization (ORPO)?
 
-During SFT, the probability of generating undesirable responses along with preferred ones also increases.
+During SFT(Supervised Fine-Tuning), a common problem is the probability of generating undesirable responses also increases along with preferred ones.
 
-Preference alignment is then employed to address this issue. It aims to increase the likelihood of generating preferred responses and decrease the likelihood of generating rejected responses. Traditionally, preference alignment is achieved through techniques like Reinforcement Learning with Human Feedback (RLHF) or Direct Preference Optimization (DPO). However, these methods require a separate reference model, increasing computational complexity.
+![](sft_pref.png)
 
-ORPO elegantly solves this problem by **_combining SFT and preference alignment into a single objective function_**. It modifies the standard language modeling loss by incorporating an **_odds ratio (OR)_** term.
+**Preference alignment** is then employed to address this issue. It aims to increase the likelihood of generating preferred responses and decrease the likelihood of generating rejected responses. Traditionally, preference alignment is achieved through techniques like Reinforcement Learning with Human Feedback (RLHF) or Direct Preference Optimization (DPO). However, these methods require a separate reference model, increasing computational complexity.
 
-**Core Idea of ORPO:**
+![](orpo.png)
+
+ORPO (Odds Ratio Preference Optimization) is an elegant way to combine SFT and **_preference alignment_** in one objective function without both reward model or reference model. It modifies the standard language modeling loss by incorporating an **_odds ratio (OR)_** term.
+
+**ORPO Loss (L_ORPO):**
 
 The central idea is to modify the loss function during SFT to include an odds ratio term that encourages the model to prefer **chosen** responses to **rejected** ones. This _eliminates the need for a separate reference model_, simplifying the process and reducing computational complexity.
 
-**PyTorch Code Example (Conceptual):**
+```
+L_ORPO = E(x, y_w, y_l) [L_SFT + λ * L_OR]
+```
+
+where:
+
+* **E(x, y_w, y_l):** The expectation over all training examples, each consisting of an input prompt `x`, a winning (preferred) response `y_w`, and a losing (rejected) response `y_l`.
+* **L_SFT (Supervised Fine-Tuning Loss):**
+   ```
+   L_SFT = - 1/m * Σ_k[1~m] (log P_θ (y_k | x, y<k))
+   ```
+   This is the standard cross-entropy loss, aka Negative Log-Likelihood (NLL), which measures the difference between the model's predicted probability distribution over the vocabulary and the true probability distribution of the winning response `y_w`. We don't use losing response `y_l` here.
+* **λ (Lambda):** A weighting factor that balances the importance of the odds ratio loss (`L_OR`) relative to the standard SFT loss (`L_SFT`).
+* **L_OR (Odds Ratio Loss):**
+   ```
+   L_OR = -log σ(log(odds_θ(y_w | x)) - log(odds_θ(y_l | x)))
+   ```
+   This loss encourages the model to increase the odds ratio between the winning and losing responses. 
+   * `odds_θ(y | x)` is the odds of response `y` given input `x` according to the model parameters `θ`, defined as:
+      ```
+      odds_θ(y | x) = P_θ(y | x) / (1 - P_θ(y | x))
+      ```
+      where `P_θ(y | x)` is the probability of the response `y` given input `x` according to the model.
+   * `σ` is the sigmoid function, which maps the log odds ratio into a range between 0 and 1.
+
+The odds ratio loss (`L_OR`) is a novel component that focuses on preference learning, encouraging the model to select winning responses over losing responses. The hyperparameter `λ` controls the trade-off between the two objectives, allowing for customization of the training process.
+
+**Code Example:**
 
 ```python
 import torch
@@ -799,31 +830,25 @@ model = GPT2LMHeadModel.from_pretrained("gpt2")
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 # Prepare preferred (chosen) and rejected responses as datasets
-optimizer = None # TODO
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 chosen_dataset = None # TODO
 rejected_dataset = None # TODO
-
-for batch in chosen_dataset:
-    chosen_logits = model(batch["input_ids"]).logits
-    chosen_logprobs = nn.functional.log_softmax(chosen_logits, dim=-1)
-
-    # Calculate SFT loss
-    labels = batch["labels"]  # Assuming labels are included in the dataset
-    shift_logits = chosen_logits[..., :-1, :].contiguous()  # Shift logits to align with labels
-    shift_labels = labels[..., 1:].contiguous()  # Shift labels to align with logits
+lambda_ = 0.5
+for batch_chosen, batch_rejected in zip(chosen_dataset, rejected_dataset):
+    chosen_logits = model(batch_chosen["input_ids"], attention_mask=batch_chosen["attention_mask"]).logits
+    rejected_logits = model(batch_rejected["input_ids"], attention_mask=batch_rejected["attention_mask"]).logits
+    chosen_probs = nn.functional.softmax(chosen_logits, dim=-1)
+    rejected_probs = nn.functional.softmax(rejected_logits, dim=-1)
+    # Shift for causal LM
+    shift_logits = chosen_logits[..., :-1, :].contiguous()
+    shift_labels = batch_chosen["labels"][..., 1:].contiguous()
     sft_loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-
-for batch in rejected_dataset:
-    rejected_logits = model(batch["input_ids"]).logits
-    rejected_logprobs = nn.functional.log_softmax(rejected_logits, dim=-1)
-
-# Calculate ORPO loss
-orpo_loss = torch.mean(chosen_logprobs - rejected_logprobs)
-
-# Optimize the model (combine ORPO loss with standard SFT loss)
-total_loss = orpo_loss + sft_loss
-total_loss.backward()
-optimizer.step()
+    # Calculate OR loss
+    odds_ratio_loss = -torch.logsigmoid(torch.log(chosen_probs) - torch.log(rejected_probs))
+    # Optimize the model
+    orpo_loss = torch.mean(sft_loss + lambda_ * odds_ratio_loss)
+    orpo_loss.backward()
+    optimizer.step()
 ```
 
 **Explanation:**
@@ -843,6 +868,7 @@ optimizer.step()
 **Paper Link:**
 
 - [ORPO: Monolithic Odds Ratio Preference Optimization without Reference Model](https://arxiv.org/abs/2403.07691)
+- [ORPO Official Repo](https://github.com/xfactlab/orpo.git)
 
 
 ## LLM in Production
@@ -960,3 +986,4 @@ However, if we were to discuss the computational cost of generating a response b
 - RLHF的替代之DPO原理解析：从RLHF、Claude的RAILF到DPO、Zephyr https://blog.csdn.net/v_JULY_v/article/details/134242910
 - 天下苦RLHF久矣！来看看不同的训练方式！Direct Preference Optimization, Your Language Model is Secretly a Reward Model https://zhuanlan.zhihu.com/p/633539131
 - 拆解大语言模型RLHF中的PPO https://zhuanlan.zhihu.com/p/645225982
+- ORPO：大模型无需微调，直接偏好优化，性能也杠杠的！ https://zhuanlan.zhihu.com/p/687533955
