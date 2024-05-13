@@ -150,7 +150,7 @@ Here's a breakdown of the reasons why most large language models (LLMs) favor a 
 
 **3. The Low-Rank Issue**
 
-![](https://d3i71xaburhd42.cloudfront.net/995afe47244913ac8d1b4f09bbfacd407f1b4a7b/4-Figure2-1.png)
+![](lowrank.png)
 
 * **Expressivity Concerns:** Bidirectional attention can introduce the low-rank problem, potentially reducing the LLM's ability to represent complex relationships in the input. Decoder-only LLMs avoid this issue, ensuring strong baseline performance.
 
