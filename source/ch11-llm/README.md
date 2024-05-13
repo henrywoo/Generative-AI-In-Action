@@ -844,7 +844,9 @@ for batch_chosen, batch_rejected in zip(chosen_dataset, rejected_dataset):
     shift_labels = batch_chosen["labels"][..., 1:].contiguous()
     sft_loss = nn.functional.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
     # Calculate OR loss
-    odds_ratio_loss = -torch.logsigmoid(torch.log(chosen_probs) - torch.log(rejected_probs))
+    odds_chosen = chosen_probs / (1 - chosen_probs) # TO be changed
+    odds_rejected = rejected_probs / (1 - rejected_probs)
+    odds_ratio_loss = -torch.logsigmoid(torch.log(odds_chosen) - torch.log(odds_rejected))
     # Optimize the model
     orpo_loss = torch.mean(sft_loss + lambda_ * odds_ratio_loss)
     orpo_loss.backward()
@@ -853,17 +855,9 @@ for batch_chosen, batch_rejected in zip(chosen_dataset, rejected_dataset):
 
 **Explanation:**
 
-1. **Load Model and Tokenizer:** Start with a pre-trained model and tokenizer.
-2. **Prepare Datasets:** Gather a dataset of preferred (chosen) responses and rejected responses.
-3. **Calculate Log Probabilities:** For each response in both datasets, calculate the log probabilities of the model generating those responses.
-4. The **sft_loss** would typically be calculated using the _standard cross-entropy loss_ between the model's predicted logits and the true labels (the chosen responses in the SFT dataset).
-5. **ORPO Loss:** Calculate the mean difference between the log probabilities of chosen and rejected responses. This represents the **OR (Odds Ratio)** term, pushing the model to favor chosen responses.
-6. **Optimize:** Combine the ORPO loss with your standard SFT loss (e.g., cross-entropy loss) and backpropagate to update the model parameters.
-
-**Important Notes:**
-
-* The provided code is a conceptual illustration. Actual ORPO implementations may involve additional techniques like temperature scaling and label smoothing.
-* You would need to iterate over batches from your datasets and accumulate the ORPO loss over multiple steps.
+1. The **sft_loss** would typically be calculated using the _standard cross-entropy loss_ between the model's predicted logits and the true labels (the chosen responses in the SFT dataset).
+2. **Odds Ratio Loss:** Calculate the logsigmoid of difference between the log odds of chosen and rejected responses. This represents the **OR (Odds Ratio)** term, pushing the model to favor chosen responses.
+3. **Optimize:** Combine the OR loss with the standard SFT loss (e.g., cross-entropy loss) and backprop to update the model parameters.
 
 **Paper Link:**
 
