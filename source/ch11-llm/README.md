@@ -788,6 +788,8 @@ During SFT(Supervised Fine-Tuning), a common problem is the probability of gener
 
 ORPO (Odds Ratio Preference Optimization) is an elegant way to combine SFT and **_preference alignment_** in one objective function without both reward model or reference model. It modifies the standard language modeling loss by incorporating an **_odds ratio (OR)_** term.
 
+In statistics and probability theory, the English term **odds** refers to the ratio of the probability of an event or proposition occurring to the probability of it not occurring. In simpler terms, it is the ratio of the event happening to not happening. The formula for odds is "P/(1-P)", where P is the probability of the event or proposition occurring.
+
 **ORPO Loss (L_ORPO):**
 
 The central idea is to modify the loss function during SFT to include an odds ratio term that encourages the model to prefer **chosen** responses to **rejected** ones. This _eliminates the need for a separate reference model_, simplifying the process and reducing computational complexity.
