@@ -247,7 +247,7 @@ class GroupedQueryAttention(nn.Module):
 
 RMSProp (Root Mean Square **Propagation**) is an optimization algorithm used in machine learning, particularly for training deep neural networks. It addresses some limitations of traditional gradient descent by adapting the learning rate for each parameter based on the historical magnitudes of their gradients. This can lead to faster convergence and better performance in scenarios where the loss landscape has varying curvature.
 
-![](https://miro.medium.com/v2/resize:fit:640/format:webp/0*o9jCrrX4umP7cTBA)
+![RMSProp](rmsprop.webp)
 
 **Key Idea:**
 
