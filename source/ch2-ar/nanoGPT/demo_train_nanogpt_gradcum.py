@@ -1,14 +1,12 @@
 import argparse
 import os
 import time
-import math
-import pickle
 import numpy as np
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
-from contextlib import nullcontext
 from model import GPTConfig, GPT
+from tqdm import tqdm
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Train a GPT model on the OpenWebText dataset.")
@@ -114,15 +112,12 @@ def evaluate(model, args):
     return sum(losses) / len(losses)
 
 
-import time
-
-
 def train_one_epoch(model, optimizer, args, scheduler=None, ddp=False, ddp_world_size=1):
-    # Initialize timers and performance metrics
     start_time = time.time()
     running_mfu = -1.0  # Model Forward Usage, example metric for monitoring
+    iterator = tqdm(range(args.max_iters), desc="Training", total=args.max_iters)
 
-    for step in range(args.max_iters):
+    for step in iterator:
         total_loss = 0
         optimizer.zero_grad()  # Zero gradients at the start of a new accumulation cycle
 
@@ -151,8 +146,9 @@ def train_one_epoch(model, optimizer, args, scheduler=None, ddp=False, ddp_world
             else:
                 running_mfu = 0.9 * running_mfu + 0.1 * elapsed_time  # Exponential moving average
 
-            print(
-                f"iter {step}: loss {total_loss / args.gradient_accumulation_steps:.4f}, time {elapsed_time * 1000:.2f}ms, mfu {running_mfu * 100:.2f}%")
+            iterator.set_description(
+                f"iter {step}: loss {total_loss:.4f}, time {elapsed_time * 1000:.2f}ms, mfu {running_mfu * 100:.2f}%"
+            )
 
         if step % args.eval_interval == 0 and (ddp and step % (args.eval_interval * ddp_world_size) == 0):
             val_loss = evaluate(model, args)
@@ -170,6 +166,8 @@ def main():
     ddp, master_process, seed_offset, ddp_local_rank, ddp_world_size = initialize_ddp_environment(args)
     setup_logging_and_checkpoints(args, master_process, seed_offset)
     model, optimizer = get_model_and_optimizer(args, ddp, ddp_local_rank)
+    from hiq.vis import print_model
+    print_model(model)
 
     # Set up a learning rate scheduler if needed
     if args.decay_lr:
