@@ -503,7 +503,7 @@ A seminal paper on MoE is "Outrageously Large Neural Networks: The Sparsely-Gate
 - https://github.com/XueFuzhao/OpenMoE
 
 
-## LLM Pretraining and Finetuning
+## LLM Finetuning and Aligning
 
 ![LLM Development Life Cycle](llm_lc.png)
 
@@ -613,7 +613,9 @@ Here's a breakdown of how the reward score is calculated:
 
 ### What is DPO?
 
-Direct Preference Optimization (DPO) is a method for fine-tuning language models (LLMs) that directly optimizes the model to align with human preferences, without the need for explicit reward modeling or reinforcement learning. It works by training the model on pairs of its own outputs, where one is preferred over the other based on human feedback.
+Direct Preference Optimization (DPO) is a method for fine-tuning language models (LLMs) that directly optimizes the model to align with human preferences, _without the need for explicit reward modeling or reinforcement learning_. It works by training the model on pairs of its own outputs, where one is preferred over the other based on human feedback.
+
+![Direct Preference Optimization (DPO)](dpo.png)
 
 In the most common DPO implementations, you need both an active model and a reference model. The reference model provides a stable baseline to compare against, while the active model is the one being fine-tuned to better align with human preferences.
 
@@ -630,6 +632,7 @@ active_model = GPT2LMHeadModel.from_pretrained("gpt2")
 reference_model = GPT2LMHeadModel.from_pretrained("gpt2")  # Typically a copy of the active model before fine-tuning
 reference_model.eval()  # Set reference model to evaluation mode (no gradients)
 
+optimizer = None # TODO
 # Prepare preferred and less preferred outputs (same as before)
 winner_output = tokenizer("This is the preferred response.", return_tensors="pt")
 loser_output = tokenizer("This is a less preferred response.", return_tensors="pt")

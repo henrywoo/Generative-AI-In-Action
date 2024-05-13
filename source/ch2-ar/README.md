@@ -426,7 +426,7 @@ Given these advantages and challenges, Transformers have been applied successful
 - **Temporal Fusion Transformers**: An architecture specifically designed for time series forecasting that combines typical Transformer advantages with a gating mechanism to handle the different types of time series-specific variabilities and dependencies.
 - **Incorporating External Data**: Transformers can effectively handle additional inputs like news sentiment, economic indicators, or market conditions, integrating them into the stock price prediction model.
 
-### Example:
+#### Example:
 
 Here is a simple example of how you might set up a Transformer model for stock price prediction using Python and PyTorch:
 
