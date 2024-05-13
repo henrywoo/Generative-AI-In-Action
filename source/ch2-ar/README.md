@@ -365,7 +365,8 @@ The order of a token significantly impacts its semantic meaning. In a one-dimens
 
 Let's take the example for clarity and consistency in explaining how positional embeddings affect the interpretation of sentences:
 
-#### Sentence Pair:
+#### Sentence Pair
+
 1. "He will promise to mail the package tomorrow."
 2. "Tomorrow, he will promise to mail the package."
 
