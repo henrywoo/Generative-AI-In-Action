@@ -44,5 +44,5 @@ class MoELayer(nn.Module):
 
 if __name__ == '__main__':
     from hiq.vis import print_model
-    moe = MoELayer(d_model=512, d_ff=8)
+    moe = MoELayer(d_model=512, d_ff=8, num_experts=3)
     print_model(moe)

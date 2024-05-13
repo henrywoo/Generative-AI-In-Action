@@ -245,7 +245,7 @@ class GroupedQueryAttention(nn.Module):
 
 ### What is RMSProp?
 
-RMSProp (Root Mean Square Propagation) is an optimization algorithm used in machine learning, particularly for training deep neural networks. It addresses some limitations of traditional gradient descent by adapting the learning rate for each parameter based on the historical magnitudes of their gradients. This can lead to faster convergence and better performance in scenarios where the loss landscape has varying curvature.
+RMSProp (Root Mean Square **Propagation**) is an optimization algorithm used in machine learning, particularly for training deep neural networks. It addresses some limitations of traditional gradient descent by adapting the learning rate for each parameter based on the historical magnitudes of their gradients. This can lead to faster convergence and better performance in scenarios where the loss landscape has varying curvature.
 
 ![](https://miro.medium.com/v2/resize:fit:640/format:webp/0*o9jCrrX4umP7cTBA)
 
@@ -302,10 +302,62 @@ for t in range(num_iterations):
    * Update Squared Averages: Update the moving average of squared gradients using the decay factor `beta`.
    * Update Parameters: Update each parameter using the RMSProp update rule, dividing the gradient by the square root of the corresponding squared average (plus epsilon).
 
-
-
 https://towardsdatascience.com/understanding-rmsprop-faster-neural-network-learning-62e116fcf29a
 
+### What is RMSNorm?
+
+RMSNorm (Root Mean Square **Layer Normalization**) is a normalization technique used in deep learning models, similar to Layer Normalization (LayerNorm). It aims to stabilize and accelerate training by normalizing the inputs to each neuron within a layer.
+
+**How RMSNorm Works:**
+
+1. **Calculate Sum of Squares:** For each neuron in a layer, RMSNorm calculates the sum of squares of its inputs.
+
+2. **Calculate Root Mean Square:** It takes the square root of the mean of these squared values, essentially computing the root mean square (RMS) of the inputs.
+
+3. **Normalize:** Finally, it divides the original inputs by the calculated RMS value, effectively normalizing them.
+
+**Visualization:**
+
+![](rmsnorm.png)
+
+* The above image illustrates how RMSNorm is applied to the inputs of a single neuron. The inputs (x1, x2, ..., xn) are first squared, then averaged, and finally their square root is taken to obtain the RMS value. The original inputs are then divided by this RMS value, resulting in the normalized outputs.
+
+**Code Example (PyTorch):**
+
+```python
+import torch
+import torch.nn as nn
+
+class RMSNorm(nn.Module):
+    def __init__(self, d_model, eps=1e-8):
+        super().__init__()
+        self.d_model = d_model
+        self.eps = eps
+        self.scale = nn.Parameter(torch.ones(d_model))
+
+    def forward(self, x):
+        norm = torch.sqrt(torch.mean(x * x, dim=-1, keepdim=True) + self.eps)
+        return self.scale * x / norm
+```
+
+**Explanation:**
+
+1. `__init__`: Initializes the layer with the input dimension (`d_model`) and a small epsilon (`eps`) for numerical stability. A learnable scaling parameter (`scale`) is also initialized.
+2. `forward`:
+   * Calculates the sum of squares of inputs along the last dimension (`dim=-1`).
+   * Averages the squared values and adds epsilon.
+   * Takes the square root to compute RMS.
+   * Scales the original input (`x`) by the learned `scale` parameter and divides it by the RMS value to obtain the normalized output.
+
+**Key Points:**
+
+* **Efficiency:** RMSNorm is computationally simpler than LayerNorm because it doesn't require calculating the mean of the inputs, making it faster and more efficient.
+* **Rescaling Invariance:** RMSNorm is invariant to rescaling of the inputs, which can be beneficial in some scenarios.
+* **Applications:** RMSNorm has been successfully used in various deep learning models, including Transformers and Recurrent Neural Networks (RNNs).
+
+**Paper Link:**
+
+- [Root Mean Square Layer Normalization](https://arxiv.org/abs/1910.07467) by Zhang and Sennrich (2019)
 
 
 ### What is Prefix Decoder Architecture?
@@ -559,7 +611,7 @@ Here's a breakdown of how the reward score is calculated:
 * The reward scores are not absolute values. Their primary purpose is relative comparisons. 
 * What constitutes "good" vs. "bad" quality is entirely defined by the dataset you train the model on.
 
-## What is DPO?
+### What is DPO?
 
 Direct Preference Optimization (DPO) is a method for fine-tuning language models (LLMs) that directly optimizes the model to align with human preferences, without the need for explicit reward modeling or reinforcement learning. It works by training the model on pairs of its own outputs, where one is preferred over the other based on human feedback.
 
