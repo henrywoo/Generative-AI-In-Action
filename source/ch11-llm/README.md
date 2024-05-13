@@ -687,8 +687,7 @@ from torch.nn.functional import kl_div
 # Load pre-trained models and tokenizer
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 active_model = GPT2LMHeadModel.from_pretrained("gpt2")
-reference_model = GPT2LMHeadModel.from_pretrained("gpt2")  # Typically a copy of the active model before fine-tuning
-reference_model.eval()  # Set reference model to evaluation mode (no gradients)
+reference_model = GPT2LMHeadModel.from_pretrained("gpt2").eval()
 
 optimizer = None # TODO
 # Prepare preferred and less preferred outputs (same as before)
@@ -700,10 +699,12 @@ with torch.no_grad():
     reference_logits = reference_model(winner_output.input_ids).logits
 
 active_logits = active_model(winner_output.input_ids).logits
-loss = kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1), reduction="batchmean")
+loss = kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1),
+              reduction="batchmean")
 
 active_logits = active_model(loser_output.input_ids).logits
-loss -= kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1), reduction="batchmean")
+loss -= kl_div(active_logits.log_softmax(dim=-1), reference_logits.softmax(dim=-1),
+               reduction="batchmean")
 
 loss.backward()
 optimizer.step()
