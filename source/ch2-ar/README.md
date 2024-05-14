@@ -38,7 +38,7 @@ Autoregressive models shine in a variety of AI tasks where sequences matter:
 
 
 
-## RNN
+## 📌 RNN
 
 ### What is `Gates` in RNN?
 
@@ -330,7 +330,7 @@ GRUs (Gated Recurrent Units) simplify the LSTM architecture in a few key ways:
 
 https://www.youtube.com/watch?v=AsNTP8Kwu80 (RNN from StarQuest)
 
-## Transformer
+## 📌 Transformer
 
 ![](transformer_ar.webp)
 
@@ -492,6 +492,6 @@ Span-masked language modeling is a key component of T5's pre-training. It's one 
 
 - T5: a detailed explanation https://medium.com/analytics-vidhya/t5-a-detailed-explanation-a0ac9bc53e51
 
-## Reference
+## 📌 Reference
 
 - Transformer升级之路：1、Sinusoidal位置编码追根溯源 https://kexue.fm/archives/8231
