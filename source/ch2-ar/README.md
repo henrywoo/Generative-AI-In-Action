@@ -479,6 +479,37 @@ for epoch in range(2):
 
 Transformers can be a powerful tool for time series prediction like stock prices, provided that they are carefully adapted and tuned for the specific characteristics and requirements of financial data. Their ability to capture complex dependencies and integrate diverse types of data makes them an intriguing option for advanced forecasting models.
 
+### What is the pretraining objective in T5?
+
+T5 span-masked language modeling is a pre-training objective used for the T5 (Text-to-Text Transfer Transformer) model. It's a form of self-supervised learning where the model learns by predicting missing parts of its input.
+
+![](span_masked.webp)
+
+**How it works:**
+
+1. **Span Masking:** Instead of masking single tokens like in traditional masked language modeling (MLM), T5 masks entire spans of text. These spans can vary in length.
+2. **Sentinel Tokens:** Unique tokens called "sentinel tokens" (e.g., <extra_id_0>, <extra_id_1>, etc.) are used to replace the masked spans. Each sentinel token indicates the start of a new masked span.
+3. **Prediction Target:** The model's task is to predict the original masked spans in the correct order. The output sequence is a concatenation of the sentinel tokens and the corresponding masked spans.
+
+**Example:**
+
+Input sentence:  "The quick brown fox jumps over the lazy dog."
+
+Masked sentence: "The quick <extra_id_0> jumps <extra_id_1> lazy dog."
+
+Target sequence: "<extra_id_0> brown fox <extra_id_1> over the"
+
+**Why span masking:**
+
+* **Captures Longer Dependencies:** Span masking allows the model to learn relationships between words that are farther apart in a sentence, leading to better understanding of context.
+* **More Challenging Task:** Predicting entire spans is more difficult than predicting single tokens, potentially leading to a more robust model.
+* **Suitable for Text-to-Text Tasks:** Since T5 is designed for various text-to-text tasks (translation, summarization, etc.), span masking aligns well with the model's architecture and objectives.
+
+**In the T5 model:**
+
+Span-masked language modeling is a key component of T5's pre-training. It's one of the factors that contributes to T5's strong performance on a wide range of natural language processing tasks. The model learns to fill in the blanks, effectively understanding how different parts of a text relate to each other. This knowledge can then be transferred to other tasks by fine-tuning the model.
+
+
 ## Reference
 
 - Transformer升级之路：1、Sinusoidal位置编码追根溯源 https://kexue.fm/archives/8231
