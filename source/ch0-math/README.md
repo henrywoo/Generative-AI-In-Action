@@ -85,7 +85,7 @@ Kurtosis measures the "tailedness" of a probability distribution:
 
 Layer Normalization standardizes data by subtracting the mean and dividing by the standard deviation for each individual example in the dataset. This process reshapes the distribution of the data to have a mean of zero and a standard deviation of one. Here's how it can affect kurtosis:
 - **Centralizing the Mean**: This step doesn't directly affect kurtosis, as it simply shifts the distribution.
-- **Scaling by the Standard Deviation**: This changes the spread of the distribution. If the original data had extreme values or outliers, scaling would reduce the relative extremity of these points, potentially reducing the kurtosis if the original distribution was leptokurtic.
+- **Scaling by the Standard Deviation**: This changes the spread of the distribution. If the original data had extreme values or outliers, scaling would reduce the relative extremity of these points, potentially reducing the kurtosis if the original distribution was **leptokurtic**.
 
 The degree to which kurtosis is changed depends on the original distribution of the data. If the data were uniformly distributed or normally distributed, the change in kurtosis might be less pronounced. However, for distributions with extreme values or outliers, the change can be significant.
 
@@ -95,15 +95,15 @@ To accurately determine the impact of layer normalization on kurtosis, it's bene
 ## What is Gumbel-Softmax trick?
 
 ![](gumbel.png)
-The Gumbel-Softmax trick or sampling is an approach for categorical sampling. Like other sampling methods(eg. reject sampling), Gumbel-Softmax samples from a `categorical distribution` using a differentiable approximation, which allows for gradient-based optimization where standard `categorical sampling` cannot be used due to its non-differentiable nature. This method is particularly useful in training neural networks, especially in scenarios where you need to backprop through discrete variables.
+The Gumbel-Softmax trick or sampling is an approach for categorical sampling. Like other sampling methods(eg. rejection sampling), Gumbel-Softmax samples from a `categorical distribution` using a differentiable approximation, which allows for gradient-based optimization where standard `categorical sampling` cannot be used due to its non-differentiable nature. This method is particularly useful in training neural networks, especially in scenarios where you need to backprop through discrete variables.
 
 ### Understanding the Gumbel-Softmax Trick
 
 The Gumbel-Softmax trick involves two main concepts: the `Gumbel distribution` and the `Softmax function`. Here's how it works:
 
 1. **Generating Gumbel Noise:**
-   - For each category *i* in a categorical distribution with probabilities *p1, p2, ..., pK*, create a corresponding Gumbel random variable *Gi*. 
-   - This noise is sampled from the Gumbel distribution by transforming uniform random variables:
+   - For each category *i* in a categorical distribution with probabilities *p1, p2, ..., pK*, create a corresponding **Gumbel random variable** *Gi*. 
+   - This noise is sampled from the **Gumbel distribution** by transforming uniform random variables:
      ```
      Gi = -log(-log(Ui))
      ```
@@ -114,11 +114,11 @@ The Gumbel-Softmax trick involves two main concepts: the `Gumbel distribution` a
    - Add the generated Gumbel noise to these logits: log(*pi*) + *Gi*. This introduces controlled randomness to the log probabilities.
 
 3. **Softmax Activation:**
-   - Apply the softmax function to the perturbed logits. This function transforms them into a probability distribution over the categories, where each value represents the likelihood of selecting that category:
+   - Apply the softmax function to the **perturbed logits**. This function transforms them into a probability distribution over the categories, where each value represents the likelihood of selecting that category:
      ```
      yi = exp((log(pi) + Gi) / t) / sum[exp((log(pj) + Gj) / t) for j in range(K)]
      ```
-   - The temperature parameter *t* governs how closely the output distribution resembles a one-hot encoded vector (like true categorical samples). As *t* approaches 0, the distribution becomes more discrete, while larger values of *t* lead to a smoother, continuous distribution. 
+   - The **temperature** parameter *t* governs how closely the output distribution resembles a one-hot encoded vector (like true categorical samples). As *t* approaches 0, the distribution becomes more discrete, while larger values of *t* lead to a smoother, continuous distribution. 
 
 The Gumbel-Softmax trick allows you to sample from a categorical distribution while maintaining differentiability, enabling gradient-based optimization methods to be used in models that involve discrete choices. This is crucial for training models with categorical variables, as it enables backpropagation of gradients through the sampling process.
 
