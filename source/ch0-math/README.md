@@ -128,18 +128,108 @@ The Kullback–Leibler (KL) divergence and cross-entropy are two related concept
 ![](kl_vs_ce.png)
 
 ### Kullback–Leibler (KL) Divergence
-KL divergence measures the amount of information lost when approximating one probability distribution with another. It is defined for two probability distributions \( P \) and \( Q \) as:
-\[ D_{KL}(P \parallel Q) = \sum_{i} P(i) \log \left(\frac{P(i)}{Q(i)}\right) \]
-It is not symmetric, meaning \( D_{KL}(P \parallel Q) \neq D_{KL}(Q \parallel P) \), and it is non-negative, where a value of 0 indicates that the two distributions are identical.
+KL Divergence, also known as relative entropy, is to measure the difference between two probability distributions. It quantifies the information lost when one distribution (Q) is used to approximate another distribution (P).
+
+For discrete probability distributions, the KL divergence (D) is calculated as:
+
+```
+D_KL(P || Q) = ∑ P(x) log(P(x) / Q(x))
+```
+where:
+
+*  P(x): True probability distribution
+*  Q(x): Predicted probability distribution
+*  ∑: Summation over all possible values of x
+
+Unlike cross-entropy, KL divergence is not symmetric, meaning `D_KL(P || Q) != D_KL( Q|| P)`, and it is non-negative, where a value of 0 indicates that the two distributions are identical.
+
+**Example Calculation**
+
+```
+True Distribution (P):   [0.6, 0.2, 0.2] 
+Predicted Distribution (Q): [0.4, 0.3, 0.3]
+```
+
+To calculate the KL divergence:
+
+```
+D_KL(P || Q) = 0.6 * log(0.6 / 0.4) + 0.2 * log(0.2 / 0.3) + 0.2 * log(0.2 / 0.3)
+D_KL(P || Q) ≈ 0.097
+```
+
+The KL divergence in this case is approximately 0.097. It indicates the amount of information lost when using Q to approximate P.
+
+**Python Code**
+
+```python
+import numpy as np
+
+P = np.array([0.6, 0.2, 0.2])
+Q = np.array([0.4, 0.3, 0.3])
+
+kl_divergence = np.sum(P * np.log(P / Q))
+print("KL Divergence:", kl_divergence)
+```
+
+
+* KL divergence is always non-negative.
+* KL divergence is 0 only when the two distributions are identical.
+* KL divergence is not symmetric (D_KL(P || Q) ≠ D_KL(Q || P)).
+
+
 
 ### Cross-Entropy
-Cross-entropy measures the average number of bits needed to identify an event from a set of possibilities if a coding scheme used for the set is based on a different probability distribution \( Q \) rather than the true distribution \( P \). It is defined as:
-\[ H(P, Q) = -\sum_{i} P(i) \log(Q(i)) \]
-Cross-entropy is often used in machine learning for classification problems, where \( P \) represents the true labels and \( Q \) the predicted probabilities.
+Cross-entropy measures the average number of bits needed to identify an event from a set of possibilities if a coding scheme used for the set is based on a different probability distribution (Q) rather than the true distribution (P). It is defined as:
 
-> Note that the cross-entropy loss is equivalent to the KL divergence plus the entropy of P.
+```
+H(p, q) = - ∑ p(x) log(q(x))
+```
+where:
 
-> As for the naming convention, probability starts with `P` so P is for true probablity. `Q` is next to `P`, so it is for prediction probability.
+*  p(x): True probability distribution
+*  q(x): Predicted probability distribution
+*  ∑: Summation over all possible values of x
+
+
+Cross-entropy is often used in machine learning for classification problems, where (P) represents the true labels and (Q) the predicted probabilities.
+In the context of machine learning, it's often used as a loss function to guide the learning process. The lower the cross-entropy, the closer the predicted distribution is to the true distribution.
+
+**Example Calculation**
+
+Let's create two simple distributions over three events (A, B, and C):
+
+```
+True Distribution (p):   [0.6, 0.2, 0.2] 
+Predicted Distribution (q): [0.4, 0.3, 0.3]
+```
+
+Now, let's calculate the cross-entropy:
+
+```
+H(p, q) = - (0.6 * log(0.4) + 0.2 * log(0.3) + 0.2 * log(0.3))
+H(p, q) ≈ 0.573
+```
+
+The cross-entropy in this case is approximately 0.573. This means there's a moderate difference between the true and predicted distributions. If the predicted distribution were identical to the true distribution (e.g., both [0.6, 0.2, 0.2]), the cross-entropy would be 0.
+
+**Python Code**
+
+```python
+import numpy as np
+
+p = np.array([0.6, 0.2, 0.2])
+q = np.array([0.4, 0.3, 0.3])
+
+cross_entropy = -np.sum(p * np.log(q))
+print("Cross-entropy:", cross_entropy)
+```
+
+* Cross-entropy is always non-negative.
+* Cross-entropy is 0 only when the two distributions are identical.
+* Cross-entropy increases as the difference between the distributions increases.
+
+
+> Note that the cross-entropy loss is equivalent to the KL divergence plus the entropy of P. As for the naming convention, probability starts with `P` so P is for true probablity. `Q` is next to `P`, so it is for prediction probability.
 
 
 ## Can we use KL Divergence to replace Cross Entropy as the loss function in classification problems?
