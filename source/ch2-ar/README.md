@@ -3,7 +3,6 @@
 - Cast: RNN, LSTM, GRU, Transformer
 - Song: [RNN](https://www.youtube.com/watch?v=g_tvY_pVwKI), [Attention Is All You Need](https://www.youtube.com/watch?v=g_tvY_pVwKI)
 
-
 Let's break down the world of autoregressive models in AI:
 
 **What are Autoregressive Models?**
@@ -11,6 +10,8 @@ Let's break down the world of autoregressive models in AI:
 * **Core Idea:**  Autoregressive (AR) models predict the next element in a sequence based solely on the previous elements of that sequence.  It's like the model has its own short-term memory it uses for forecasting.
 * **Statistical Foundation:** They have roots in classical time series analysis.
 * **"Auto" Explanation:**  The "auto" part means "self." The model uses its own previous outputs as inputs for the next prediction.
+
+![](autoregression-model-deep-learning.webp)
 
 **Applications**
 
@@ -34,26 +35,6 @@ Autoregressive models shine in a variety of AI tasks where sequences matter:
     * Recurrent Neural Networks (vanilla RNNs, LSTMs, GRUs)
     * WaveNet (for audio generation)
     * PixelRNN/PixelCNN (for image generation)
-
-**How They Work**
-
-1. **Training:**  The model is trained on large datasets of sequences. It learns the statistical patterns and relationships between elements within those sequences.
-
-2. **Prediction:**  
-    * The model is fed a seed sequence (or initial elements).  
-    * It predicts the next element based on the provided input.
-    * The model's own prediction is then added to the input to predict the next element, and so on.  
-
-**Strengths**
-
-* **Intuitive for Sequences:** They naturally align with the structure of sequential data.
-* **Generative Power:**  Autoregressive models excel at generating new, realistic sequences (new text, music, images) that resemble the training data.
-* **Flexibility:**   They can handle both continuous data (e.g., stock prices) and discrete data (e.g., words).
-
-**Limitations**
-
-* **Slow Inference:** Generating sequences step-by-step can be computationally intensive compared to some other models.
-* **Sensitivity to Errors:** Small errors in prediction can compound and make generated sequences deviate from reality over time.
 
 
 
