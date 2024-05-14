@@ -15,9 +15,17 @@ Cosine similarity calculates the cosine of the angle between two vectors. This v
 - 0 indicates that the vectors are orthogonal (90° angle),
 - -1 indicates that the vectors are diametrically opposed (180° angle).
 
-The formula to calculate cosine similarity between two vectors \( \mathbf{A} \) and \( \mathbf{B} \) is:
-\[ \text{cosine similarity} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|} \]
-where \( \mathbf{A} \cdot \mathbf{B} \) is the dot product of the vectors, and \( \|\mathbf{A}\| \) and \( \|\mathbf{B}\| \) are the Euclidean norms (magnitudes) of the vectors.
+The cosine similarity between two vectors, **A** and **B**, is determined by calculating the dot product of the vectors and then dividing that value by the product of the magnitudes (or Euclidean norms) of the individual vectors:
+
+```
+Cosine_Similarity(A, B) = (A · B) / (||A|| ||B||)
+```
+
+where:
+
+* **A · B** represents the dot product of vectors **A** and **B**.
+* **||A||** denotes the magnitude (Euclidean norm) of vector **A**.
+* **||B||** denotes the magnitude (Euclidean norm) of vector **B**.
 
 ### Ignoring the Magnitude in Cosine Similarity
 The cosine similarity inherently focuses on the direction rather than the magnitude of the vectors. When considering the similarity, the scale of the vectors (i.e., their magnitudes) doesn't affect the outcome because it is normalized by the magnitudes of the vectors in the denominator of the formula.
@@ -87,30 +95,32 @@ To accurately determine the impact of layer normalization on kurtosis, it's bene
 ## What is Gumbel-Softmax trick?
 
 ![](gumbel.png)
-The Gumbel-Softmax trick is a method for sampling from a categorical distribution using a differentiable approximation, which allows for gradient-based optimization where standard categorical sampling cannot be used due to its non-differentiable nature. This method is particularly useful in training neural networks, especially in scenarios where you need to backpropagate through discrete variables.
+The Gumbel-Softmax trick or sampling is an approach for categorical sampling. Like other sampling methods(eg. reject sampling), Gumbel-Softmax samples from a `categorical distribution` using a differentiable approximation, which allows for gradient-based optimization where standard `categorical sampling` cannot be used due to its non-differentiable nature. This method is particularly useful in training neural networks, especially in scenarios where you need to backprop through discrete variables.
 
 ### Understanding the Gumbel-Softmax Trick
 
-The Gumbel-Softmax trick involves two main concepts: the Gumbel distribution and the Softmax function. Here's how it works:
+The Gumbel-Softmax trick involves two main concepts: the `Gumbel distribution` and the `Softmax function`. Here's how it works:
 
-1. **Gumbel Distribution**:
-   - To sample from a categorical distribution with class probabilities \( p_1, p_2, \ldots, p_K \), you first need to introduce a way to convert these probabilities into a sample from the categorical distribution. 
-   - For each class \( i \), you generate a Gumbel random variable \( G_i \) which can be obtained by transforming uniform random variables. Specifically, \( G_i \) can be sampled using:
-     \[
-     G_i = -\log(-\log(U_i))
-     \]
-     where \( U_i \) is a uniform random variable from 0 to 1. This transformation ensures that \( G_i \) follows a Gumbel distribution.
+1. **Generating Gumbel Noise:**
+   - For each category *i* in a categorical distribution with probabilities *p1, p2, ..., pK*, create a corresponding Gumbel random variable *Gi*. 
+   - This noise is sampled from the Gumbel distribution by transforming uniform random variables:
+     ```
+     Gi = -log(-log(Ui))
+     ```
+     where *Ui* is a uniform random variable between 0 and 1.
 
-2. **Logits and Noise Addition**:
-   - You compute the logits for each class, which are the unnormalized log probabilities \( \log(p_i) \). 
-   - The Gumbel random variables are added to these logits. This step essentially perturbs the log probabilities with noise that has a specific extreme value distribution (Gumbel).
+2. **Incorporating Logits:**
+   - Calculate the logits for each category, which are the unnormalized log probabilities: log(*pi*).
+   - Add the generated Gumbel noise to these logits: log(*pi*) + *Gi*. This introduces controlled randomness to the log probabilities.
 
-3. **Softmax Function**:
-   - The perturbed logits are then passed through a softmax function, which is a differentiable function commonly used in multi-class classification problems in neural networks. The softmax function is given by:
-     \[
-     y_i = \frac{\exp((\log(p_i) + G_i) / \tau)}{\sum_{j=1}^K \exp((\log(p_j) + G_j) / \tau)}
-     \]
-   - Here, \( \tau \) is a temperature parameter that controls how closely the Gumbel-Softmax distribution approximates the categorical distribution. As \( \tau \) approaches 0, the samples become one-hot encoded (mimicking exact categorical samples), making the distribution more discrete. As \( \tau \) increases, the distribution becomes smoother and more continuous.
+3. **Softmax Activation:**
+   - Apply the softmax function to the perturbed logits. This function transforms them into a probability distribution over the categories, where each value represents the likelihood of selecting that category:
+     ```
+     yi = exp((log(pi) + Gi) / t) / sum[exp((log(pj) + Gj) / t) for j in range(K)]
+     ```
+   - The temperature parameter *t* governs how closely the output distribution resembles a one-hot encoded vector (like true categorical samples). As *t* approaches 0, the distribution becomes more discrete, while larger values of *t* lead to a smoother, continuous distribution. 
+
+The Gumbel-Softmax trick allows you to sample from a categorical distribution while maintaining differentiability, enabling gradient-based optimization methods to be used in models that involve discrete choices. This is crucial for training models with categorical variables, as it enables backpropagation of gradients through the sampling process.
 
 ### Applications and Importance
 
@@ -118,7 +128,7 @@ The Gumbel-Softmax trick is particularly important in scenarios where:
 - **End-to-End Learning**: You need to learn policies or other components that involve discrete decisions in an end-to-end trainable system.
 - **Gradient Backpropagation**: The model involves discrete choices, and you want to use standard gradient-based learning techniques, which require differentiability.
 
-This approach is widely used in reinforcement learning, variational autoencoders (VAEs) for discrete latent variables, and other areas of machine learning where modeling and learning discrete distributions in a differentiable manner are crucial.
+This approach is widely used in reinforcement learning, **variational autoencoders (VAEs)** for discrete latent variables, and other areas of machine learning where modeling and learning discrete distributions in a differentiable manner are crucial.
 
 
 ## What is the difference between Kullback–Leibler (KL) divergence and cross-entropy?
