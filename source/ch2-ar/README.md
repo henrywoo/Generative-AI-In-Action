@@ -175,7 +175,7 @@ The name "Long Short-Term Memory" highlights its unique ability to retain and pr
 
 ### Why use Sigmoid and Tanh in LSTM? 
 
-<img src="https://miro.medium.com/v2/resize:fit:1039/1*QiLYco0hB8EterWYTyyv4g.png" width="400" height="220" alt="LSTM">
+<img src="lstm.webp" width="400" height="280" alt="LSTM">
 
 Here's a breakdown of why sigmoid and tanh functions are used within LSTM (Long Short-Term Memory) cells:
 
