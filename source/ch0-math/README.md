@@ -229,7 +229,7 @@ print("Cross-entropy:", cross_entropy)
 * Cross-entropy increases as the difference between the distributions increases.
 
 
-> Note that the cross-entropy loss is equivalent to the KL divergence plus the entropy of P. As for the naming convention, probability starts with `P` so P is for true probablity. `Q` is next to `P`, so it is for prediction probability.
+> 🗊 Note that the cross-entropy loss is equivalent to the KL divergence plus the entropy of P. As for the naming convention, probability starts with `P` so P is for true probablity. `Q` is next to `P`, so it is for prediction probability.
 
 
 ## Can we use KL Divergence to replace Cross Entropy as the loss function in classification problems?
