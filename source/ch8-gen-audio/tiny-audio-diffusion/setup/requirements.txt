@@ -1,0 +1,35 @@
+torch>=2.0.1
+torchaudio>=2.0.2
+pytorch-lightning==1.7.7
+torchmetrics==0.11.4
+python-dotenv
+hydra-core
+hydra-colorlog
+wandb
+auraloss
+yt-dlp
+datasets
+pyloudnorm
+einops
+omegaconf
+rich
+plotly
+librosa
+transformers
+eng-to-ipa
+ema-pytorch
+py7zr
+notebook
+matplotlib
+ipykernel
+gradio
+
+# k-diffusion
+# v-diffusion-pytorch
+
+audio-diffusion-pytorch==0.1.3
+audio-encoders-pytorch
+audio-data-pytorch
+quantizer-pytorch
+difformer-pytorch
+a-transformers-pytorch

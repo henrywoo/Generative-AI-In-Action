@@ -1,0 +1,31 @@
+.ant-spin-dot-item {
+  background-color: #f77f00;
+}
+
+.ant-checkbox .ant-checkbox-inner {
+  background-color: transparent;
+  border-color: #f77f00;
+}
+
+.ant-checkbox-disabled .ant-checkbox-inner {
+  background-color: transparent;
+  border-color: #f77f00;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #f77f00;
+  border-color: #f77f00;
+}
+
+#generate-btn:hover {
+  background-color: #d37714 !important;
+  border-color: #d37714 !important;
+}
+
+.hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.hover:hover {
+  transform: scale(1.2);
+}
