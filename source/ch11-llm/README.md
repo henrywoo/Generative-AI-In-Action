@@ -1,9 +1,10 @@
+<div class="content">
+
+
 # Large Language Model
 
 - Cast: LLM, Transformer
 - Song: [Large Language Model](https://www.youtube.com/watch?v=59UIVmFkxbs), [Attention Is All You Need](https://www.youtube.com/watch?v=g_tvY_pVwKI)
-
-
 
 LLMs are advanced artificial intelligence models trained on massive amounts of text data. They can generate realistic text, translate languages, write different kinds of creative content, and answer your questions in informative ways. An LLM's power comes from its training process.  It "learns" to understand and produce language by analyzing enormous amounts of text – think millions of books, articles, and code repositories. Most LLMs are built on a neural network architecture called a transformer. Transformers excel at handling sequential data (like words in a sentence) and pinpointing complex relationships within language.
 
@@ -409,7 +410,7 @@ A key paper introducing the prefix decoder concept is "Exploring the Limits of T
 * They can be extended using mixture-of-experts (MoE) scaling techniques for improved performance.
 * Prefix decoder architectures are an active area of research with ongoing advancements.
 
-![](https://cdn.labellerr.com/language%20models-4/Screenshot%202023-05-21%20233029.webp)
+![](casaul_decoder.webp)
 
 https://www.labellerr.com/blog/exploring-architectures-and-configurations-for-large-language-models-llms/ 👍
 
@@ -505,6 +506,8 @@ A seminal paper on MoE is "Outrageously Large Neural Networks: The Sparsely-Gate
 
 Language models generate text by predicting the next word based on previous context. When **the prompt is long and relatively fixed, the model may fall into a local optimum, repeatedly generating the same or similar text**. The issue of repetitive output occurs. For example, an LLM can generate `ABCABCABC` continuously until the maximum length is reached.
 
+![](repetitive_output.webp)
+
 When the input prompt is long, it contains a substantial amount of context. If this context is also relatively fixed (meaning it doesn't vary much), the model heavily relies on this fixed context to generate the subsequent text. Language models generate text by predicting the next word based on the preceding words. With a long and fixed prompt, the model uses this fixed context repeatedly to make its predictions.
 
 In optimization and machine learning, a "local optimum" is a solution that is optimal within a neighboring set of solutions but not necessarily the best possible solution globally. Similarly, when generating text, the model may find a set of words or phrases that seem to fit well with the fixed context, leading to repetitive patterns that the model considers optimal for the given context. Because the context does not change and the model finds certain sequences of words that it predicts well within this context, it may repeatedly generate similar or identical text. This happens because the model is stuck in a local optimum and does not explore alternative phrasings or ideas.
@@ -540,7 +543,7 @@ There are several mitigation methods:
 
 ### What is the `Parrotting Problem` of LLM?
 
-![](https://res.cloudinary.com/lesswrong-2-0/image/upload/f_auto,q_auto/v1/mirroredImages/HxRjHq3QG8vcYy4yy/i1ttpluacg6fvjkn00lp)
+![](parrotting_prob.png)
 
 The "parroting problem" of Large Language Models (LLMs) refers to their tendency to repeat or mimic patterns in training data without truly understanding the meaning or context behind them. I myself often encountered this problem when testing LLMs. This can lead to several issues:
 
@@ -686,7 +689,7 @@ Fine-tuning a language model via PPO consists of roughly three steps:
 - Optimization: This is the most complex part. In the optimization step the query/response pairs are used to calculate the log-probabilities of the tokens in the sequences. This is done with the model that is trained and a reference model, which is usually the pre-trained model before fine-tuning. The KL-divergence between the two outputs is used as an additional reward signal to make sure the generated responses don’t deviate too far from the reference language model. The active language model is then trained with PPO.
 This process is illustrated in the sketch below:
 
-![RLHF](https://huggingface.co/datasets/trl-internal-testing/example-images/resolve/main/images/trl_overview.png)
+![RLHF](ft_ppo.png)
 
 https://github.com/openai/spinningup/blob/master/spinup/algos/pytorch/ppo/ppo.py#L269
 
@@ -1064,3 +1067,5 @@ However, if we were to discuss the computational cost of generating a response b
 - 天下苦RLHF久矣！来看看不同的训练方式！Direct Preference Optimization, Your Language Model is Secretly a Reward Model https://zhuanlan.zhihu.com/p/633539131
 - 拆解大语言模型RLHF中的PPO https://zhuanlan.zhihu.com/p/645225982
 - ORPO：大模型无需微调，直接偏好优化，性能也杠杠的！ https://zhuanlan.zhihu.com/p/687533955
+
+</div>
