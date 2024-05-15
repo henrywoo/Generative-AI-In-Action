@@ -8,7 +8,7 @@ TARGET_WIDTH = 600
 files = os.listdir('.')
 
 # Filter out image files (you can extend the list of extensions if needed)
-image_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp'))]
+image_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))]
 
 
 # Function to resize an image

@@ -410,7 +410,7 @@ A key paper introducing the prefix decoder concept is "Exploring the Limits of T
 * They can be extended using mixture-of-experts (MoE) scaling techniques for improved performance.
 * Prefix decoder architectures are an active area of research with ongoing advancements.
 
-![](casaul_decoder.webp)
+![](causal_decoder.webp)
 
 https://www.labellerr.com/blog/exploring-architectures-and-configurations-for-large-language-models-llms/ 👍
 
