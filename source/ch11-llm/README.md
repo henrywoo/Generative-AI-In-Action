@@ -174,7 +174,7 @@ The Chinchilla scaling law is described in the paper titled "Training Compute-Op
 Grouped-Query Attention (GQA) is a method that interpolates between multi-query attention (MQA) and multi-head attention (MHA), two common attention mechanisms used in transformer models 
  like large language models (LLMs).
 
-![](https://picx.zhimg.com/70/v2-6f6e56cc3f801fa47831a295a0ced703_1440w.avis?source=172ae18b&biz_tag=Post)
+![](gqa.png)
 
 **Key points of GQA:**
 
