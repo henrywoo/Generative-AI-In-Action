@@ -56,6 +56,8 @@ Taking BERT as an example.
 
 😀 https://kexue.fm/archives/8610
 
+- https://towardsdatascience.com/transformers-explained-visually-part-3-multi-head-attention-deep-dive-1c1ff1024853
+
 
 ### Why most LLM are decoder-only?
 
@@ -96,7 +98,7 @@ The dominance of decoder-only LLMs stems from a combination of factors: their na
 https://www.zhihu.com/question/588325646/answers/updated
 
 
-###  🌡️ What is temperatures in LLM and how does it work under the hood?
+### ️What is temperatures in LLM and how does it work under the hood?
 
 In large language models (LLMs), temperature is a hyperparameter that controls the randomness of the model's output. It influences the creativity and diversity of the generated text.
 
