@@ -47,6 +47,16 @@ These factors make them the preferred architecture for building powerful LLMs.
 
 * **Research into Alternative Architectures:** While transformers are dominant, research is ongoing for alternative LLM architectures that address potential shortcomings of transformers, such as computational cost for very long sequences.
 
+### Why linear transformer is not as popular as expected?
+
+
+### What are the time complexities of Self-Attention Layers and FFN layers? Which one is more costly?
+
+Taking BERT as an example.
+
+😀 https://kexue.fm/archives/8610
+
+
 ### Why most LLM are decoder-only?
 
 Here's a breakdown of the reasons why most large language models (LLMs) favor a decoder-only architecture:
