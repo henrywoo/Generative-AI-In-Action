@@ -295,11 +295,9 @@ In the case where one event dominates, such as a skewed probability distribution
 - **Skewed Probability Distribution**: Low entropy (unsurprising).
 - **Balanced Probability Distribution**: High entropy (surprising).
 
-![](https://machinelearningmastery.com/wp-content/uploads/2019/10/Plot-of-Probability-vs-Information.png)
+![](info_entropy.png)
 
-![](https://machinelearningmastery.com/wp-content/uploads/2019/10/Plot-of-Probability-Distribution-vs-Entropy.png)
-
-Perplexity measures the confusion (or lack of confidence) a model has in the content it generates during a generation task. The more powerful the model, the lower the perplexity. It's similar to a person: the more knowledgeable and intelligent they are, the more confident they will be in predicting the future, and the less confused they will be.
+Perplexity measures the confusion (or lack of confidence) a model has in the content it generates during a generation task. The more powerful the model, the lower the perplexity. It's similar to humans: the more knowledgeable and intelligent they are, the more confident they will be in predicting the future, and the less confused they will be.
 
 https://machinelearningmastery.com/what-is-information-entropy/
 
