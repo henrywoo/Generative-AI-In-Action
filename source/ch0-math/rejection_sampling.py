@@ -26,8 +26,8 @@ def rejection_sampling(n_samples, target_dist, proposal_dist, M, x_min, x_max):
 n_samples = 50000
 x_min, x_max = -6, 6
 x = np.linspace(x_min, x_max, 5000)
-#M = 5.6  # scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
-M = np.max(target_distribution(x)) / (1/8)
+# scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
+M = np.max(target_distribution(x)) / (1/8) # (1/8) is the max value of proposal_dist
 
 # Generate samples
 samples = rejection_sampling(n_samples, target_distribution, proposal_distribution, M, x_min, x_max)
