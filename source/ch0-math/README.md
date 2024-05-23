@@ -318,7 +318,7 @@ Rejection sampling is a basic technique used in Monte Carlo methods to generate 
 
 1. **Define Target Distribution**: This is the distribution from which we want to sample, denoted as f(x).
 2. **Choose Proposal Distribution**: This is a simpler distribution from which we can easily sample, denoted as g(x).
-3. **Scale the Proposal Distribution**: Find a constant M such that  M \* g(x) >= f(x) for all x.
+3. **Scale the Proposal Distribution**: Find a constant M such that  M \* g(x) >= f(x) for all x. You're stretching the proposal distribution vertically to ensure it's always above the target distribution.
 4. **Generate Samples**:
    - Sample x from g(x).
    - Generate a uniform random number u from \[0, M \* g(x)\].

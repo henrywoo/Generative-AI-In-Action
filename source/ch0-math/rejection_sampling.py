@@ -15,25 +15,28 @@ def rejection_sampling(n_samples, target_dist, proposal_dist, M, x_min, x_max):
     samples = []
     while len(samples) < n_samples:
         x = np.random.uniform(x_min, x_max)
-        u = np.random.uniform(0, M * proposal_dist(np.array([x])))
-        if u <= target_dist(np.array([x])):
+        u = np.random.uniform(0, M * proposal_dist(x))
+        if u <= target_dist(x):
             samples.append(x)
+        else:
+            pass  # print("rejection")
     return np.array(samples)
 
 # Parameters
-n_samples = 5000
+n_samples = 50000
 x_min, x_max = -6, 6
-M = 1.5  # scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
+x = np.linspace(x_min, x_max, 5000)
+#M = 5.6  # scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
+M = np.max(target_distribution(x)) / (1/8)
 
 # Generate samples
 samples = rejection_sampling(n_samples, target_distribution, proposal_distribution, M, x_min, x_max)
 
 # Plotting
-x = np.linspace(x_min, x_max, 1000)
-plt.figure(figsize=(6, 3))
-plt.hist(samples, bins=50, density=True, alpha=0.6, color='g', label='Sampled Distribution')
-plt.plot(x, target_distribution(x), 'r', label='Target Distribution', alpha=0.5)
-plt.plot(x, M * proposal_distribution(x), 'b--', label='Scaled Proposal Distribution', alpha=0.5)
+plt.figure(figsize=(8, 4))
+plt.hist(samples, bins=500, density=True, alpha=0.6, color='g', label='Sampled Dist')
+plt.plot(x, target_distribution(x), 'r', label='Target Dist(Complex)', alpha=0.5)
+plt.plot(x, M * proposal_distribution(x), 'b--', label='Scaled Proposal Dist(Uniform)', alpha=0.5)
 plt.legend()
 plt.xlabel('x', fontsize=10)
 plt.ylabel('Density', fontsize=10)
