@@ -310,3 +310,74 @@ Perplexity measures the confusion (or lack of confidence) a model has in the con
 
 https://machinelearningmastery.com/what-is-information-entropy/
 
+## What is Rejection sampling and how does it work?
+
+Rejection sampling is a basic technique used in Monte Carlo methods to generate observations from a probability distribution. It is particularly useful when you want to sample from a complex distribution for which direct sampling is difficult, but you can evaluate the probability density function (PDF).
+
+### How Rejection Sampling Works
+
+1. **Define Target Distribution**: This is the distribution from which we want to sample, denoted as \( f(x) \).
+2. **Choose Proposal Distribution**: This is a simpler distribution from which we can easily sample, denoted as \( g(x) \).
+3. **Scale the Proposal Distribution**: Find a constant \( M \) such that \( M \cdot g(x) \geq f(x) \) for all \( x \).
+4. **Generate Samples**:
+   - Sample \( x \) from \( g(x) \).
+   - Generate a uniform random number \( u \) from \( [0, M \cdot g(x)] \).
+   - Accept \( x \) if \( u \leq f(x) \); otherwise, reject \( x \).
+
+### Python Code for Rejection Sampling
+
+Let's consider an example where we sample from a target distribution which is a mixture of two Gaussians using a uniform distribution as the proposal distribution.
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define the target distribution (mixture of two Gaussians)
+def target_distribution(x):
+    return 0.3 * np.exp(-0.5 * ((x - 2) / 0.5)**2) + 0.7 * np.exp(-0.5 * ((x + 2) / 1.0)**2)
+
+# Define the proposal distribution (uniform distribution)
+def proposal_distribution(x):
+    return np.ones_like(x) / 8
+
+# Rejection sampling algorithm
+def rejection_sampling(n_samples, target_dist, proposal_dist, M, x_min, x_max):
+    samples = []
+    while len(samples) < n_samples:
+        x = np.random.uniform(x_min, x_max)
+        u = np.random.uniform(0, M * proposal_dist(np.array([x])))
+        if u <= target_dist(np.array([x])):
+            samples.append(x)
+    return np.array(samples)
+
+# Parameters
+n_samples = 5000
+x_min, x_max = -6, 6
+M = 1.0  # scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
+
+# Generate samples
+samples = rejection_sampling(n_samples, target_distribution, proposal_distribution, M, x_min, x_max)
+
+# Plotting
+x = np.linspace(x_min, x_max, 1000)
+plt.figure(figsize=(10, 6))
+plt.hist(samples, bins=50, density=True, alpha=0.6, color='g', label='Sampled Distribution')
+plt.plot(x, target_distribution(x), 'r', label='Target Distribution')
+plt.plot(x, M * proposal_distribution(x), 'b--', label='Scaled Proposal Distribution')
+plt.legend()
+plt.xlabel('x')
+plt.ylabel('Density')
+plt.title('Rejection Sampling')
+plt.show()
+```
+
+![](rejection_sampling.png)
+
+### Explanation of the Code
+
+1. **Target Distribution**: Defined as a mixture of two Gaussians.
+2. **Proposal Distribution**: Defined as a uniform distribution over the interval \([-6, 6]\).
+3. **Rejection Sampling Function**: This function generates samples using the rejection sampling algorithm.
+4. **Sampling and Plotting**: Generates samples and plots the histogram of the samples along with the target and proposal distributions.
+
+This code demonstrates the rejection sampling technique and visualizes the results, showing how the sampled distribution approximates the target distribution.
