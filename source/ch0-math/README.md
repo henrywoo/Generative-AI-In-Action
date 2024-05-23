@@ -297,6 +297,12 @@ In the case where one event dominates, such as a skewed probability distribution
 
 ![](info_entropy.png)
 
+### Cross Entropy
+
+![](cross_entropy_bce.png)
+
+![](cross_entropy_cce.png)
+
 Perplexity measures the confusion (or lack of confidence) a model has in the content it generates during a generation task. The more powerful the model, the lower the perplexity. It's similar to humans: the more knowledgeable and intelligent they are, the more confident they will be in predicting the future, and the less confused they will be.
 
 https://machinelearningmastery.com/what-is-information-entropy/
