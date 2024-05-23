@@ -261,12 +261,45 @@ Of course, KL divergence can also be a suitable loss function in certain cases, 
 
 Therefore, the choice of loss function depends on the specific task and objectives.
 
-## Information and Entropy
+## Information, Entropy, Cross Entropy and Perplexity
+
+### Information
+
+We can quantify information in an **event**. Those events that are rare (low probability) are more informative or surprising and therefore have more information than those events that are common (high probability).
+
+- **Low Probability Event**: High Information (surprising).
+- **High Probability Event**: Low Information (unsurprising).
+
+> The basic intuition behind information theory is that learning that an unlikely event has occurred is more informative than learning that a likely event has occurred.
+> — Page 73, Deep Learning, 2016.
+
+Rare events are more uncertain or more surprising and require more information to represent them than common events.
+
+The calculation of information is often written as below:
+```
+h(x) = -log( p(x) )
+```
+
+The negative sign ensures that the result is always positive or zero.
+
+### Entropy
+
+We can also quantify how much information there is in a **random variable**. Entropy can be calculated for a random variable X with k in K discrete states as follows:
+```
+H(X) = -sum(p(k) * log(p(k)) for each k in K)
+```
+That is the negative of the sum of the probability of each event multiplied by the log of the probability of each event.
+
+In the case where one event dominates, such as a skewed probability distribution, then there is less surprise and the distribution will have a lower entropy. In the case where no event dominates another, such as equal or approximately equal probability distribution, then we would expect larger or maximum entropy.
+
+- **Skewed Probability Distribution**: Low entropy (unsurprising).
+- **Balanced Probability Distribution**: High entropy (surprising).
 
 ![](https://machinelearningmastery.com/wp-content/uploads/2019/10/Plot-of-Probability-vs-Information.png)
 
 ![](https://machinelearningmastery.com/wp-content/uploads/2019/10/Plot-of-Probability-Distribution-vs-Entropy.png)
 
+Perplexity measures the confusion (or lack of confidence) a model has in the content it generates during a generation task. The more powerful the model, the lower the perplexity. It's similar to a person: the more knowledgeable and intelligent they are, the more confident they will be in predicting the future, and the less confused they will be.
 
 https://machinelearningmastery.com/what-is-information-entropy/
 
