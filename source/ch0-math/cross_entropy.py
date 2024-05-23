@@ -1,3 +1,4 @@
+# Refernce: https://www.pinecone.io/learn/cross-entropy-loss/
 import numpy as np
 import matplotlib.pyplot as plt
 
