@@ -23,7 +23,7 @@ def rejection_sampling(n_samples, target_dist, proposal_dist, M, x_min, x_max):
 # Parameters
 n_samples = 5000
 x_min, x_max = -6, 6
-M = 1.0  # scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
+M = 1.5  # scaling factor (make sure M * proposal_dist >= target_dist for all x in [x_min, x_max])
 
 # Generate samples
 samples = rejection_sampling(n_samples, target_distribution, proposal_distribution, M, x_min, x_max)
