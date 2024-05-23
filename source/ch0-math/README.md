@@ -289,18 +289,16 @@ We can also quantify how much information there is in a **random variable**. Ent
 H(X) = -sum(p(k) * log(p(k)) for each k in K)
 ```
 
-![](info_entropy.png)
-
 That is the negative of the sum of the probability of each event multiplied by the log of the probability of each event.
 
-![](zero_entropy.png)
+![](info_entropy.png)
 
 In the case where one event dominates, such as a skewed probability distribution, then there is less surprise and the distribution will have a lower entropy. In the case where no event dominates another, such as equal or approximately equal probability distribution, then we would expect larger or maximum entropy.
 
 - **Skewed Probability Distribution**: Low entropy (unsurprising).
 - **Balanced Probability Distribution**: High entropy (surprising).
 
-
+![](zero_entropy.png)
 
 ### Cross Entropy
 
