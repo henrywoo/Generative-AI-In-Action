@@ -260,3 +260,13 @@ Of course, KL divergence can also be a suitable loss function in certain cases, 
 * **Reinforcement Learning:** In reinforcement learning, KL divergence can be used to measure the difference between policies before and after policy updates.
 
 Therefore, the choice of loss function depends on the specific task and objectives.
+
+## Information and Entropy
+
+![](https://machinelearningmastery.com/wp-content/uploads/2019/10/Plot-of-Probability-vs-Information.png)
+
+![](https://machinelearningmastery.com/wp-content/uploads/2019/10/Plot-of-Probability-Distribution-vs-Entropy.png)
+
+
+https://machinelearningmastery.com/what-is-information-entropy/
+

@@ -47,7 +47,9 @@ These factors make them the preferred architecture for building powerful LLMs.
 
 * **Research into Alternative Architectures:** While transformers are dominant, research is ongoing for alternative LLM architectures that address potential shortcomings of transformers, such as computational cost for very long sequences.
 
-### Why linear transformer is not as popular as expected?
+### What is linear transformer? Why is it not as popular as expected?
+
+![](linear_tr.png)
 
 
 ### What are the time complexities of Self-Attention Layers and FFN layers? Which one is more costly?
@@ -597,6 +599,80 @@ The Stochastic Parrot Hypothesis raises important questions about the capabiliti
 - [Parrot Mind: Towards Explaining the Complex Task Reasoning of Pretrained Large Language Models with Template-Content Structure](https://arxiv.org/abs/2310.05452)
 
 
+### What are the Model Evaluation Methods for LLM?
+
+Large Language Models (LLMs) are typically evaluated using a variety of methods that assess their performance across different dimensions. Here are some of the most common evaluation methods:
+
+### 1. **Intrinsic Evaluation Methods**
+These methods assess the model based on its internal performance metrics, often without requiring external tasks or human judgment.
+
+#### a. **Perplexity**
+- **Definition**: Measures how well a probability model predicts a sample.
+- **Application**: Lower perplexity indicates better performance. It's widely used in language modeling tasks.
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained("gpt2")
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+inputs = tokenizer("ABC is a startup based in New York City and Paris", return_tensors = "pt")
+loss = model(input_ids = inputs["input_ids"], labels = inputs["input_ids"]).loss
+ppl = torch.exp(loss)
+print(ppl) # Output: 29.48
+inputs_wiki_text = tokenizer("Generative Pretrained Transformer is an opensource artificial intelligence created by OpenAI in February 2019", return_tensors = "pt")
+loss = model(input_ids = inputs_wiki_text["input_ids"], labels = inputs_wiki_text["input_ids"]).loss
+ppl = torch.exp(loss)
+print(ppl)  # Output: 211.81
+```
+The first sentence is one of the sequences on which the model was trained on and hence the perplexity is much lower in comparison to the second sentence. The model has not seen the second sentence before and hence the GPT2 model is more perplexed by it.
+
+> Perplexity is usually used only to determine how well a model has learned the training set. Other metrics like BLEU, ROUGE etc., are used on the test set to measure test performance.
+
+#### b. **BLEU (Bilingual Evaluation Understudy)**
+- **Definition**: Measures the n-gram overlap between generated text and reference text.
+- **Application**: Common in machine translation and text generation tasks. **Higher scores indicate better performance.**
+
+#### c. **ROUGE (Recall-Oriented Understudy for Gisting Evaluation)**
+- **Definition**: Measures the overlap of n-grams, word sequences, and word pairs between generated text and reference text.
+- **Application**: Common in summarization tasks. Includes ROUGE-N (n-gram overlap), ROUGE-L (longest common subsequence), and ROUGE-S (skip-bigram). **Higher scores indicate better performance.**
+
+#### d. **METEOR (Metric for Evaluation of Translation with Explicit ORdering)**
+- **Definition**: Considers synonyms, stemming, and paraphrasing while comparing generated text to reference text.
+- **Application**: Often used in machine translation.
+
+### 2. **Extrinsic Evaluation Methods**
+These methods evaluate the model based on its performance in specific tasks or applications, often requiring human judgment or task-specific metrics.
+
+#### a. **Human Evaluation**
+- **Definition**: Human judges assess the quality of the generated text based on various criteria such as fluency, coherence, relevance, and informativeness.
+- **Application**: Provides qualitative insights but can be subjective and time-consuming.
+
+#### b. **Task-Specific Evaluation**
+- **Definition**: Measures performance based on specific tasks like question answering, dialogue systems, or text classification.
+- **Application**: Uses metrics like accuracy, F1-score, precision, recall, and more, depending on the task.
+
+#### c. **Adversarial Testing**
+- **Definition**: Evaluates model robustness by testing it against adversarial examples designed to confuse or mislead the model.
+- **Application**: Identifies weaknesses and improves model reliability.
+
+### 3. **Behavioral and Ethical Evaluation Methods**
+These methods assess the model's behavior, ethical considerations, and potential biases.
+
+#### a. **Bias and Fairness Testing**
+- **Definition**: Evaluates the model for biases based on gender, race, age, etc.
+- **Application**: Uses metrics and benchmarks to identify and mitigate biases.
+
+#### b. **Safety and Robustness Testing**
+- **Definition**: Ensures the model behaves safely and robustly in different scenarios.
+- **Application**: Includes testing for harmful outputs, robustness to input perturbations, and ensuring the model's reliability.
+
+### Conclusion
+Evaluating Large Language Models involves a comprehensive approach that includes intrinsic metrics, extrinsic task performance, behavioral and ethical considerations, user experience, and efficiency. Combining multiple evaluation methods provides a holistic understanding of a model's strengths and weaknesses, guiding improvements and ensuring reliable performance in real-world applications.
+
+
+- https://medium.com/@priyankads/perplexity-of-language-models-41160427ed72
+- https://clementbm.github.io/theory/2021/12/23/rouge-bleu-scores.html
 
 ## LLM Finetuning and Aligning
 
