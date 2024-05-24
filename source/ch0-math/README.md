@@ -2,6 +2,51 @@
 
 ![](euler.png)
 
+## Common Loss Functions
+
+The following table outlines the common loss functions:
+
+| Model                     | Loss Function                                                     |
+| ------------------------- |-------------------------------------------------------------------|
+| Linear Regression         | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`              |
+| Logistic Regression       | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))` |
+| Neural Network (DNN)      | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`              |
+|                           | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))` |
+|                           | Categorical Cross-Entropy: `-sum(sum(yic * log(ŷic)))`            |
+| Convolutional Neural Network (CNN) | Same as DNN                                                       |
+| Recurrent Neural Network (RNN)   | Same as DNN                                                       |
+| Generative Adversarial Network (GAN) | Generator: `-(1/N) * sum(log(D(G(zi))))` <br> Discriminator: `-(1/N) * sum(log(D(xi)) + log(1 - D(G(zi))))` |
+| Variational Autoencoder (VAE)  | Reconstruction Loss + KL Divergence: (1/N) * sum(Dis(xi - x̂i)^2) |
+
+**Key:**
+
+* `yi`: True label
+* `ŷi`: Predicted label
+* `N`: Number of samples
+* `C`: Number of classes
+* `yic`: True label for sample i and class c
+* `ŷic`: Predicted probability for sample i and class c
+* `G(zi)`: Generated sample from noise zi
+* `D(xi)`: Discriminator's output on real sample xi
+* `D(G(zi))`: Discriminator's output on generated sample G(zi)
+* `xi`: Input data
+* `x̂i`: Reconstructed data
+* `q(z|xi)`: Encoder distribution
+* `p(z)`: Prior distribution
+* `DKL`: Kullback-Leibler divergence
+* `Dis(*)^2`: Squared Euclidean distance (or other distance metrics can be used)
+
+The choice of loss function depends on the type of problem (regression or classification), the model architecture, and specific characteristics of the dataset.
+For instance, Mean Absolute Error (MAE) is to measure the average absolute difference. More robust to outliers than MSE, so it could be an alternative to MSE in some scenario.
+
+**More DNN Losses:**
+
+While the table covers the basics, deep neural networks offer a world of custom loss functions. Here are a few examples:
+
+* **Huber Loss:**  A combination of MSE and MAE, offering robustness to outliers while maintaining smoothness.
+* **Contrastive Loss:** Used in tasks like image similarity, focusing on pulling similar examples closer and pushing dissimilar ones apart.
+* **GAN Loss:** Specific to Generative Adversarial Networks (GANs), where two networks compete to generate realistic data and distinguish real from fake.
+
 ## Cosine Similarity
 
 Cosine similarity is a metric used to measure how similar two vectors are irrespective of their magnitude. It's commonly used in various fields, particularly in the realm of information retrieval, text analysis, and machine learning, for comparing documents, images, or other data represented as vectors.
@@ -386,3 +431,4 @@ plt.show()
 4. **Sampling and Plotting**: Generates samples and plots the histogram of the samples along with the target and proposal distributions.
 
 This code demonstrates the rejection sampling technique and visualizes the results, showing how the sampled distribution approximates the target distribution.
+
