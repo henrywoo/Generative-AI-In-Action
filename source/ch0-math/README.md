@@ -6,17 +6,17 @@
 
 The following table outlines the common loss functions:
 
-| Model                     | Loss Function                                                     |
-| ------------------------- |-------------------------------------------------------------------|
-| Linear Regression         | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`              |
-| Logistic Regression       | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))` |
-| Neural Network (DNN)      | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`              |
-|                           | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))` |
-|                           | Categorical Cross-Entropy: `-sum(sum(yic * log(ŷic)))`            |
-| Convolutional Neural Network (CNN) | Same as DNN                                                       |
-| Recurrent Neural Network (RNN)   | Same as DNN                                                       |
-| Generative Adversarial Network (GAN) | Generator: `-(1/N) * sum(log(D(G(zi))))` <br> Discriminator: `-(1/N) * sum(log(D(xi)) + log(1 - D(G(zi))))` |
-| Variational Autoencoder (VAE)  | Reconstruction Loss + KL Divergence: (1/N) * sum(Dis(xi - x̂i)^2) |
+| Model                                | Loss Function                                                                                                  |
+|--------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Linear Regression                    | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`                                                           |
+| Logistic Regression                  | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))`                                    |
+| Neural Network (ANN)                 | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`                                                           |
+|                                      | Binary Cross-Entropy(BCE): `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))`                               |
+|                                      | Categorical Cross-Entropy(CCE): `-sum(sum(yic * log(ŷic)))`                                                    |
+| Convolutional Neural Network (CNN)   | CCE; Focal Loss; Dice Loss; Multi-task Loss                                                                    |
+| Recurrent Neural Network (RNN)       | MSE; MAE; CCE; BCE...                                                                                          |
+| Generative Adversarial Network (GAN) | Generator: `-(1/N) * sum(log(D(G(zi))))` <br> Discriminator: `-(1/N) * sum(log(D(xi)) + log(1 - D(G(zi))))`    |
+| Variational Autoencoder (VAE)        | Reconstruction Loss + KL Divergence: (1/N) * sum(Dis(xi - x̂i)^2)                                               |
 
 **Key:**
 
