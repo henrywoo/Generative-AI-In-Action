@@ -1,6 +1,6 @@
 from transformers import BertTokenizer, BertModel
 import torch
-from torch.nn.functional import cosine_similarity
+from torch.nn.functional import cosine_similarity, normalize
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -55,7 +55,7 @@ contexts = {
 }
 
 # Get static embeddings from the embedding layer
-static_embeddings = {word: get_embedding_layer_embedding(word) for word in words}
+static_embeddings = {word: normalize(get_embedding_layer_embedding(word).unsqueeze(0)).squeeze() for word in words}
 
 # Get dynamic embeddings from the model output in different contexts
 dynamic_embeddings = {}
@@ -63,7 +63,7 @@ for word in words:
     dynamic_embeddings[word] = []
     for context in contexts[word]:
         try:
-            embedding = get_model_output_embedding(word, context)
+            embedding = normalize(get_model_output_embedding(word, context).unsqueeze(0)).squeeze()
             dynamic_embeddings[word].append(embedding)
         except ValueError as e:
             print(e)
@@ -80,7 +80,7 @@ def visualize_cosine_similarity(ax, words, embeddings, embeddings_title):
         for j, word2 in enumerate(words):
             cos_sim_matrix[i, j] = cosine_similarity(embeddings[word1].unsqueeze(0),
                                                      embeddings[word2].unsqueeze(0)).item()
-    sns.heatmap(cos_sim_matrix, xticklabels=words, yticklabels=words, annot=True, cmap='Reds', vmin=0, vmax=1, ax=ax, annot_kws={"size": 8})
+    sns.heatmap(cos_sim_matrix, xticklabels=words, yticklabels=words, annot=True, cmap='Reds', vmin=0, vmax=1, ax=ax, annot_kws={"size": 9})
     ax.set_title(f'Cosine Similarity between {embeddings_title} Word Embeddings', fontsize=8)
 
 # Function to visualize distances
@@ -89,7 +89,7 @@ def visualize_distances(ax, words, embeddings, embeddings_title):
     for i, word1 in enumerate(words):
         for j, word2 in enumerate(words):
             dist_matrix[i, j] = torch.dist(embeddings[word1], embeddings[word2]).item()
-    sns.heatmap(dist_matrix, xticklabels=words, yticklabels=words, annot=True, cmap='Blues', vmin=0, ax=ax, annot_kws={"size": 8})
+    sns.heatmap(dist_matrix, xticklabels=words, yticklabels=words, annot=True, cmap='Blues', vmin=0, ax=ax, annot_kws={"size": 9})
     ax.set_title(f'Distances between {embeddings_title} Word Embeddings', fontsize=8)
 
 # Create subplots for cosine similarity
@@ -98,6 +98,7 @@ visualize_cosine_similarity(axs[0], words, static_embeddings, "Static")
 visualize_cosine_similarity(axs[1], words, dynamic_embeddings_first_context, "Dynamic (Context 1)")
 visualize_cosine_similarity(axs[2], words, dynamic_embeddings_second_context, "Dynamic (Context 2)")
 plt.tight_layout()
+plt.savefig("bert_word_embedding_simi.png")
 plt.show()
 
 # Create subplots for distances
@@ -106,4 +107,5 @@ visualize_distances(axs[0], words, static_embeddings, "Static")
 visualize_distances(axs[1], words, dynamic_embeddings_first_context, "Dynamic (Context 1)")
 visualize_distances(axs[2], words, dynamic_embeddings_second_context, "Dynamic (Context 2)")
 plt.tight_layout()
+plt.savefig("bert_word_embedding_diff.png")
 plt.show()
