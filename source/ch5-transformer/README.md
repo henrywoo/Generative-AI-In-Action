@@ -1,9 +1,45 @@
 # Transformer
 
+https://docs.google.com/presentation/d/1OwRtQscMeIl3Zex8iJEAUeHM6QCM3sMxlg4Iy15HBBI/edit#slide=id.p
+
+![](lm_inaction.png)
++ VIT in Action
+
 ![](img/transformer.webp)
 
 
 ![](img/transformer_ar.webp)
+
+## nanoBERT
+
+```angular2html
+🌳 NanoBertForClassification<all params:305123>
+├── NanoBERT(nano_bert)
+│   ├── BertEmbeddings(embedding)
+│   │   ├── Embedding(word_embeddings)|weight[101522,3]
+│   │   ├── Embedding(pos_embeddings)|weight[128,3]
+│   │   └── LayerNorm(layer_norm)|weight[3]|bias[3]
+│   ├── BertEncoder(encoder)
+│   │   └── ModuleList(layers)
+│   │       └── BertLayer(0)
+│   │           ├── 💠 LayerNorm(layer_norm1,layer_norm2)<🦜:6x2>|weight[3]|bias[3]
+│   │           ├── BertSelfAttention(self_attention)
+│   │           │   ├── ModuleList(heads)
+│   │           │   │   └── BertAttentionHead(0)
+│   │           │   │       └── 💠 Linear(query,key,values)<🦜:12x3>|weight[3,3]|bias[3]
+│   │           │   └── Linear(proj)|weight[3,3]|bias[3]
+│   │           └── FeedForward(feed_forward)
+│   │               └── Sequential(ffwd)
+│   │                   ├── Linear(0)|weight[12,3]|bias[12]
+│   │                   └── Linear(2)|weight[3,12]|bias[3]
+│   └── BertPooler(pooler)
+│       └── Linear(dense)|weight[3,3]|bias[3]
+└── Linear(classifier)|weight[2,3]|bias[2]
+```
+
+## nanoGPT
+
+## nanoT5
 
 ### How to preserve Token Order in High-Dimensional Space? Why we can add position and token embedding?
 

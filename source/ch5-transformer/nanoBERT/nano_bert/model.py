@@ -8,23 +8,18 @@ class BertEmbeddings(torch.nn.Module):
     def __init__(self, vocab_size, n_embed=3, max_seq_len=16):
         super().__init__()
         self.max_seq_len = max_seq_len
-
         self.word_embeddings = torch.nn.Embedding(vocab_size, n_embed)
         self.pos_embeddings = torch.nn.Embedding(max_seq_len, n_embed)
-
         self.layer_norm = torch.nn.LayerNorm(n_embed, eps=1e-12, elementwise_affine=True)
         self.dropout = torch.nn.Dropout(p=0.1, inplace=False)
 
     def forward(self, x):
         position_ids = torch.arange(self.max_seq_len, dtype=torch.long, device=x.device)
-
         words_embeddings = self.word_embeddings(x)
         position_embeddings = self.pos_embeddings(position_ids)
-
         embeddings = words_embeddings + position_embeddings
         embeddings = self.layer_norm(embeddings)
         embeddings = self.dropout(embeddings)
-
         return embeddings
 
 
@@ -164,7 +159,7 @@ class BertPooler(torch.nn.Module):
 
 class NanoBERT(torch.nn.Module):
     """
-    NanoBERT is a almost an exact copy of a transformer decoder part described in the paper "Attention is all you need"
+    NanoBERT is an almost an exact copy of a transformer encoder part described in the paper "Attention is all you need"
     This is a base model that can be used for various purposes such as Masked Language Modelling, Classification,
     Or any other kind of NLP tasks.
     This implementation does not cover the Seq2Seq problem, but can be easily extended to that.
@@ -181,22 +176,16 @@ class NanoBERT(torch.nn.Module):
         :param max_seq_len: max length of the input sequence (default=16)
         """
         super().__init__()
-
         self.embedding = BertEmbeddings(vocab_size, n_embed, max_seq_len)
-
         self.encoder = BertEncoder(n_layers, n_heads, dropout, n_embed)
-
         self.pooler = BertPooler(dropout, n_embed)
 
     def forward(self, x):
         # attention masking for padded token
         # (batch_size, seq_len, seq_len)
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1)
-
         embeddings = self.embedding(x)
-
         encoded = self.encoder(embeddings, mask)
-
         pooled = self.pooler(encoded)
         return pooled
 
@@ -207,15 +196,12 @@ class NanoBertForClassification(torch.nn.Module):
     One can use this as an example of how to extend and apply nano-BERT to similar custom tasks
     This layer simply adds one additional dense layer for classification
     """
-
     def __init__(self, vocab_size, n_layers=2, n_heads=1, dropout=0.1, n_embed=3, max_seq_len=16, n_classes=2):
         super().__init__()
         self.nano_bert = NanoBERT(vocab_size, n_layers, n_heads, dropout, n_embed, max_seq_len)
-
         self.classifier = torch.nn.Linear(in_features=n_embed, out_features=n_classes)
 
     def forward(self, input_ids):
         embeddings = self.nano_bert(input_ids)
-
         logits = self.classifier(embeddings)
         return logits
