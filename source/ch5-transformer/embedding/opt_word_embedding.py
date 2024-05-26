@@ -70,8 +70,8 @@ for word in words:
             dynamic_embeddings[word].append(torch.zeros(model.config.hidden_size))
 
 # Prepare dynamic embeddings for the first and second context
-dynamic_embeddings_first_context = {word: dynamic_embeddings[word][0] for word in words}
-dynamic_embeddings_second_context = {word: dynamic_embeddings[word][1] for word in words}
+dynamic_embeddings_1st_context = {word: dynamic_embeddings[word][0] for word in words}
+dynamic_embeddings_2nd_context = {word: dynamic_embeddings[word][1] for word in words}
 
 # Function to visualize cosine similarity
 def visualize_cosine_similarity(ax, words, embeddings, embeddings_title):
@@ -95,8 +95,8 @@ def visualize_distances(ax, words, embeddings, embeddings_title):
 # Create subplots for cosine similarity
 fig, axs = plt.subplots(1, 3, figsize=(14, 4))
 visualize_cosine_similarity(axs[0], words, static_embeddings, "Static")
-visualize_cosine_similarity(axs[1], words, dynamic_embeddings_first_context, "Dynamic (Context 1)")
-visualize_cosine_similarity(axs[2], words, dynamic_embeddings_second_context, "Dynamic (Context 2)")
+visualize_cosine_similarity(axs[1], words, dynamic_embeddings_1st_context, "Dynamic (Context 1)")
+visualize_cosine_similarity(axs[2], words, dynamic_embeddings_2nd_context, "Dynamic (Context 2)")
 plt.tight_layout()
 plt.savefig("opt_word_embedding_simi.png")
 plt.show()
@@ -104,8 +104,8 @@ plt.show()
 # Create subplots for distances
 fig, axs = plt.subplots(1, 3, figsize=(14, 4))
 visualize_distances(axs[0], words, static_embeddings, "Static")
-visualize_distances(axs[1], words, dynamic_embeddings_first_context, "Dynamic (Context 1)")
-visualize_distances(axs[2], words, dynamic_embeddings_second_context, "Dynamic (Context 2)")
+visualize_distances(axs[1], words, dynamic_embeddings_1st_context, "Dynamic (Context 1)")
+visualize_distances(axs[2], words, dynamic_embeddings_2nd_context, "Dynamic (Context 2)")
 plt.tight_layout()
 plt.savefig("opt_word_embedding_diff.png")
 plt.show()

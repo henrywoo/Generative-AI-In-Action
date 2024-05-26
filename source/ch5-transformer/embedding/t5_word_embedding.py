@@ -1,10 +1,10 @@
 from transformers import T5Tokenizer, T5EncoderModel
 import torch
-from torch.nn.functional import cosine_similarity, normalize
 import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
 from hiq.vis import print_model
+from util import (WORDS, CONTEXTS, line_plot_word_embedding,
+                  visualize_distances, visualize_cosine_similarity,
+                  get_embedding_layer_embedding)
 
 """
 🌳 T5EncoderModel<all params:109628544>
@@ -43,16 +43,6 @@ tokenizer = T5Tokenizer.from_pretrained('t5-base')
 model = T5EncoderModel.from_pretrained('t5-base')
 print_model(model)
 
-# Function to get the embeddings from the embedding layer without special tokens
-def get_embedding_layer_embedding(word):
-    input_ids = tokenizer(word, return_tensors='pt', add_special_tokens=False)['input_ids']
-    print(f"Tokenized input for '{word}': {input_ids}")
-    with torch.no_grad():
-        embedding_layer_output = model.get_input_embeddings()(input_ids)
-    print(f"Embedding shape for '{word}': {embedding_layer_output.shape}")
-    avg_embedding = embedding_layer_output.mean(dim=1)  # Average over the sequence length dimension
-    return avg_embedding.squeeze()
-
 # Function to get the embeddings from the final model output in a given context
 def get_model_output_embedding(word, context_sentence):
     inputs = tokenizer(context_sentence, return_tensors='pt')
@@ -76,20 +66,10 @@ def get_model_output_embedding(word, context_sentence):
     avg_embedding = final_layer_output.mean(dim=1)
     return avg_embedding.squeeze()
 
-# Words to analyze
-words = ['king', 'queen', 'man', 'woman', 'apple']
-
-# Context sentences
-contexts = {
-    'king': ["The king is wise.", "The king and queen rule the kingdom."],
-    'queen': ["The queen is kind.", "The queen is one of the great bands in history."],
-    'man': ["The man is strong.", "The man and woman are friends."],
-    'woman': ["The woman is smart.", "The woman and man are friends."],
-    'apple': ["The king eats apple every day.", "How much is an apple music account?"]
-}
+words, contexts = WORDS, CONTEXTS
 
 # Get static embeddings from the embedding layer
-static_embeddings = {word: (get_embedding_layer_embedding(word).unsqueeze(0)).squeeze() for word in words}  # normalize
+static_embeddings = {word: (get_embedding_layer_embedding(model, tokenizer, word).unsqueeze(0)).squeeze() for word in words}
 
 # Get dynamic embeddings from the model output in different contexts
 dynamic_embeddings = {}
@@ -104,43 +84,27 @@ for word in words:
             dynamic_embeddings[word].append(torch.zeros(model.config.d_model))
 
 # Prepare dynamic embeddings for the first and second context
-dynamic_embeddings_first_context = {word: dynamic_embeddings[word][0] for word in words}
-dynamic_embeddings_second_context = {word: dynamic_embeddings[word][1] for word in words}
+dynamic_embeddings_1st_context = {word: dynamic_embeddings[word][0] for word in words}
+dynamic_embeddings_2nd_context = {word: dynamic_embeddings[word][1] for word in words}
 
-# Function to visualize cosine similarity
-def visualize_cosine_similarity(ax, words, embeddings, embeddings_title):
-    cos_sim_matrix = np.zeros((len(words), len(words)))
-    for i, word1 in enumerate(words):
-        for j, word2 in enumerate(words):
-            cos_sim_matrix[i, j] = cosine_similarity(embeddings[word1].unsqueeze(0),
-                                                     embeddings[word2].unsqueeze(0)).item()
-    sns.heatmap(cos_sim_matrix, xticklabels=words, yticklabels=words, annot=True, cmap='Reds', vmin=0, vmax=1, ax=ax, annot_kws={"size": 9})
-    ax.set_title(f'Cosine Similarity between {embeddings_title} Word Embeddings', fontsize=8)
-
-# Function to visualize distances
-def visualize_distances(ax, words, embeddings, embeddings_title):
-    dist_matrix = np.zeros((len(words), len(words)))
-    for i, word1 in enumerate(words):
-        for j, word2 in enumerate(words):
-            dist_matrix[i, j] = torch.dist(embeddings[word1], embeddings[word2]).item()
-    sns.heatmap(dist_matrix, xticklabels=words, yticklabels=words, annot=True, cmap='Blues', vmin=0, ax=ax, annot_kws={"size": 9})
-    ax.set_title(f'Distances between {embeddings_title} Word Embeddings', fontsize=8)
+line_plot_word_embedding(words, dynamic_embeddings_1st_context, "T5 Dynamic (Context 1)", plot_ab=True)
+line_plot_word_embedding(words, dynamic_embeddings_2nd_context, "T5 Dynamic (Context 2)", plot_ab=True)
 
 # Create subplots for cosine similarity
-fig, axs = plt.subplots(1, 3, figsize=(14, 4))
+fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 visualize_cosine_similarity(axs[0], words, static_embeddings, "Static")
-visualize_cosine_similarity(axs[1], words, dynamic_embeddings_first_context, "Dynamic (Context 1)")
-visualize_cosine_similarity(axs[2], words, dynamic_embeddings_second_context, "Dynamic (Context 2)")
+visualize_cosine_similarity(axs[1], words, dynamic_embeddings_1st_context, "Dynamic (Context 1)")
+visualize_cosine_similarity(axs[2], words, dynamic_embeddings_2nd_context, "Dynamic (Context 2)")
 plt.suptitle("T5 Word Embedding Similarity", fontsize=10)
 plt.tight_layout()
 plt.savefig("t5_word_embedding_simi.png")
 plt.show()
 
 # Create subplots for distances
-fig, axs = plt.subplots(1, 3, figsize=(14, 4))
+fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 visualize_distances(axs[0], words, static_embeddings, "Static")
-visualize_distances(axs[1], words, dynamic_embeddings_first_context, "Dynamic (Context 1)")
-visualize_distances(axs[2], words, dynamic_embeddings_second_context, "Dynamic (Context 2)")
+visualize_distances(axs[1], words, dynamic_embeddings_1st_context, "Dynamic (Context 1)")
+visualize_distances(axs[2], words, dynamic_embeddings_2nd_context, "Dynamic (Context 2)")
 plt.suptitle("T5 Word Embedding Distance", fontsize=10)
 plt.tight_layout()
 plt.savefig("t5_word_embedding_diff.png")

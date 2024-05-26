@@ -1,43 +1,33 @@
-from transformers import BertTokenizer, BertModel
-import torch
+from transformers import GPT2Tokenizer, GPT2Model
 from torch.nn.functional import cosine_similarity, normalize
 import matplotlib.pyplot as plt
+import torch
 from hiq.vis import print_model
-from util import (WORDS, CONTEXTS, line_plot_word_embedding,
-                  visualize_distances, visualize_cosine_similarity,
-                  get_embedding_layer_embedding)
+from util import WORDS, CONTEXTS, words_contexts_for_bpe, line_plot_word_embedding, \
+    visualize_distances, visualize_cosine_similarity, get_embedding_layer_embedding
 """
-🌳 BertModel<all params:109482240>
-├── BertEmbeddings(embeddings)
-│   ├── Embedding(word_embeddings)|weight[30522,768]
-│   ├── Embedding(position_embeddings)|weight[512,768]
-│   ├── Embedding(token_type_embeddings)|weight[2,768]
-│   └── LayerNorm(LayerNorm)|weight[768]|bias[768]
-├── BertEncoder(encoder)
-│   └── ModuleList(layer)
-│       └── 💠 BertLayer(0-11)<🦜:7087872x12>
-│           ┣━━ BertAttention(attention)
-│           ┃   ┣━━ BertSelfAttention(self)
-│           ┃   ┃   ┗━━ 💠 Linear(query,key,value)<🦜:590592x3>|weight[768,768]|bias[768]
-│           ┃   ┗━━ BertSelfOutput(output)
-│           ┃       ┣━━ Linear(dense)|weight[768,768]|bias[768]
-│           ┃       ┗━━ LayerNorm(LayerNorm)|weight[768]|bias[768]
-│           ┣━━ BertIntermediate(intermediate)
-│           ┃   ┗━━ Linear(dense)|weight[3072,768]|bias[3072]
-│           ┗━━ BertOutput(output)
-│               ┣━━ Linear(dense)|weight[768,3072]|bias[768]
-│               ┗━━ LayerNorm(LayerNorm)|weight[768]|bias[768]
-└── BertPooler(pooler)
-    └── Linear(dense)|weight[768,768]|bias[768]
+🌳 GPT2Model<all params:124439808>
+├── Embedding(wte)|weight[50257,768]
+├── Embedding(wpe)|weight[1024,768]
+├── ModuleList(h)
+│   └── 💠 GPT2Block(0-11)<🦜:7087872x12>
+│       ┣━━ 💠 LayerNorm(ln_1,ln_2)<🦜:1536x2>|weight[768]|bias[768]
+│       ┣━━ GPT2Attention(attn)
+│       ┃   ┣━━ Conv1D(c_attn)|weight[768,2304]|bias[2304]
+│       ┃   ┗━━ Conv1D(c_proj)|weight[768,768]|bias[768]
+│       ┗━━ GPT2MLP(mlp)
+│           ┣━━ Conv1D(c_fc)|weight[768,3072]|bias[3072]
+│           ┗━━ Conv1D(c_proj)|weight[3072,768]|bias[768]
+└── LayerNorm(ln_f)|weight[768]|bias[768]
 """
 
 # Load the tokenizer and model
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-model = BertModel.from_pretrained('bert-base-uncased')
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+model = GPT2Model.from_pretrained('gpt2')
 print_model(model)
-words, contexts = WORDS, CONTEXTS
+
 # Function to get the embeddings from the final model output in a given context
-def get_model_output_embedding(word, context_sentence):
+def get_model_output_embedding(model, word, context_sentence):
     inputs = tokenizer(context_sentence, return_tensors='pt')
     word_tokens = tokenizer(word, add_special_tokens=False)['input_ids']
     print(f"Tokenized '{word}' in context '{context_sentence}': {word_tokens}")
@@ -59,6 +49,8 @@ def get_model_output_embedding(word, context_sentence):
     avg_embedding = final_layer_output.mean(dim=1)
     return avg_embedding.squeeze()
 
+words, contexts = words_contexts_for_bpe(WORDS, CONTEXTS)
+
 # Get static embeddings from the embedding layer
 static_embeddings = {word: (get_embedding_layer_embedding(model, tokenizer, word).unsqueeze(0)).squeeze() for word in words}
 
@@ -68,35 +60,35 @@ for word in words:
     dynamic_embeddings[word] = []
     for context in contexts[word]:
         try:
-            embedding = (get_model_output_embedding(word, context).unsqueeze(0)).squeeze()
+            embedding = (get_model_output_embedding(model, word, context).unsqueeze(0)).squeeze()
             dynamic_embeddings[word].append(embedding)
         except ValueError as e:
             print(e)
-            dynamic_embeddings[word].append(torch.zeros(model.config.hidden_size))
+            dynamic_embeddings[word].append(torch.zeros(model.config.n_embd))
 
 # Prepare dynamic embeddings for the first and second context
 dynamic_embeddings_1st_context = {word: dynamic_embeddings[word][0] for word in words}
 dynamic_embeddings_2nd_context = {word: dynamic_embeddings[word][1] for word in words}
 
-line_plot_word_embedding(words, dynamic_embeddings_1st_context, "BERT Dynamic (Context 1)", plot_ab=True)
-line_plot_word_embedding(words, dynamic_embeddings_2nd_context, "BERT Dynamic (Context 2)", plot_ab=True)
+line_plot_word_embedding(words, dynamic_embeddings_1st_context, "GPT2 Dynamic (Context 1)", plot_ab=True)
+line_plot_word_embedding(words, dynamic_embeddings_2nd_context, "GPT2 Dynamic (Context 2)", plot_ab=True)
 
 # Create subplots for cosine similarity
-fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+fig, axs = plt.subplots(1, 3, figsize=(14, 5))
 visualize_cosine_similarity(axs[0], words, static_embeddings, "Static")
 visualize_cosine_similarity(axs[1], words, dynamic_embeddings_1st_context, "Dynamic (Context 1)")
 visualize_cosine_similarity(axs[2], words, dynamic_embeddings_2nd_context, "Dynamic (Context 2)")
-plt.suptitle("BERT Word Embedding Similarity", fontsize=10)
+plt.suptitle("GPT2 Word Embedding Similarity", fontsize=10)
 plt.tight_layout()
-plt.savefig("bert_word_embedding_simi.png")
+plt.savefig("gpt2_word_embedding_simi.png")
 plt.show()
 
 # Create subplots for distances
-fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+fig, axs = plt.subplots(1, 3, figsize=(14, 5))
 visualize_distances(axs[0], words, static_embeddings, "Static")
 visualize_distances(axs[1], words, dynamic_embeddings_1st_context, "Dynamic (Context 1)")
 visualize_distances(axs[2], words, dynamic_embeddings_2nd_context, "Dynamic (Context 2)")
-plt.suptitle("BERT Word Embedding Distance", fontsize=10)
+plt.suptitle("GPT2 Word Embedding Distance", fontsize=10)
 plt.tight_layout()
-plt.savefig("bert_word_embedding_diff.png")
+plt.savefig("gpt2_word_embedding_diff.png")
 plt.show()
