@@ -94,7 +94,7 @@ def plot_attention_rank(attention, model_name, fig_name=None):
 
     for layer_idx, layer_attention in enumerate(attention):
         for head_idx, head_attention in enumerate(layer_attention[0]):
-            m = head_attention.detach().numpy()
+            m = head_attention.cpu().detach().numpy()
             rank = np.linalg.matrix_rank(m)
             layer_indices.append(layer_idx + 1)
             head_indices.append(f"L{layer_idx + 1}H{head_idx + 1}")

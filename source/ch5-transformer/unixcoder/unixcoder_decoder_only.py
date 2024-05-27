@@ -32,6 +32,7 @@ from hiq.vis import print_model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = UniXcoder("microsoft/unixcoder-base")
 model.to(device)
+print_model(model)
 
 context = """
 def f(data,file_path):

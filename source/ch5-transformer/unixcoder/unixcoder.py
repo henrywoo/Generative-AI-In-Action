@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT license.
-
 import torch
 import torch.nn as nn
 from transformers import RobertaTokenizer, RobertaModel, RobertaConfig
@@ -23,7 +20,7 @@ class UniXcoder(nn.Module):
 
         self.register_buffer("bias", torch.tril(torch.ones((1024, 1024), dtype=torch.uint8)).view(1, 1024, 1024))
         self.lm_head = nn.Linear(self.config.hidden_size, self.config.vocab_size, bias=False)
-        self.lm_head.weight = self.model.embeddings.word_embeddings.weight
+        self.lm_head.weight = self.model.embeddings.word_embeddings.weight # weight tying
         self.lsm = nn.LogSoftmax(dim=-1)
 
         self.tokenizer.add_tokens(["<mask0>"], special_tokens=True)
@@ -79,11 +76,13 @@ class UniXcoder(nn.Module):
         return predictions
 
     def forward(self, source_ids):
-        """ Obtain token embeddings and sentence embeddings """
+        """ Obtain token embeddings, sentence embeddings, and attention maps """
         mask = source_ids.ne(self.config.pad_token_id)
-        token_embeddings = self.model(source_ids, attention_mask=mask.unsqueeze(1) * mask.unsqueeze(2))[0]
+        outputs = self.model(source_ids, attention_mask=mask.unsqueeze(1) * mask.unsqueeze(2), output_attentions=True)
+        token_embeddings = outputs.last_hidden_state
         sentence_embeddings = (token_embeddings * mask.unsqueeze(-1)).sum(1) / mask.sum(-1).unsqueeze(-1)
-        return token_embeddings, sentence_embeddings
+        attentions = outputs.attentions
+        return token_embeddings, sentence_embeddings, attentions
 
     def generate(self, source_ids, decoder_only=True, eos_id=None, beam_size=5, max_length=64):
         """ Generate sequence given context (source_ids) """
@@ -124,8 +123,7 @@ class UniXcoder(nn.Module):
                     input_ids = beam.getCurrentState().clone()
                 else:
                     length = context_ids.size(-1) + input_ids.size(-1)
-                    out = self.model(input_ids, attention_mask=self.bias[:, context_ids.size(-1):length, :length],
-                                     past_key_values=context).last_hidden_state
+                    out = self.model(input_ids, attention_mask=self.bias[:, context_ids.size(-1):length, :length], past_key_values=context).last_hidden_state
                     hidden_states = out[:, -1, :]
                     out = self.lsm(self.lm_head(hidden_states)).data
                     beam.advance(out)
