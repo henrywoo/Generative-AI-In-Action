@@ -83,7 +83,7 @@ def plot_attention_map(tokenizer, attention, inputs, model_name, figsize=8):
     plt.show()
 
 
-def check_attention_rank(attention, model_name, fig_name=None):
+def plot_attention_rank(attention, model_name, fig_name=None):
     if len(attention) > 12:
         plot_average_rank_per_layer(attention, model_name, fig_name)
         return

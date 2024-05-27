@@ -1,5 +1,5 @@
 from transformers import BertTokenizer, BertModel
-from util import plot_attention_map, check_attention_rank
+from util import plot_attention_map, plot_attention_rank
 from hiq import read_file
 
 # Initialize the tokenizer and model
@@ -13,5 +13,5 @@ inputs = tokenizer(sentence, return_tensors='pt')
 # Get the attention weights
 outputs = model(**inputs)
 attention = outputs.attentions
-check_attention_rank(attention, "bert-base-uncased", "bert-base-uncased_attn_map_rank.png")
+plot_attention_rank(attention, "bert-base-uncased", "bert-base-uncased_attn_map_rank.png")
 #plot_attention_map(tokenizer, attention, inputs, "BERT_LongSeq")
