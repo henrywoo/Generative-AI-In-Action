@@ -1,0 +1,1 @@
+Token embedding, contextualized embedding, positional embedding

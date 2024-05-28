@@ -38,8 +38,8 @@ context = """
 def f(data,file_path):
     # write json data into file_path in python language
 """
-tokens_ids = model.tokenize([context],max_length=512,mode="<decoder-only>")
+tokens_ids = model.tokenize([context], max_length=512, mode="<decoder-only>")
 source_ids = torch.tensor(tokens_ids).to(device)
 prediction_ids = model.generate(source_ids, decoder_only=True, beam_size=3, max_length=128)
 predictions = model.decode(prediction_ids)
-print(context+predictions[0][0])
+print(context + predictions[0][0])

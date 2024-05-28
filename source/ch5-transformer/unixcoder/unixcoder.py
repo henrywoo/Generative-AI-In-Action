@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from transformers import RobertaTokenizer, RobertaModel, RobertaConfig
-
+from sklearn.neighbors import NearestNeighbors
 
 class UniXcoder(nn.Module):
     def __init__(self, model_name):
@@ -86,19 +86,15 @@ class UniXcoder(nn.Module):
 
     def generate(self, source_ids, decoder_only=True, eos_id=None, beam_size=5, max_length=64):
         """ Generate sequence given context (source_ids) """
-
         # Set encoder mask attention matrix: bidirectional for <encoder-decoder>, unirectional for <decoder-only>
         if decoder_only:
             mask = self.bias[:, :source_ids.size(-1), :source_ids.size(-1)]
         else:
             mask = source_ids.ne(self.config.pad_token_id)
             mask = mask.unsqueeze(1) * mask.unsqueeze(2)
-
         if eos_id is None:
             eos_id = self.config.eos_token_id
-
         device = source_ids.device
-
         # Decoding using beam search
         preds = []
         zero = torch.LongTensor(1).fill_(0).to(device)
@@ -112,10 +108,10 @@ class UniXcoder(nn.Module):
             input_ids = beam.getCurrentState().clone()
             context_ids = source_ids[i:i + 1, :source_len[i]].repeat(beam_size, 1)
             out = encoder_output.last_hidden_state[i:i + 1, :source_len[i]].repeat(beam_size, 1, 1)
-            for _ in range(max_length):
+            for step in range(max_length):
                 if beam.done():
                     break
-                if _ == 0:
+                if step == 0:
                     hidden_states = out[:, -1, :]
                     out = self.lsm(self.lm_head(hidden_states)).data
                     beam.advance(out)
@@ -123,7 +119,8 @@ class UniXcoder(nn.Module):
                     input_ids = beam.getCurrentState().clone()
                 else:
                     length = context_ids.size(-1) + input_ids.size(-1)
-                    out = self.model(input_ids, attention_mask=self.bias[:, context_ids.size(-1):length, :length], past_key_values=context).last_hidden_state
+                    am = self.bias[:, context_ids.size(-1):length, :length]
+                    out = self.model(input_ids, attention_mask=am, past_key_values=context).last_hidden_state
                     hidden_states = out[:, -1, :]
                     out = self.lsm(self.lm_head(hidden_states)).data
                     beam.advance(out)
@@ -133,9 +130,7 @@ class UniXcoder(nn.Module):
             pred = beam.buildTargetTokens(hyp)[:beam_size]
             pred = [torch.cat([x.view(-1) for x in p] + [zero] * (max_length - len(p))).view(1, -1) for p in pred]
             preds.append(torch.cat(pred, 0).unsqueeze(0))
-
         preds = torch.cat(preds, 0)
-
         return preds
 
 
