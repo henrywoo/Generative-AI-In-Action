@@ -47,6 +47,10 @@ While the table covers the basics, deep neural networks offer a world of custom 
 * **Contrastive Loss:** Used in tasks like image similarity, focusing on pulling similar examples closer and pushing dissimilar ones apart.
 * **GAN Loss:** Specific to Generative Adversarial Networks (GANs), where two networks compete to generate realistic data and distinguish real from fake.
 
+## Matrix
+
+![](eigen.webp)
+
 ## Cosine Similarity
 
 Cosine similarity is a metric used to measure how similar two vectors are irrespective of their magnitude. It's commonly used in various fields, particularly in the realm of information retrieval, text analysis, and machine learning, for comparing documents, images, or other data represented as vectors.
@@ -329,7 +333,14 @@ The negative sign ensures that the result is always positive or zero.
 
 ### Entropy
 
-We can also quantify how much information there is in a **random variable**. Entropy can be calculated for a random variable X with k in K discrete states as follows:
+Entropy is often explained in two ways:
+
+1. **A measure of uncertainty:** Entropy quantifies our lack of knowledge or "ignorance" about a system or event.
+2. **A measure of information:** Entropy represents the amount of information we gain when transitioning from a state of ignorance to complete understanding.
+
+While these interpretations might seem distinct, they are fundamentally connected. The more uncertain we are about something, the more information we gain when we learn about it. Therefore, entropy, as a measure of uncertainty, can also be seen as a measure of potential information gain. More precisely, it represents the maximum amount of information we can obtain about the system. To quantify uncertainty, we use probability. The probability of a system being in a certain state (or the probability density in continuous cases) indicates the degree of uncertainty. If the probability isn't 1, there's uncertainty involved. Hence, entropy is inherently linked to probability distributions.
+
+We can quantify how much information there is in a **random variable**. Entropy can be calculated for a random variable X with k in K discrete states as follows:
 ```
 H(X) = -sum(p(k) * log(p(k)) for each k in K)
 ```

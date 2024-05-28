@@ -1,6 +1,6 @@
 # Transformer
 
-## Why Softmax in Scaled Dot Product Formula in Transformer?
+## Why use `Softmax` in Scaled Dot Product Formula in Transformer?
 
 When you set `output_attentions=True` in the Hugging Face `transformers` library for BERT, the output includes attention matrices. These matrices are the result of applying the softmax function to the scaled dot-product of the query (Q) and key (K) matrices:
 
@@ -70,6 +70,10 @@ Therefore, the challenge lies in finding alternative attention mechanisms that c
 - Why need softmax: https://kexue.fm/archives/7546
 - Linear Transformer is not what you want: https://kexue.fm/archives/8610
 - VQ一下Key，Transformer的复杂度就变成线性了 https://kexue.fm/archives/9844
+
+## Why scale factor is `sqrt(d_k)` in Scaled Dot Product? Google's T5 doesn't use scale factor, why the training still converges?
+
+
 
 https://docs.google.com/presentation/d/1OwRtQscMeIl3Zex8iJEAUeHM6QCM3sMxlg4Iy15HBBI/edit#slide=id.p
 
