@@ -101,6 +101,7 @@ class UniXcoder(nn.Module):
         source_len = list(source_ids.ne(1).sum(-1).cpu().numpy())
         length = source_ids.size(-1)
         encoder_output = self.model(source_ids, attention_mask=mask)
+        print(encoder_output.last_hidden_state.shape)
         for i in range(source_ids.shape[0]):
             context = [[x[i:i + 1, :, :source_len[i]].repeat(beam_size, 1, 1, 1) for x in y]
                        for y in encoder_output.past_key_values]
@@ -114,6 +115,8 @@ class UniXcoder(nn.Module):
                 if step == 0:
                     hidden_states = out[:, -1, :]
                     out = self.lsm(self.lm_head(hidden_states)).data
+                    # Print the text contents of `out` for debugging
+                    print("Step:", step, "Output:", self.tokenizer.decode(out.argmax(dim=-1).tolist()))
                     beam.advance(out)
                     input_ids.data.copy_(input_ids.data.index_select(0, beam.getCurrentOrigin()))
                     input_ids = beam.getCurrentState().clone()
@@ -121,8 +124,13 @@ class UniXcoder(nn.Module):
                     length = context_ids.size(-1) + input_ids.size(-1)
                     am = self.bias[:, context_ids.size(-1):length, :length]
                     out = self.model(input_ids, attention_mask=am, past_key_values=context).last_hidden_state
+                    print(out.shape)
                     hidden_states = out[:, -1, :]
                     out = self.lsm(self.lm_head(hidden_states)).data
+                    # Print the text contents of `out` for debugging
+                    out_list_ = out.argmax(dim=-1).tolist()
+                    tmp_ = self.tokenizer.decode(out_list_)
+                    print("Step:", step, "Output:", tmp_)
                     beam.advance(out)
                     input_ids.data.copy_(input_ids.data.index_select(0, beam.getCurrentOrigin()))
                     input_ids = torch.cat((input_ids, beam.getCurrentState().clone()), -1)
