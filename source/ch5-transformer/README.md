@@ -94,6 +94,8 @@ The main focus is on:
 
 ## Explain how Rotary Position Embedding (RoPE) in any even-dimensional space can be represented as a concatenation of 2D cases
 
+![](rope2.gif)
+
 ### Concept Explanation
 
 Rotary Position Embedding (RoPE) applies a rotation to pairs of dimensions in a high-dimensional space to encode positional information. This rotation is performed using sine and cosine functions. The key idea is that any even-dimensional space can be decomposed into multiple 2D subspaces, and RoPE can be applied to each of these subspaces independently.
@@ -146,6 +148,8 @@ By decomposing the high-dimensional space into multiple orthogonal 2D subspaces 
 ## 🐒 What is position attenuation in ROPE?
 
 Position attenuation in ROPE means positional sensitivity gracefully diminishes as the distance between tokens increases.
+
+![](embedding/pos_attenuation.png)
 
 **The Essence of Attenuation:**
 
