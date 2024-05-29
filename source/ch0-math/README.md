@@ -77,7 +77,7 @@ where:
 * **||B||** denotes the magnitude (Euclidean norm) of vector **B**.
 
 ### Ignoring the Magnitude in Cosine Similarity
-The cosine similarity inherently focuses on the direction rather than the magnitude of the vectors. When considering the similarity, the scale of the vectors (i.e., their magnitudes) doesn't affect the outcome because it is normalized by the magnitudes of the vectors in the denominator of the formula.
+The cosine similarity **inherently focuses on the direction** rather than the magnitude of the vectors. When considering the similarity, the scale of the vectors (i.e., their magnitudes) doesn't affect the outcome because it is normalized by the magnitudes of the vectors in the denominator of the formula.
 
 #### Cases Where Magnitude Can Be Ignored
 - **Text Similarity**: In text analysis, such as document comparison or clustering, cosine similarity is particularly useful because it measures similarity in terms of text content orientation regardless of document length. For example, it will consider two documents to be similar if they contain many of the same terms, even if one document is much longer than the other.

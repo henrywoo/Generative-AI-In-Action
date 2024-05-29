@@ -73,6 +73,131 @@ Therefore, the challenge lies in finding alternative attention mechanisms that c
 
 ## Why scale factor is `sqrt(d_k)` in Scaled Dot Product? Google's T5 doesn't use scale factor, why the training still converges?
 
+## In scaled dot product, why we don't divide Q\*K_T with ||Q||\*||K||?
+
+In scaled dot-product attention, the goal is to compute a similarity score between pairs of query (Q) and key (K) vectors. This is done by taking their dot product, which gives a measure of how aligned the two vectors are.
+
+Dividing the dot product by the square root of the dimensionality of the vectors (√d_k) is done to stabilize the gradients during training. Here's why:
+
+* **Variance of Dot Products:** If the elements of Q and K are independent random variables with zero mean and unit variance, then their dot product Q*K_T will have a variance of d_k. As the dimensionality increases, the variance of the dot product also increases.
+* **Impact on Softmax:** The attention mechanism often uses a softmax function to normalize the similarity scores. Large dot products can push the softmax into regions where its gradients are very small, leading to slow learning.
+* **Scaling to Unit Variance:** Dividing by √d_k scales the dot product to have approximately unit variance, which helps to prevent the softmax from saturating and improves the training stability.
+
+**Why not divide by ||Q||*||K||?**
+
+Dividing by the product of the magnitudes of Q and K (||Q||*||K||) would normalize the dot product to be the cosine similarity between the two vectors. While cosine similarity is a valid measure of similarity, it's not the primary goal of scaled dot-product attention.
+
+The main focus is on:
+
+1. **Preserving Relative Similarities:** Scaling by √d_k maintains the relative order of the similarity scores, ensuring that the most similar pairs remain the most similar even after scaling.
+2. **Gradient Stability:** The scaling helps to prevent the softmax from saturating, leading to more stable gradients during training.
+
+## Explain how Rotary Position Embedding (RoPE) in any even-dimensional space can be represented as a concatenation of 2D cases
+
+### Concept Explanation
+
+Rotary Position Embedding (RoPE) applies a rotation to pairs of dimensions in a high-dimensional space to encode positional information. This rotation is performed using sine and cosine functions. The key idea is that any even-dimensional space can be decomposed into multiple 2D subspaces, and RoPE can be applied to each of these subspaces independently.
+
+### Detailed Explanation
+
+1. **Decomposing High-Dimensional Space**:
+   - Suppose we have a high-dimensional space with dimension \(d\) (where \(d\) is even). We can split this space into \(d/2\) pairs of dimensions.
+   - For example, if \(d = 6\), we can decompose it into three 2D subspaces: \((x_0, x_1)\), \((x_2, x_3)\), and \((x_4, x_5)\).
+
+2. **Applying 2D Rotation**:
+   - In each 2D subspace, we apply a 2D rotation matrix. The rotation matrix for an angle \(theta\) is given by:
+   - The rotation matrix looks like:
+
+    ```
+    R(theta) = [cos(theta)  -sin(theta)]
+               [sin(theta)   cos(theta)]
+    ```
+    where `theta` is the rotation angle.
+   - This rotation matrix is orthogonal, meaning it preserves the length and orthogonality of the vectors.
+
+3. **Independent Rotation in Each Subspace**:
+   - We apply the 2D rotation matrix independently to each pair of dimensions. This means that each pair is rotated according to the angle defined for its specific position.
+   - For instance, if the angles for the three 2D subspaces are \(theta_1\), \(theta_2\), and \(theta_3\), we apply these angles to the corresponding pairs.
+
+4. **Concatenating the Results**:
+   - After rotating each 2D subspace independently, we concatenate the results to obtain the final rotated high-dimensional vector.
+   - This concatenation essentially combines the rotated vectors from each 2D subspace back into the original high-dimensional space.
+
+### Why This Works
+
+- **Linear Superposition**: The dot product (inner product) is a linear operation, meaning that the dot product of a sum of vectors is equal to the sum of the dot products. This property allows us to decompose the high-dimensional rotation into independent 2D rotations.
+- **Orthogonality**: The 2D rotation matrices are orthogonal, preserving the orthogonality and length of the vectors, which is crucial for maintaining the geometric properties of the embeddings.
+
+### Visual Example
+
+Imagine a 6-dimensional vector decomposed into three 2D vectors:
+- Original Vectors: \([x_0, x_1]\), \([x_2, x_3]\), \([x_4, x_5]\)
+- Rotated Vectors: Each 2D pair is rotated independently.
+![](embedding/pos_high_dimension.png)
+
+### Conclusion
+
+By decomposing the high-dimensional space into multiple orthogonal 2D subspaces and applying 2D rotations to each subspace independently, we can effectively implement Rotary Position Embedding (RoPE) in any even-dimensional space. This approach leverages the linearity of the dot product and the properties of **orthogonal transformations** to encode positional information efficiently.
+
+- 一文让你通俗易懂的理解正交变换和正交矩阵 https://blog.csdn.net/MoreAction_/article/details/105442932
+- 现在主流位置编码都用的是旋转位置编码了吗？ https://www.zhihu.com/question/606813543
+- 直观理解 rotary embedding https://zhuanlan.zhihu.com/p/693736727
+
+## 🐒 What is position attenuation in ROPE?
+
+Position attenuation in ROPE means positional sensitivity gracefully diminishes as the distance between tokens increases.
+
+**The Essence of Attenuation:**
+
+In many sequence modeling tasks, it's desirable for the model to **pay more attention to nearby tokens and less attention to distant ones**. This concept aligns with the intuition that words closer together in a sentence often have stronger semantic relationships. RoPE inherently incorporates this behavior through its rotational mechanism.
+
+**How RoPE Achieves Attenuation:**
+
+1. **Angular Frequency:** Each dimension within a RoPE embedding is associated with a specific angular frequency.  Lower frequencies capture broader, long-range patterns, while higher frequencies focus on finer-grained, local details.
+
+2. **Rotation Angles:** The rotation angle applied to each dimension is proportional to the token's position and its associated frequency.  As the position increases, so does the rotation angle, but at varying rates depending on the frequency.
+
+3. **Dot Product Interaction:** The attention mechanism in Transformers relies on the dot product between query and key vectors.  When RoPE is applied, the dot product interaction between vectors from different positions is modulated by the cosine of the difference in their rotation angles.
+
+4. **Attenuation Effect:** For nearby tokens, the difference in rotation angles is small, and the cosine term is close to 1, resulting in strong attention. However, as the distance between tokens increases, the difference in angles grows, causing the cosine term to decrease towards 0, thus attenuating the attention.
+
+**Visualizing Attenuation:**
+
+Let's illustrate this with a simple code example using Python and matplotlib:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+def rope_attenuation(d_model, max_position):
+    position_ids = np.arange(max_position)
+    freqs = 1.0 / (10000 ** (2 * np.arange(d_model // 2) / d_model))  # Angular frequencies
+    angles = position_ids[:, np.newaxis] * freqs[np.newaxis, :]
+    cos_angles = np.cos(angles - angles.T)  # Cosine of angle differences
+    return cos_angles
+
+# Example for d_model = 4 (2D RoPE), max_position = 10
+d_model = 4
+max_position = 10
+attenuation_matrix = rope_attenuation(d_model, max_position)
+
+# Plot the attenuation matrix
+plt.imshow(attenuation_matrix, cmap='viridis')
+plt.colorbar(label='Attenuation')
+plt.xlabel('Key Position')
+plt.ylabel('Query Position')
+plt.title('RoPE Attenuation Matrix')
+plt.show()
+```
+
+This code generates an attenuation matrix, where each element represents the cosine of the angle difference between two positions. The brighter colors indicate stronger attention, while darker colors represent weaker attention.  You'll notice that the attention gradually fades as you move away from the diagonal, which corresponds to the relative distance between tokens increasing.
+
+**Key Takeaways:**
+
+* RoPE's rotation mechanism naturally leads to an attenuation of positional sensitivity over longer distances.
+* This behavior can be beneficial for modeling tasks where local context is more important than distant relationships.
+* The degree of attenuation can be controlled by adjusting the base frequencies associated with each dimension.
+
 
 
 https://docs.google.com/presentation/d/1OwRtQscMeIl3Zex8iJEAUeHM6QCM3sMxlg4Iy15HBBI/edit#slide=id.p
