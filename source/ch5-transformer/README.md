@@ -173,25 +173,32 @@ Let's illustrate this with a simple code example using Python and matplotlib:
 import numpy as np
 import matplotlib.pyplot as plt
 
-def rope_attenuation(d_model, max_position):
-    position_ids = np.arange(max_position)
-    freqs = 1.0 / (10000 ** (2 * np.arange(d_model // 2) / d_model))  # Angular frequencies
-    angles = position_ids[:, np.newaxis] * freqs[np.newaxis, :]
-    cos_angles = np.cos(angles - angles.T)  # Cosine of angle differences
-    return cos_angles
+plt.style.use('ggplot')
 
-# Example for d_model = 4 (2D RoPE), max_position = 10
-d_model = 4
-max_position = 10
-attenuation_matrix = rope_attenuation(d_model, max_position)
+d = 128  # Dimension
+theta = lambda t: 10000 ** (-2 * t / d)
 
-# Plot the attenuation matrix
-plt.imshow(attenuation_matrix, cmap='viridis')
-plt.colorbar(label='Attenuation')
-plt.xlabel('Key Position')
-plt.ylabel('Query Position')
-plt.title('RoPE Attenuation Matrix')
+def f(m):
+    total = 0
+    for j in range(d // 2):
+        inner_sum = np.sum(np.exp(1j * m * theta(np.arange(j + 1))))
+        total += np.linalg.norm(inner_sum)
+    return total / (d / 2)
+
+# Range of m values to evaluate
+m_values = np.arange(0, 1024)  # Up to 256
+
+# Calculate f(m) for each m
+f_values = np.array([f(m) for m in m_values])
+
+# Plotting
+plt.plot(m_values, f_values)
+plt.xlabel('Relative Distance')
+plt.ylabel('Relative Magnitude')
+plt.title('RoPE Positional Encoding Attenuation')
+plt.savefig('pos_attenuation.png')
 plt.show()
+
 ```
 
 This code generates an attenuation matrix, where each element represents the cosine of the angle difference between two positions. The brighter colors indicate stronger attention, while darker colors represent weaker attention.  You'll notice that the attention gradually fades as you move away from the diagonal, which corresponds to the relative distance between tokens increasing.
