@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from util import plot_attention_map, plot_attention_rank
+from util import plot_attention_map, plot_attention_rank, plot_attention_map_by_LH
 from hiq.vis import print_model
 from hiq import read_file
 
@@ -52,4 +52,7 @@ outputs = model(input_ids=inputs['input_ids'],
                 output_hidden_states=False,
                 use_cache=True)
 attention = outputs.attentions
-plot_attention_rank(attention, "CodeQWen1.5-7B-Chat", "CodeQWen1.5-7B-Chat_attn_map_rank.png")
+#plot_attention_rank(attention, "CodeQWen1.5-7B-Chat", "CodeQWen1.5-7B-Chat_attn_map_rank.png")
+
+plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 1,"CodeQWen1.5-7B-Chat", figsize=32)
+plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 12,"CodeQWen1.5-7B-Chat", figsize=32)
