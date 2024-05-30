@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from util import plot_attention_map
+from hiq.vis import print_model
 
 device = "cuda" # the device to load the model onto
 
@@ -7,6 +8,7 @@ device = "cuda" # the device to load the model onto
 tokenizer = AutoTokenizer.from_pretrained("Qwen/CodeQwen1.5-7B-Chat")
 model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B-Chat",
                                              device_map="auto").eval()
+print_model(model)
 
 # Tokenize the input sentence
 sentence = "fruit flies like an apple"

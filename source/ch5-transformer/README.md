@@ -92,6 +92,12 @@ The main focus is on:
 1. **Preserving Relative Similarities:** Scaling by √d_k maintains the relative order of the similarity scores, ensuring that the most similar pairs remain the most similar even after scaling.
 2. **Gradient Stability:** The scaling helps to prevent the softmax from saturating, leading to more stable gradients during training.
 
+## Implement ROPE in PyTorch
+
+![](img/rope_formula_0.png)
+
+![](img/rope_formula_2.png)
+
 ## Explain how Rotary Position Embedding (RoPE) in any even-dimensional space can be represented as a concatenation of 2D cases
 
 ![](rope2.gif)
@@ -147,6 +153,7 @@ By decomposing the high-dimensional space into multiple orthogonal 2D subspaces 
 
 ## 🐒 What is position attenuation in ROPE?
 
+![](rope.gif)
 Position attenuation in ROPE means positional sensitivity gracefully diminishes as the distance between tokens increases.
 
 ![](embedding/pos_attenuation.png)

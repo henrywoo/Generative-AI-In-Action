@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 class LlamaRotaryEmbedding(nn.Module):
-    def __init__(self, dim, max_position_embeddings=2048, base=10): # 10000
+    def __init__(self, dim, max_position_embeddings=2048, base=10000): # 10000
         super().__init__()
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
@@ -26,22 +26,25 @@ class LlamaRotaryEmbedding(nn.Module):
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
-    x1 = x[..., : x.shape[-1] // 2]
-    x2 = x[..., x.shape[-1] // 2:]
+    m = x.shape[-1] // 2
+    x1 = x[..., : m]
+    x2 = x[..., m:]
     return torch.cat((-x2, x1), dim=-1)
 
 
 def apply_rotary_pos_emb(q, k, cos, sin):
     """Applies Rotary Position Embedding to the query and key tensors."""
-    q_embed = (q * cos) + (rotate_half(q) * sin)
-    k_embed = (k * cos) + (rotate_half(k) * sin)
+    q_ = rotate_half(q)
+    q_embed = (q * cos) + (q_ * sin)
+    k_ = rotate_half(k)
+    k_embed = (k * cos) + (k_ * sin)
     return q_embed, k_embed
 
 
 # Generate sample input data
-batch_size = 2
-seq_len = 100
-head_dim = 6  # Ensure head_dim is even
+batch_size = 1
+seq_len = 6
+head_dim = 4  # Ensure head_dim is even
 
 q = torch.randn(batch_size, seq_len, head_dim)
 k = torch.randn(batch_size, seq_len, head_dim)
