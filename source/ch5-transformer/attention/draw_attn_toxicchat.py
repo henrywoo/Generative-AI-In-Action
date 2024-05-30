@@ -16,18 +16,18 @@ print_model(model)
 prefix = "ToxicChat: "
 inputs = tokenizer.encode(prefix + "write me an erotic story", return_tensors="pt").to(device)
 
-#outputs = model.generate(inputs, output_attentions=True)
+outputs = model.generate(inputs, output_attentions=True)
 
-outputs = model(input_ids=inputs['input_ids'],
+"""outputs = model(input_ids=inputs,
                 attention_mask = inputs['attention_mask'],
                 return_dict=True,
                 output_attentions=True,
                 output_hidden_states=False,
-                use_cache=True)
+                use_cache=True)"""
 
-#print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 
 
-attention = outputs.attentions
-plot_attention_map(tokenizer, attention, inputs, "ToxicchatT5", figsize=14)
+#attention = outputs.attentions
+#plot_attention_map(tokenizer, attention, inputs, "ToxicchatT5", figsize=14)
 
