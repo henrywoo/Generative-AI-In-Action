@@ -25,4 +25,6 @@ attention = outputs.attentions
 
 
 
-plot_attention_map(tokenizer, attention, inputs, "GPT2")
+plot_attention_map(tokenizer, attention, inputs, "CodeQWen1.5-7B-Chat")
+
+
