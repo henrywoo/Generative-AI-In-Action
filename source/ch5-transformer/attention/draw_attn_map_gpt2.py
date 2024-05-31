@@ -1,5 +1,5 @@
 from transformers import GPT2Tokenizer, GPT2Model
-from util import plot_attention_map, plot_attention_rank, plot_attention_map_by_LH, plot_sparsity_of_attention_maps
+from util import plot_attention_map_FLFH, plot_attention_rank, plot_attention_map_by_LH, plot_sparsity_of_attention_maps
 from hiq import read_file
 
 # Initialize the tokenizer and model
@@ -13,7 +13,7 @@ inputs = tokenizer(sentence, return_tensors='pt')
 # Get the attention weights
 outputs = model(**inputs)
 attention = outputs.attentions
-plot_attention_map(tokenizer, attention, inputs, "GPT2")
+plot_attention_map_FLFH(tokenizer, attention, inputs, "GPT2")
 
 #####################################################################################
 sentence = read_file("500.txt", by_line=False)

@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import seaborn as sns
 
 
 def plot_attention_map_by_LH(tokenizer, attention, inputs, layer_idx, head_idx, model_name, figsize=8):
@@ -31,7 +33,7 @@ def plot_attention_map_by_LH(tokenizer, attention, inputs, layer_idx, head_idx, 
     plt.show()
 
 
-def plot_attention_map(tokenizer, attention, inputs, model_name, figsize=8):
+def plot_attention_map_FLFH(tokenizer, attention, inputs, model_name, figsize=8):
     # Get the attention weights for the first layer, first head
     attention_weights_first_layer = attention[0][0][0].detach().numpy()
 
@@ -79,9 +81,74 @@ def plot_attention_map(tokenizer, attention, inputs, model_name, figsize=8):
     plt.figtext(0.5, 0, f"Model: {model_name.upper()}", ha="center", fontsize=8)
 
     plt.tight_layout()
+    plt.subplots_adjust(top=0.85)
     plt.savefig(f'attn_map_{model_name.lower()}.png')
     plt.show()
 
+
+def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figsize=8, fill_cell=True):
+    # Get the number of layers and heads
+    num_layers = len(attention)
+    num_heads = attention[0][0].shape[0]
+
+    # Get the tokens
+    tokens = tokenizer.convert_ids_to_tokens(inputs['input_ids'][0])
+    tokens = [i[1:] if 'Ġ' in i else i for i in tokens]
+
+    # Define the layers to be plotted (first and last)
+    layers_to_plot = [0, num_layers - 1]
+
+    for layer in layers_to_plot:
+        for head in range(0, num_heads, 2):
+            if head + 1 >= num_heads:
+                break
+            # Get the attention weights for the current layer and heads
+            attention_weights_head_N = attention[layer][0][head].detach().numpy()
+            attention_weights_head_N_plus_1 = attention[layer][0][head + 1].detach().numpy()
+
+            # Create the plot
+            fig, axs = plt.subplots(1, 2, figsize=(figsize, figsize // 2))
+
+            # Plot the attention weights for head N
+            cax1 = axs[0].matshow(attention_weights_head_N, cmap='copper')  # viridis
+            axs[0].set_title(f'Layer {layer + 1}, Head {head + 1}', fontsize=8)
+
+            # Set up axes for the attention map
+            axs[0].set_xticks(range(len(tokens)))
+            axs[0].set_yticks(range(len(tokens)))
+            axs[0].set_xticklabels(tokens, rotation=90, fontsize=8)
+            axs[0].set_yticklabels(tokens, fontsize=8)
+
+            # Annotate each cell with the numerical value for the attention map
+            for i in range(len(tokens)):
+                for j in range(len(tokens)):
+                    axs[0].text(j, i, f'{attention_weights_head_N[i, j]:.2f}', ha='center', va='center', color='white', fontsize=6)
+
+            # Plot the attention weights for head N+1
+            cax2 = axs[1].matshow(attention_weights_head_N_plus_1, cmap='copper')
+            axs[1].set_title(f'Layer {layer + 1}, Head {head + 2}', fontsize=8)
+
+            # Set up axes for the attention map
+            axs[1].set_xticks(range(len(tokens)))
+            axs[1].set_yticks(range(len(tokens)))
+            axs[1].set_xticklabels(tokens, rotation=90, fontsize=8)
+            axs[1].set_yticklabels(tokens, fontsize=8)
+
+            # Annotate each cell with the numerical value for the attention map
+            if fill_cell:
+                for i in range(len(tokens)):
+                    for j in range(len(tokens)):
+                        axs[1].text(j, i, f'{attention_weights_head_N_plus_1[i, j]:.2f}', ha='center', va='center', color='white', fontsize=5)
+
+            # Save the plot
+            plt.tight_layout()
+            plt.subplots_adjust(top=0.95)
+            if not os.path.exists(f'{model_name}/layer_{layer + 1}/'):
+                os.makedirs(f'{model_name}/layer_{layer + 1}/')
+            plt.savefig(f'{model_name}/layer_{layer + 1}/head_{head + 1}_{head + 2}.png')
+            plt.close(fig)
+
+    print(f"Attention maps saved in folder: {model_name}")
 
 def plot_attention_rank(attention, model_name, fig_name=None):
     if len(attention) > 12:
@@ -120,6 +187,7 @@ def plot_attention_rank(attention, model_name, fig_name=None):
 
         plt.title(f'{model_name.upper()} Rank and Attention Map Size per Head', fontsize=10)
         plt.tight_layout()
+        plt.subplots_adjust(top=0.85)
         if fig_name is not None:
             plt.savefig(fig_name)
         plt.show()
@@ -148,6 +216,7 @@ def plot_average_rank_per_layer(attention, model_name, fig_name=None):
 
         plt.title(f'{model_name.upper()} Average Rank per Layer', fontsize=10)
         plt.tight_layout()
+        plt.subplots_adjust(top=0.85)
         if fig_name is not None:
             plt.savefig(fig_name)
         plt.show()
@@ -188,6 +257,7 @@ def plot_sparsity_of_attention_maps(attention):
 
         plt.title('Sparsity of Attention Maps per Head', fontsize=10)
         plt.tight_layout()
+        plt.subplots_adjust(top=0.85)
         plt.show()
 
 

@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from util import plot_attention_map, plot_attention_rank, plot_attention_map_by_LH
+from util import plot_attention_map_FLFH, plot_attention_rank, plot_attention_map_by_LH, plot_all_heads_attention_maps
 from hiq.vis import print_model
 from hiq import read_file
 
@@ -32,7 +32,7 @@ outputs = model(input_ids=inputs['input_ids'],
                 use_cache=True)
 attention = outputs.attentions
 
-plot_attention_map(tokenizer, attention, inputs, "CodeQWen1.5-7B-Chat", figsize=20)
+plot_attention_map_FLFH(tokenizer, attention, inputs, "CodeQWen1.5-7B-Chat", figsize=20)
 
 # Decode the generated text
 print(f"outputs.logits.shape: {outputs.logits.shape}")
@@ -41,7 +41,7 @@ print("*"*80)
 print(generated_text)
 
 #####################################################################################
-sentence = read_file("500.txt", by_line=False)
+sentence = read_file("Sample.java", by_line=False)
 inputs = tokenizer(sentence, return_tensors='pt')
 
 # Get the attention weights
@@ -53,6 +53,7 @@ outputs = model(input_ids=inputs['input_ids'],
                 use_cache=True)
 attention = outputs.attentions
 #plot_attention_rank(attention, "CodeQWen1.5-7B-Chat", "CodeQWen1.5-7B-Chat_attn_map_rank.png")
+plot_all_heads_attention_maps(tokenizer, attention, inputs, "QWen1.5Chat7B", figsize=24)
 
-plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 1,"CodeQWen1.5-7B-Chat", figsize=32)
-plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 12,"CodeQWen1.5-7B-Chat", figsize=32)
+#plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 1,"CodeQWen1.5-7B-Chat", figsize=32)
+#plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 12,"CodeQWen1.5-7B-Chat", figsize=32)

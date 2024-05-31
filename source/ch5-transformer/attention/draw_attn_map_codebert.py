@@ -1,6 +1,6 @@
 import torch
 from hiq import read_file
-from util import plot_attention_map, plot_attention_rank
+from util import plot_attention_map_FLFH, plot_attention_rank
 from transformers import RobertaTokenizer, RobertaConfig, RobertaModel
 
 def run(sentence, model, tokenizer, draw_attention_map=False, check_attention_rank=False):
@@ -10,7 +10,7 @@ def run(sentence, model, tokenizer, draw_attention_map=False, check_attention_ra
     outputs = model(**inputs)
     attention = outputs.attentions
     if draw_attention_map:
-        plot_attention_map(tokenizer, attention, inputs, "CODEBERT", figsize=min(len(sentence), 16))
+        plot_attention_map_FLFH(tokenizer, attention, inputs, "CODEBERT", figsize=min(len(sentence), 16))
     if check_attention_rank:
         plot_attention_rank(attention, "codebert", "codebert_attn_map_rank.png")
 

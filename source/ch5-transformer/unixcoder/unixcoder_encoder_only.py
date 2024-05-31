@@ -2,7 +2,7 @@ import torch
 from unixcoder import UniXcoder
 from hiq.vis import print_model
 from hiq.utils import read_file
-from util import plot_attention_map, plot_attention_rank
+from util import plot_attention_map_FLFH, plot_attention_rank
 
 """
 🌳 UniXcoder<all params:125929728>
@@ -43,7 +43,7 @@ tokens_ids = model.tokenize([func], max_length=512, mode="<encoder-only>")
 source_ids = torch.tensor(tokens_ids).to(device)
 tokens_embeddings, max_func_embedding, attention = model(source_ids)
 plot_attention_rank(attention, "unixbert", "unix_attn_map_rank_1.png")
-#plot_attention_map(tokenizer, attention, inputs, "CODEBERT", figsize=min(len(func), 16))
+#plot_attention_map_FLFH(tokenizer, attention, inputs, "CODEBERT", figsize=min(len(func), 16))
 
 # Encode minimum function
 func = "def get_min(a,b): if a<b: return a else return b"
