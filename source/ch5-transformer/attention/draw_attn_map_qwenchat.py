@@ -53,7 +53,9 @@ outputs = model(input_ids=inputs['input_ids'],
                 use_cache=True)
 attention = outputs.attentions
 #plot_attention_rank(attention, "CodeQWen1.5-7B-Chat", "CodeQWen1.5-7B-Chat_attn_map_rank.png")
-plot_all_heads_attention_maps(tokenizer, attention, inputs, "QWen1.5Chat7B", figsize=24, fill_cell=False)
+#plot_all_heads_attention_maps(tokenizer, attention, inputs, "QWen1.5Chat7B", start_=180, end_=300, figsize=24, fill_cell=False)
+#plot_all_heads_attention_maps(tokenizer, attention, inputs, "QWen1.5Chat7B", start_=200, end_=249, figsize=24, fill_cell=False)
+plot_all_heads_attention_maps(tokenizer, attention, inputs, "QWen1.5Chat7B", start_=0, end_=49, figsize=24, fill_cell=False)
 
 #plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 1,"CodeQWen1.5-7B-Chat", figsize=32)
 #plot_attention_map_by_LH(tokenizer, attention, inputs, 30, 12,"CodeQWen1.5-7B-Chat", figsize=32)

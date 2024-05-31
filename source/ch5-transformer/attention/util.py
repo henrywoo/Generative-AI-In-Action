@@ -154,7 +154,12 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, star
             plt.subplots_adjust(top=0.95)
             if not os.path.exists(f'{model_name}/layer_{layer + 1}/'):
                 os.makedirs(f'{model_name}/layer_{layer + 1}/')
-            plt.savefig(f'{model_name}/layer_{layer + 1}/head_{head + 1}_{head + 2}.png')
+            if end_ is None:
+                plt.savefig(f'{model_name}/layer_{layer + 1}/head_{head + 1}_{head + 2}.png')
+            else:
+                if not os.path.exists(f'{model_name}/layer_{layer + 1}/{start_}_{end_}'):
+                    os.makedirs(f'{model_name}/layer_{layer + 1}/{start_}_{end_}')
+                plt.savefig(f'{model_name}/layer_{layer + 1}/{start_}_{end_}/head_{head + 1}_{head + 2}.png')
             plt.close(fig)
 
     print(f"Attention maps saved in folder: {model_name}")
