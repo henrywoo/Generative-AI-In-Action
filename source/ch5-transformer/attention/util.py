@@ -114,25 +114,26 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figs
             axs[0].set_title(f'Layer {layer + 1}, Head {head + 1}', fontsize=8)
 
             # Set up axes for the attention map
-            axs[0].set_xticks(range(len(tokens)))
-            axs[0].set_yticks(range(len(tokens)))
-            axs[0].set_xticklabels(tokens, rotation=90, fontsize=8)
-            axs[0].set_yticklabels(tokens, fontsize=8)
+            #axs[0].set_xticks(range(len(tokens)))
+            #axs[0].set_yticks(range(len(tokens)))
+            #axs[0].set_xticklabels(tokens, rotation=90, fontsize=8)
+            #axs[0].set_yticklabels(tokens, fontsize=8)
 
             # Annotate each cell with the numerical value for the attention map
-            for i in range(len(tokens)):
-                for j in range(len(tokens)):
-                    axs[0].text(j, i, f'{attention_weights_head_N[i, j]:.2f}', ha='center', va='center', color='white', fontsize=6)
+            if fill_cell:
+                for i in range(len(tokens)):
+                    for j in range(len(tokens)):
+                        axs[0].text(j, i, f'{attention_weights_head_N[i, j]:.2f}', ha='center', va='center', color='white', fontsize=6)
 
             # Plot the attention weights for head N+1
             cax2 = axs[1].matshow(attention_weights_head_N_plus_1, cmap='copper')
             axs[1].set_title(f'Layer {layer + 1}, Head {head + 2}', fontsize=8)
 
             # Set up axes for the attention map
-            axs[1].set_xticks(range(len(tokens)))
-            axs[1].set_yticks(range(len(tokens)))
-            axs[1].set_xticklabels(tokens, rotation=90, fontsize=8)
-            axs[1].set_yticklabels(tokens, fontsize=8)
+            #axs[1].set_xticks(range(len(tokens)))
+            #axs[1].set_yticks(range(len(tokens)))
+            #axs[1].set_xticklabels(tokens, rotation=90, fontsize=8)
+            #axs[1].set_yticklabels(tokens, fontsize=8)
 
             # Annotate each cell with the numerical value for the attention map
             if fill_cell:
