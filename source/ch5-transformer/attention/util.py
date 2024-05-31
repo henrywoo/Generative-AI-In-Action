@@ -87,7 +87,6 @@ def plot_attention_map_FLFH(tokenizer, attention, inputs, model_name, figsize=8)
 
 
 def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figsize=8, fill_cell=True):
-    # Get the number of layers and heads
     num_layers = len(attention)
     num_heads = attention[0][0].shape[0]
 
@@ -114,10 +113,11 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figs
             axs[0].set_title(f'Layer {layer + 1}, Head {head + 1}', fontsize=8)
 
             # Set up axes for the attention map
-            #axs[0].set_xticks(range(len(tokens)))
-            #axs[0].set_yticks(range(len(tokens)))
-            #axs[0].set_xticklabels(tokens, rotation=90, fontsize=8)
-            #axs[0].set_yticklabels(tokens, fontsize=8)
+            if len(tokens)<50:
+                axs[0].set_xticks(range(len(tokens)))
+                axs[0].set_yticks(range(len(tokens)))
+                axs[0].set_xticklabels(tokens, rotation=90, fontsize=8)
+                axs[0].set_yticklabels(tokens, fontsize=8)
 
             # Annotate each cell with the numerical value for the attention map
             if fill_cell:
@@ -130,10 +130,11 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figs
             axs[1].set_title(f'Layer {layer + 1}, Head {head + 2}', fontsize=8)
 
             # Set up axes for the attention map
-            #axs[1].set_xticks(range(len(tokens)))
-            #axs[1].set_yticks(range(len(tokens)))
-            #axs[1].set_xticklabels(tokens, rotation=90, fontsize=8)
-            #axs[1].set_yticklabels(tokens, fontsize=8)
+            if len(tokens)<50:
+                axs[1].set_xticks(range(len(tokens)))
+                axs[1].set_yticks(range(len(tokens)))
+                axs[1].set_xticklabels(tokens, rotation=90, fontsize=8)
+                axs[1].set_yticklabels(tokens, fontsize=8)
 
             # Annotate each cell with the numerical value for the attention map
             if fill_cell:
