@@ -1,39 +1,35 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from hiq.vis import print_model
 
-device = "cuda" # the device to load the model onto
+device = "cuda"  # the device to load the model onto
 
-# Now you do not need to add "trust_remote_code=True"
+# Load the tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("Qwen/CodeQwen1.5-7B")
-model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B",
-                                             device_map="auto",
-                                             attn_implementation="eager").eval()
-#print_model(model)
+model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B", device_map="auto").eval().to(device)
 
-# Instead of using model.chat(), we directly use model.generate()
-# But you need to use tokenizer.apply_chat_template() to format your inputs as shown below
-prompt = "Write a Java function to find the majority element in a given integer array using the Boyer-Moore Voting Algorithm."
-messages = [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": prompt}
-]
-text = tokenizer.apply_chat_template(
-    messages,
-    tokenize=False,
-    add_generation_prompt=True
+# Define the prompt
+prompt = (
+    "You are a helpful assistant.\n\n"
+    "Question: Write a function to find the majority element in a given integer array using the Boyer-Moore Voting Algorithm.\n\n"
+    "Answer:"
 )
-print(text)
-print("*"*80)
-model_inputs = tokenizer([text], return_tensors="pt").to(device)
 
+# Tokenize the input
+model_inputs = tokenizer(prompt, return_tensors="pt").to(device)
+
+# Generate the output
 generated_ids = model.generate(
     model_inputs.input_ids,
     output_attentions=True,
-    max_new_tokens=1024
+    max_new_tokens=150  # Control the maximum output length
 )
-generated_ids = [
-    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-]
 
-response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-print(response)
+# Decode the generated tokens
+response = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+
+# Extract the answer (removing the prompt part)
+answer_start = response.find("Answer:") + len("Answer:")
+answer = response[answer_start:].strip()
+
+# Print the answer
+print("Qwen/CodeQwen1.5-7B's answer:")
+print(answer)
