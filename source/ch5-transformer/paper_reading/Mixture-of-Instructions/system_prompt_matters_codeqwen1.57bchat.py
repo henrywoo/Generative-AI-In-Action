@@ -12,7 +12,7 @@ model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B-Chat",
 
 # Instead of using model.chat(), we directly use model.generate()
 # But you need to use tokenizer.apply_chat_template() to format your inputs as shown below
-prompt = "Write a Java function to find the majority element in a given integer array using the Boyer-Moore Voting Algorithm."
+prompt = "Write a function to find the majority element in a given integer array using the Boyer-Moore Voting Algorithm."
 messages = [
     {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": prompt}
@@ -24,6 +24,7 @@ text = tokenizer.apply_chat_template(
 )
 print(text)
 print("*"*80)
+
 model_inputs = tokenizer([text], return_tensors="pt").to(device)
 
 generated_ids = model.generate(

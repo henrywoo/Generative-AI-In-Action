@@ -18,6 +18,9 @@ text = tokenizer.apply_chat_template(
     tokenize=False,
     add_generation_prompt=True
 )
+print(text)
+print("*"*80)
+
 model_inputs = tokenizer([text], return_tensors="pt").to(device)
 
 generated_ids = model.generate(
@@ -29,3 +32,4 @@ generated_ids = [
 ]
 
 response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+print(response)
