@@ -4,8 +4,8 @@ from hiq.vis import print_model
 device = "cuda" # the device to load the model onto
 
 # Now you do not need to add "trust_remote_code=True"
-tokenizer = AutoTokenizer.from_pretrained("Qwen/CodeQwen1.5-7B-Chat")
-model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B-Chat",
+tokenizer = AutoTokenizer.from_pretrained("Qwen/CodeQwen1.5-7B")
+model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B",
                                              device_map="auto",
                                              attn_implementation="eager").eval()
 #print_model(model)
