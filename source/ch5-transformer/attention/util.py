@@ -86,13 +86,20 @@ def plot_attention_map_FLFH(tokenizer, attention, inputs, model_name, figsize=8)
     plt.show()
 
 
-def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figsize=8, fill_cell=True):
+def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, start_=0, end_=None, figsize=8, fill_cell=True):
     num_layers = len(attention)
     num_heads = attention[0][0].shape[0]
 
     # Get the tokens
     tokens = tokenizer.convert_ids_to_tokens(inputs['input_ids'][0])
     tokens = [i[1:] if 'Ġ' in i else i for i in tokens]
+
+    # Adjust the end_ index
+    if end_ is None or end_ > len(tokens):
+        end_ = len(tokens)
+
+    # Slice the tokens and attention weights
+    tokens = tokens[start_:end_]
 
     # Define the layers to be plotted (first and last)
     layers_to_plot = [0, num_layers - 1]
@@ -102,8 +109,8 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figs
             if head + 1 >= num_heads:
                 break
             # Get the attention weights for the current layer and heads
-            attention_weights_head_N = attention[layer][0][head].detach().numpy()
-            attention_weights_head_N_plus_1 = attention[layer][0][head + 1].detach().numpy()
+            attention_weights_head_N = attention[layer][0][head].detach().numpy()[start_:end_, start_:end_]
+            attention_weights_head_N_plus_1 = attention[layer][0][head + 1].detach().numpy()[start_:end_, start_:end_]
 
             # Create the plot
             fig, axs = plt.subplots(1, 2, figsize=(figsize, figsize // 2))
@@ -113,7 +120,7 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figs
             axs[0].set_title(f'Layer {layer + 1}, Head {head + 1}', fontsize=8)
 
             # Set up axes for the attention map
-            if len(tokens)<50:
+            if len(tokens) < 50:
                 axs[0].set_xticks(range(len(tokens)))
                 axs[0].set_yticks(range(len(tokens)))
                 axs[0].set_xticklabels(tokens, rotation=90, fontsize=8)
@@ -130,7 +137,7 @@ def plot_all_heads_attention_maps(tokenizer, attention, inputs, model_name, figs
             axs[1].set_title(f'Layer {layer + 1}, Head {head + 2}', fontsize=8)
 
             # Set up axes for the attention map
-            if len(tokens)<50:
+            if len(tokens) < 50:
                 axs[1].set_xticks(range(len(tokens)))
                 axs[1].set_yticks(range(len(tokens)))
                 axs[1].set_xticklabels(tokens, rotation=90, fontsize=8)
