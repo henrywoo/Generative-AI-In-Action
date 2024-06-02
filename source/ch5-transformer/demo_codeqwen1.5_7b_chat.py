@@ -9,7 +9,6 @@ model = AutoModelForCausalLM.from_pretrained("Qwen/CodeQwen1.5-7B",
                                              output_attentions=True).eval()
 
 # tokenize the input into tokens
-input_text = "#write a quick sort algorithm"
 input_text = """Write the next several lines of the following code.
 Don't return a preamble or suffix, just the code.
 
@@ -23,11 +22,12 @@ Don't return a preamble or suffix, just the code.
 
         testBatch(
             new Integer[] { 1, 0, -1, Integer.MAX_VALUE, Integer.MIN_VALUE, 123, -123,"""
+input_text = "who is founder of Oracle?"
 model_inputs = tokenizer([input_text], return_tensors="pt").to(device)
 
 # Use `max_new_tokens` to control the maximum output length.
 output = model.generate(model_inputs.input_ids,
-                               #max_new_tokens=51200,
+                               max_new_tokens=1024,
                                #do_sample=False,
                                #output_attentions=True
                         )[0]
