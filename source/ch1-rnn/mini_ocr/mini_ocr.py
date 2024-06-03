@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import os
 import torch
 import torchvision
 import random
@@ -14,8 +14,8 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def load_data():
     """Load MNIST data."""
-    train_data = torchvision.datasets.MNIST('files/', train=True, download=True)
-    test_data = torchvision.datasets.MNIST('files/', train=False, download=True)
+    train_data = torchvision.datasets.MNIST('data/', train=True, download=True)
+    test_data = torchvision.datasets.MNIST('data/', train=False, download=True)
     return train_data, test_data
 
 class MyDataSet(Dataset):
@@ -114,15 +114,34 @@ class EncoderDecoder(nn.Module):
                 break
         return pred
 
-def train_model(model, train_loader, test_loader, device, num_epochs=40, save_path='best_ocr.pt'):
+def save_checkpoint(state, filename='best_ocr.pt'):
+    torch.save(state, filename)
+
+def load_checkpoint(filename='best_ocr.pt'):
+    checkpoint = torch.load(filename)
+    return checkpoint
+
+def train_model(model, train_loader, test_loader, device, num_epochs=40, save_path='best_ocr.pt', resume=False):
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    model.train()
+    start_epoch = 0
     best_acc = 0
     train_losses = []
     val_accuracies = []
 
-    for epoch in range(num_epochs):
+    if resume and os.path.exists(save_path):
+        checkpoint = load_checkpoint()
+        model.load_state_dict(checkpoint['model_state'])
+        optimizer.load_state_dict(checkpoint['optimizer_state'])
+        start_epoch = checkpoint['epoch']
+        best_acc = checkpoint['best_acc']
+        train_losses = checkpoint['train_losses']
+        val_accuracies = checkpoint['val_accuracies']
+        print(f"Resuming training from epoch {start_epoch + 1}...")
+
+    model.train()
+
+    for epoch in range(start_epoch, num_epochs):
         epoch_loss = 0
         for x in train_loader:
             out = model(x[0].to(device), x[1].to(device))
@@ -141,11 +160,21 @@ def train_model(model, train_loader, test_loader, device, num_epochs=40, save_pa
             best_acc = val_acc
             torch.save(model.state_dict(), save_path)
 
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'model_state': model.state_dict(),
+            'optimizer_state': optimizer.state_dict(),
+            'best_acc': best_acc,
+            'train_losses': train_losses,
+            'val_accuracies': val_accuracies
+        })
+
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {train_losses[-1]:.4f}, Validation Accuracy: {val_acc:.4f}')
 
-    model.load_state_dict(torch.load(save_path))
-
-    plot_curves(train_losses, val_accuracies)
+    if start_epoch < num_epochs:
+        d = torch.load(save_path)
+        model.load_state_dict(d['model_state'])
+        plot_curves(train_losses, val_accuracies)
 
     return model
 
@@ -186,23 +215,23 @@ def plot_curves(train_losses, val_accuracies):
         plt.savefig('Training_loss_validation_accuracy.png')
         plt.show()
 
-
 def plot_predictions(model, test_loader, save_path='predictions.jpg'):
     model.eval()
     map_index = {12: "."}
 
-    _, axs = plt.subplots(6, 3, figsize=(18, 18))
+    _, axs = plt.subplots(3, 3, figsize=(6, 3))
     axs = axs.flatten()
     for i, (x, ax) in enumerate(zip(test_loader, axs)):
-        if i == 18:
+        if i == 9:
             break
         ax.imshow(x[0][0, 0].cpu().numpy().transpose()[::-1])
         out = model.predict(x[0])
         filtered_out = [i for i in out if i not in [10, 11]]  # Filter out <START> (10) and <END> (11)
-        ax.set_title("".join([map_index.get(i, str(i)) for i in filtered_out]), color="black", fontsize=18)
+        ax.set_title("".join([map_index.get(i, str(i)) for i in filtered_out]), color="black", fontsize=9)
+        ax.axis('off')
     plt.savefig(save_path)
 
-def main():
+def main(resume=False):
     train_data, test_data = load_data()
     train_dataset = MyDataSet(train_data.data, train_data.targets, batch_size=8)
     test_dataset = MyDataSet(test_data.data, test_data.targets, batch_size=1)
@@ -211,9 +240,13 @@ def main():
 
     model = EncoderDecoder(output=13).to(device)
     print_model(model)
-    trained_model = train_model(model, train_loader, test_loader, device, num_epochs=30)
+    trained_model = train_model(model, train_loader, test_loader, device, num_epochs=30, resume=resume)
 
     plot_predictions(trained_model, test_loader)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Train or resume training the model")
+    parser.add_argument('--resume', action='store_true', help='Resume training from a checkpoint')
+    args = parser.parse_args()
+    main(resume=args.resume)
