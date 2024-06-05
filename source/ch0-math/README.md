@@ -57,7 +57,7 @@ Cosine similarity is a metric used to measure **how similar two vectors are** ir
 
 ### Definition of Cosine Similarity
 
-![](similarity_2d.png)
+![](330px-Inner-product-angle.svg.png)
 
 Cosine similarity calculates **the cosine of the angle between two vectors**. This value ranges from -1 to 1, where:
 - 1 indicates that the two vectors are identical (0° angle),
@@ -95,6 +95,10 @@ While cosine similarity is excellent for comparing directions or orientations of
 - **Signal Strength**: In fields like signal processing, the strength of a signal (its magnitude) can be as important as its pattern or direction.
 
 In summary, cosine similarity is highly effective for comparing the orientation of vectors in high-dimensional space, making it a powerful tool in natural language processing, computer vision, and other fields where the direction of the data vectors is more significant than their magnitude.
+
+### Code Implementation
+
+![](similarity_2d.png)
 
 > 📜 Code: [cosin_sim.py](https://github.com/henrywoo/Generative-AI-In-Action/blob/main/source/ch0-math/cosin_sim.py)
 
