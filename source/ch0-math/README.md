@@ -53,43 +53,50 @@ While the table covers the basics, deep neural networks offer a world of custom 
 
 ## Cosine Similarity
 
-Cosine similarity is a metric used to measure how similar two vectors are irrespective of their magnitude. It's commonly used in various fields, particularly in the realm of information retrieval, text analysis, and machine learning, for comparing documents, images, or other data represented as vectors.
+Cosine similarity is a metric used to measure **how similar two vectors are** irrespective of their magnitude. It's commonly used in various fields, particularly in the realm of information retrieval, text analysis, and machine learning, for comparing documents, images, or other data represented as vectors.
 
 ### Definition of Cosine Similarity
 
 ![](similarity_2d.png)
 
-Cosine similarity calculates the cosine of the angle between two vectors. This value ranges from -1 to 1, where:
+Cosine similarity calculates **the cosine of the angle between two vectors**. This value ranges from -1 to 1, where:
 - 1 indicates that the two vectors are identical (0° angle),
-- 0 indicates that the vectors are orthogonal (90° angle),
-- -1 indicates that the vectors are diametrically opposed (180° angle).
+- 0 indicates that the vectors are **orthogonal** (90° angle),
+- -1 indicates that the vectors are **diametrically opposed** (180° angle).
 
 The cosine similarity between two vectors, **A** and **B**, is determined by calculating the dot product of the vectors and then dividing that value by the product of the magnitudes (or Euclidean norms) of the individual vectors:
 
 ```
-Cosine_Similarity(A, B) = (A · B) / (||A|| ||B||)
+Cosine_Similarity(A, B) = (A · B) / (||A|| · ||B||)
 ```
 
 where:
 
-* **A · B** represents the dot product of vectors **A** and **B**.
+* **A · B** represents the **dot product** of vectors **A** and **B**.
 * **||A||** denotes the magnitude (Euclidean norm) of vector **A**.
 * **||B||** denotes the magnitude (Euclidean norm) of vector **B**.
 
+This is actually from [the geometric definition of dot product](https://en.wikipedia.org/wiki/Dot_product). 
+
 ### Ignoring the Magnitude in Cosine Similarity
+
 The cosine similarity **inherently focuses on the direction** rather than the magnitude of the vectors. When considering the similarity, the scale of the vectors (i.e., their magnitudes) doesn't affect the outcome because it is normalized by the magnitudes of the vectors in the denominator of the formula.
 
 #### Cases Where Magnitude Can Be Ignored
+
 - **Text Similarity**: In text analysis, such as document comparison or clustering, cosine similarity is particularly useful because it measures similarity in terms of text content orientation regardless of document length. For example, it will consider two documents to be similar if they contain many of the same terms, even if one document is much longer than the other.
 - **Recommendation Systems**: In collaborative filtering, where we might want to find users with similar preferences based on their ratings across a range of items, cosine similarity allows us to focus on the pattern of ratings rather than on the scale (how generous or harsh the rater is).
 - **Image Similarity**: When comparing image features extracted by models, cosine similarity can help determine the similarity in patterns or textures identified by the features, independent of image size or scale.
 
 ### Situations Where Magnitude Matters
+
 While cosine similarity is excellent for comparing directions or orientations of vectors, there are cases where the magnitude of the vectors should not be ignored:
 - **Weight of Importance**: If the magnitude of a vector represents a weight of importance, such as frequency counts that matter (e.g., a customer purchasing large quantities vs. small quantities of a product), then using cosine similarity alone might be inappropriate. Here, metrics that consider the magnitude, like Euclidean distance, might be more appropriate.
 - **Signal Strength**: In fields like signal processing, the strength of a signal (its magnitude) can be as important as its pattern or direction.
 
 In summary, cosine similarity is highly effective for comparing the orientation of vectors in high-dimensional space, making it a powerful tool in natural language processing, computer vision, and other fields where the direction of the data vectors is more significant than their magnitude.
+
+> 📜 Code: [cosin_sim.py](https://github.com/henrywoo/Generative-AI-In-Action/blob/main/source/ch0-math/cosin_sim.py)
 
 ## Normalization
 

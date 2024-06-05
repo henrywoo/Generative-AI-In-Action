@@ -1,5 +1,3 @@
-# https://keras.io/examples/generative/vq_vae/#pixelcnn-hyperparameters
-# pip install -q tensorflow-probability
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,7 +8,10 @@ import tensorflow as tf
 from vqvae import get_vqvae, VectorQuantizer
 from pixelcnn import PixelConvLayer, ResidualBlock, get_pixelcnn
 import os
-num_embeddings=128
+
+num_embeddings = 128
+
+tf.config.run_functions_eagerly(True)
 
 class VQVAETrainer(keras.models.Model):
     def __init__(self, train_variance, latent_dim=32, num_embeddings=128, **kwargs):
@@ -20,10 +21,11 @@ class VQVAETrainer(keras.models.Model):
         self.num_embeddings = num_embeddings
         self.vqvae = get_vqvae(self.latent_dim, self.num_embeddings)
         self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
-        self.reconstruction_loss_tracker = keras.metrics.Mean(
-            name="reconstruction_loss"
-        )
+        self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
         self.vq_loss_tracker = keras.metrics.Mean(name="vq_loss")
+        self.total_loss_history = []
+        self.reconstruction_loss_history = []
+        self.vq_loss_history = []
 
     @property
     def metrics(self):
@@ -47,12 +49,15 @@ class VQVAETrainer(keras.models.Model):
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
         self.vq_loss_tracker.update_state(sum(self.vqvae.losses))
         # Log results.
+        t = self.total_loss_tracker.result()
+        self.total_loss_history.append(tf.keras.backend.get_value(t))
+        self.reconstruction_loss_history.append(self.reconstruction_loss_tracker.result().numpy())
+        self.vq_loss_history.append(self.vq_loss_tracker.result().numpy())
         return {
             "loss": self.total_loss_tracker.result(),
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "vqvae_loss": self.vq_loss_tracker.result(),
         }
-
 
 def show_subplot(original, reconstructed):
     plt.subplot(1, 2, 1)
@@ -66,7 +71,6 @@ def show_subplot(original, reconstructed):
     plt.axis("off")
 
     plt.show()
-
 
 def display_codebook(trained_vqvae_model, vqvae_trainer, test_images):
     encoder = trained_vqvae_model.get_layer("encoder")
@@ -88,7 +92,6 @@ def display_codebook(trained_vqvae_model, vqvae_trainer, test_images):
         plt.title("Code")
         plt.axis("off")
         plt.show()
-
 
 def generate_imgs(pixel_cnn, quantizer, vqvae_trainer, encoded_outputs):
     # Create a mini sampler model.
@@ -134,7 +137,6 @@ def generate_imgs(pixel_cnn, quantizer, vqvae_trainer, encoded_outputs):
         plt.axis("off")
         plt.show()
 
-
 def train_vqvae(epochs=10, f='model_vqvae.h5'):
     (x_train, _), (x_test, _) = keras.datasets.mnist.load_data()
     x_train = np.expand_dims(x_train, -1)
@@ -159,6 +161,7 @@ def train_vqvae(epochs=10, f='model_vqvae.h5'):
             for test_image, reconstructed_image in zip(test_images, reconstructions_test):
                 show_subplot(test_image, reconstructed_image)
             display_codebook(trained_vqvae_model, vqvae_trainer, test_images)
+        plot_loss_curve(vqvae_trainer.total_loss_history, 'VQ-VAE Training Loss')
     else:
         # Load the saved VQ-VAE model
         vqvae_trainer.vqvae = keras.models.load_model(f, custom_objects={"VectorQuantizer": VectorQuantizer})
@@ -177,6 +180,13 @@ def train_vqvae(epochs=10, f='model_vqvae.h5'):
     print(f"Input shape of the PixelCNN: {pixelcnn_input_shape}")
     return vqvae_trainer, quantizer, codebook_indices, pixelcnn_input_shape, encoded_outputs
 
+def plot_loss_curve(loss_history, title):
+    plt.figure(figsize=(10, 5))
+    plt.plot(loss_history)
+    plt.title(title)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.show()
 
 if __name__ == "__main__":
     vqvae_trainer, quantizer, codebook_indices, pixelcnn_input_shape, encoded_outputs = train_vqvae(epochs=100)
@@ -190,20 +200,22 @@ if __name__ == "__main__":
         metrics=["accuracy"],
     )
     pixelcnn_model_path = 'model_pixelcnn.h5'
+    pixelcnn_loss_history = []
     if not os.path.exists(pixelcnn_model_path):
-        pixel_cnn.fit(
-            x=codebook_indices,
-            y=codebook_indices,
-            batch_size=128,
-            epochs=100,
-            validation_split=0.1,
-        )
+        for epoch in range(100):
+            history = pixel_cnn.fit(
+                x=codebook_indices,
+                y=codebook_indices,
+                batch_size=128,
+                epochs=1,
+                validation_split=0.1,
+                verbose=0
+            )
+            pixelcnn_loss_history.append(history.history['loss'][0])
+            print(f"Epoch {epoch+1}, Loss: {history.history['loss'][0]}, Validation Loss: {history.history['val_loss'][0]}")
+        plot_loss_curve(pixelcnn_loss_history, 'PixelCNN Training Loss')
         pixel_cnn.save(pixelcnn_model_path)
     else:
-        # Load the saved PixelCNN model
         pixel_cnn = keras.models.load_model(pixelcnn_model_path, custom_objects={"PixelConvLayer": PixelConvLayer,
                                                                                  "ResidualBlock": ResidualBlock})
-
     generate_imgs(pixel_cnn, quantizer, vqvae_trainer, encoded_outputs)
-
-
