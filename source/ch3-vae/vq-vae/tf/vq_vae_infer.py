@@ -8,10 +8,10 @@ from vqvae import VectorQuantizer
 from pixelcnn import PixelConvLayer, ResidualBlock
 
 # Load the VQ-VAE Model
-vqvae_model = keras.models.load_model('vqvae_model.h5', custom_objects={'VectorQuantizer': VectorQuantizer})
+vqvae_model = keras.models.load_model('model_vqvae.h5', custom_objects={'VectorQuantizer': VectorQuantizer})
 
 # Load the PixelCNN Model
-pixel_cnn = keras.models.load_model('pixel_cnn_model.h5', custom_objects={
+pixel_cnn = keras.models.load_model('model_pixelcnn.h5', custom_objects={
     'PixelConvLayer': PixelConvLayer,
     'ResidualBlock': ResidualBlock
 })

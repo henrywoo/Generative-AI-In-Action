@@ -454,3 +454,7 @@ plt.show()
 
 This code demonstrates the rejection sampling technique and visualizes the results, showing how the sampled distribution approximates the target distribution.
 
+## Fourier Transform
+
+![](fourier_transform.gif)
+
