@@ -65,6 +65,8 @@ x = np.linspace(-10, 10, 200)
 plt.style.use('ggplot')
 # Activation functions and their gradients
 functions = [
+    (sigmoid, 'Sigmoid'),
+    (tanh, 'Tanh'),
     (relu, 'ReLU'),
     (leaky_relu, 'LReLU'),
     (elu, 'ELU'),
@@ -72,8 +74,6 @@ functions = [
     (gelu, 'GELU'),
     (swish, 'Swish'),
     (mish, 'Mish'),
-    (sigmoid, 'Sigmoid'),
-    (tanh, 'Tanh')
 ]
 # Prepare the figure and subplots
 fig, axes = plt.subplots(3, 6, figsize=(16, 7))
