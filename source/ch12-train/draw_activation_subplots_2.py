@@ -1,3 +1,4 @@
+# https://aew61.github.io/blog/artificial_neural_networks/1_background/1.b_activation_functions_and_derivatives.html
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -36,8 +37,8 @@ def gelu(x):
 def swish(x):
     y = x * (1 / (1 + np.exp(-x)))  # Or use x * sigmoid(x)
     sig = 1 / (1 + np.exp(-x))
-    dx = sig + x * sig * (1 - sig)
-    return y, dx
+    dy = sig + x * sig * (1 - sig)
+    return y, dy
 
 
 def mish(x):

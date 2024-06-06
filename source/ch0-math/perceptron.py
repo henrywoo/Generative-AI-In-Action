@@ -10,13 +10,13 @@ class MyDNN(torch.nn.Module):
     def __init__(self):
         super(MyDNN, self).__init__()
         # Define a single linear layer that takes 3 inputs and produces 1 output
-        self.layer1 = torch.nn.Linear(3, 1)
+        self.layer1 = torch.nn.Linear(3, 3)
 
     def forward(self, x):
         # Forward pass: input data is passed through the linear layer
         x = self.layer1(x)
         # Apply ReLU activation function
-        x = F.relu(x)
+        x = F.leaky_relu(x)
         return x
 
 
@@ -27,8 +27,10 @@ def demo_perceptron():
 
     # Print the initial weights and biases of the perceptron
     print("Initial weights and biases:")
-    print(perceptron.layer1.weight)
-    print(perceptron.layer1.bias)
+    print("*"*80)
+    print(perceptron.layer1.weight.shape, "\n", perceptron.layer1.weight)
+    print(perceptron.layer1.bias.shape, "\n", perceptron.layer1.bias)
+    print("*" * 80)
 
     # Create a simple input tensor (3 features)
     input_data = torch.tensor([1.0, 2.0, 3.0])

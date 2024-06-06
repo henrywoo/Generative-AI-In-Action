@@ -49,6 +49,56 @@ While the table covers the basics, deep neural networks offer a world of custom 
 
 ## Matrix
 
+### Multiplication
+
+![](matrix_multiplication.gif)
+
+
+1. **Definition:**
+   Matrix multiplication involves taking the **dot product** of rows from the first matrix with columns from the second. For matrices A (of size m x n) and B (of size n x p):
+
+   ```
+   (AB)ᵢⱼ = Σ Aᵢₖ Bₖⱼ (for k = 1 to n)
+   ```
+
+2. **Dimensions:**
+   The number of columns in the first matrix must match the number of rows in the second for multiplication to be valid. If A is m x n and B is n x p, then AB is m x p.
+
+3. **Properties:**
+   * **Associativity:** A(BC) = (AB)C
+   * **Distributivity:** A(B + C) = AB + AC and (A + B)C = AC + BC
+   * **Non-commutativity:** AB ≠ BA (in general)
+   * **Identity Matrix:** AI = IA = A
+   * **Transpose:** (AB)ᵀ = Bᵀ Aᵀ
+   * **Inverse:** (AB)⁻¹ = B⁻¹ A⁻¹ (if A and B are invertible)
+
+4. **Rank:**
+   The rank of a matrix product is less than or equal to the minimum rank of its factors:
+   ```
+   rank(AB) ≤ min(rank(A), rank(B))
+   ```
+
+5. **Determinant:**
+   The determinant of a product of square matrices is the product of their individual determinants:
+   ```
+   det(AB) = det(A) * det(B)
+   ```
+
+6. **Block Matrices:** Matrix multiplication extends to block matrices, simplifying calculations for large matrices.
+
+7. **Applications:**
+   * **Systems of Linear Equations:** AX = B
+   * **Transformations:** Linear transformations in geometry, computer graphics, etc.
+   * **Markov Chains:** Transition matrices
+   * **Neural Networks:** Forward and backward propagation
+
+8. **Special Matrices:**
+   * **Diagonal Matrices:** Scale rows/columns of the other matrix.
+   * **Orthogonal Matrices:** QᵀQ = I
+   * **Sparse Matrices:** Efficient algorithms for their multiplication exist.
+
+### Rotation & Projection
+
 ![](eigen.webp)
 
 ```angular2html
