@@ -99,5 +99,5 @@ for j in range(len(functions), len(axes)):
     fig.delaxes(axes[j])
 
 plt.tight_layout()
-plt.savefig("activation_functions_and_gradients.png")
+plt.savefig("activation_functions_and_gradients_2.png")
 plt.show()
