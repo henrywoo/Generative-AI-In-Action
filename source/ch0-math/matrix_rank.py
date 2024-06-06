@@ -1,38 +1,58 @@
 import numpy as np
 
-# 创建全零矩阵
+# Create a zero matrix
 zero_matrix = np.zeros((4, 4))
+print("Zero matrix:")
+print(zero_matrix)
 
-# 计算全零矩阵的秩
+# Calculate the rank of the zero matrix
 rank_zero_matrix = np.linalg.matrix_rank(zero_matrix)
 print("Rank of zero matrix:", rank_zero_matrix)
 
-# 创建元素为e^0的矩阵
-exp_matrix = np.exp(zero_matrix)
+# Create a matrix with elements e^0
+exp_matrix_zero = np.exp(zero_matrix)
+print("Matrix with elements e^0 (exp(zero matrix)):")
+print(exp_matrix_zero)
 
-# 计算元素为e^0的矩阵的秩
-rank_exp_matrix = np.linalg.matrix_rank(exp_matrix)
-print("Rank of exp(zero matrix):", rank_exp_matrix)
+# Calculate the rank of the matrix with elements e^0
+rank_exp_matrix_zero = np.linalg.matrix_rank(exp_matrix_zero)
+print("Rank of exp(zero matrix):", rank_exp_matrix_zero)
 
-n = 100
+n = 5
 x = np.random.randn(n)
-y = x[:, None].dot(x[None])
+y = x[:, None] @ x[None]
+print("Matrix y (outer product of random vector x):")
+print(y)
 
-print(np.linalg.matrix_rank(y)) # 秩为1
-print(np.linalg.matrix_rank(np.exp(y))) # 秩大概率为17、18
+# Calculate the rank of y
+rank_y = np.linalg.matrix_rank(y)
+print("Rank of matrix y:", rank_y)
 
-# 创建原始矩阵
+# Apply exponential function to matrix y
+exp_y = np.exp(y)
+print("Matrix exp(y) after exponential:")
+print(exp_y)
+
+# Calculate the rank of exp(y)
+rank_exp_y = np.linalg.matrix_rank(exp_y)
+print("Rank of exp(y):", rank_exp_y)
+
+# Create the original matrix
 original_matrix = np.array([[0, 1, 2],
                             [3, 4, 5],
                             [3, 4, 5]])
+print("Original matrix:")
+print(original_matrix)
 
-# 计算原始矩阵的秩
+# Calculate the rank of the original matrix
 rank_original_matrix = np.linalg.matrix_rank(original_matrix)
 print("Rank of original matrix:", rank_original_matrix)
 
-# 对每个元素取指数
-exp_matrix = np.exp(original_matrix)
+# Apply the exponential function to each element of the original matrix
+exp_matrix_original = np.exp(original_matrix)
+print("Matrix with elements exp(original matrix):")
+print(exp_matrix_original)
 
-# 计算取指数后矩阵的秩
-rank_exp_matrix = np.linalg.matrix_rank(exp_matrix)
-print("Rank of exp(original matrix):", rank_exp_matrix)
+# Calculate the rank of the matrix after applying the exponential function
+rank_exp_matrix_original = np.linalg.matrix_rank(exp_matrix_original)
+print("Rank of exp(original matrix):", rank_exp_matrix_original)

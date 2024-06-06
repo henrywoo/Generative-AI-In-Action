@@ -42,6 +42,8 @@ def hyperbolic_rotation_matrix(phi):
 # Function to plot the transformations
 def plot_transformations(transformations, titles):
     plt.figure(figsize=(8, 6))
+    vertex_colors = ['r', 'g', 'b', 'm']  # Colors for the vertices
+
     for i, (transformation, title) in enumerate(zip(transformations, titles)):
         plt.subplot(2, 3, i + 1)
         plt.axhline(0, color='grey', lw=0.5)
@@ -52,7 +54,12 @@ def plot_transformations(transformations, titles):
         transformed_shape = transformation @ original_shape
 
         plt.plot(original_shape[0], original_shape[1], 'b-', label='Original', alpha=0.5, linewidth=2)
-        plt.plot(transformed_shape[0], transformed_shape[1], 'r-', label='Transformed', alpha=0.5, linewidth=2)
+        plt.plot(transformed_shape[0], transformed_shape[1], 'r--', label='Transformed', alpha=0.5, linewidth=2)
+
+        # Plot each vertex with a different color
+        for j in range(4):
+            plt.scatter(original_shape[0, j], original_shape[1, j], color=vertex_colors[j], s=30, alpha=0.8)
+            plt.scatter(transformed_shape[0, j], transformed_shape[1, j], color=vertex_colors[j], s=30, alpha=0.8)
 
         plt.xlim(-2.5, 2.5)
         plt.ylim(-2.5, 2.5)
