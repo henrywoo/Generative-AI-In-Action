@@ -51,6 +51,63 @@ While the table covers the basics, deep neural networks offer a world of custom 
 
 ![](eigen.webp)
 
+```angular2html
+# Define transformations
+k = 1.5
+k1, k2 = 1.5, 0.5
+theta = np.radians(45)
+shear_factor = 0.5
+phi = np.radians(45)  # Angle for hyperbolic rotation
+vertical_shear_factor = 0.8
+
+# Define transformation matrices
+def scaling_matrix(k):
+    return np.array([
+        [k, 0],
+        [0, k]
+    ])
+
+def unequal_scaling_matrix(k1, k2):
+    return np.array([
+        [k1, 0],
+        [0, k2]
+    ])
+
+def rotation_matrix(theta):
+    return np.array([
+        [np.cos(theta), -np.sin(theta)],
+        [np.sin(theta), np.cos(theta)]
+    ])
+
+def shear_matrix(k):
+    return np.array([
+        [1, k],
+        [0, 1]
+    ])
+
+# Add a vertical shear matrix function
+def vertical_shear_matrix(k):
+    return np.array([
+        [1, 0],
+        [k, 1]
+    ])
+
+def hyperbolic_rotation_matrix(phi):
+    return np.array([
+        [np.cosh(phi), np.sinh(phi)],
+        [np.sinh(phi), np.cosh(phi)]
+    ])
+```
+
+Multiply above matrix with unit square to get the following graph:
+
+```angular2html
+original_shape = np.array([[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]).T
+transformed_shape = transformation @ original_shape
+```
+
+![](matrix_transformations.png)
+
 ## Cosine Similarity
 
 Cosine similarity is a metric used to measure **how similar two vectors are** irrespective of their magnitude. It's commonly used in various fields, particularly in the realm of information retrieval, text analysis, and machine learning, for comparing documents, images, or other data represented as vectors.
