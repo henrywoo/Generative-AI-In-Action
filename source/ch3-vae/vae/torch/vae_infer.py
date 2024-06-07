@@ -10,6 +10,8 @@ torch.manual_seed(0)
 
 here = os.path.abspath(os.path.dirname(__file__))
 
+classes = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
+           'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 def load_checkpoint(filepath, device):
     checkpoint = torch.load(filepath, map_location=device)
     model = VariationalAutoencoder(checkpoint['codings_size']).to(device)
@@ -100,16 +102,58 @@ def plot_latent_space(model, dataloader, data_name, device):
     all_labels = torch.cat(all_labels)
 
     plt.figure(figsize=(6, 4))
-    scatter = plt.scatter(all_mean[:, 0].numpy(), all_mean[:, 1].numpy(), c=all_labels.numpy(), cmap='tab10', alpha=0.4)
-    legend1 = plt.legend(*scatter.legend_elements(), title="Digits", fontsize=8)
+    x = all_mean[:, 0].numpy()
+    y = all_mean[:, 1].numpy()
+    scatter = plt.scatter(x, y, c=all_labels.numpy(), cmap='tab10', alpha=0.4, s=10)
+    legend1 = plt.legend(*scatter.legend_elements(), title="Cat", fontsize=8)
     plt.gca().add_artist(legend1)
     plt.xlabel('Latent Dimension 1', fontsize=8)
     plt.ylabel('Latent Dimension 2', fontsize=8)
     plt.title(f'{data_name.upper()} Data Latent Space Scatter Plot', fontsize=10)
+    plt.grid(True, which='both')
     plt.savefig(os.path.join(here, f'latent_space_scatter_{data_name}.png'))
     plt.show()
 
     return all_mean
+
+from sklearn.manifold import TSNE
+
+def plot_latent_space_tsne(model, dataloader, data_name, device):
+    model.eval()
+    all_mean = []
+    all_labels = []
+    with torch.no_grad():
+        for data, labels in dataloader:
+            data = data.to(device)  # Move data to the correct device
+            mean, logvar = model.encoder(data)
+            all_mean.append(mean.cpu())  # Move mean to CPU
+            all_labels.append(labels.cpu())  # Move labels to CPU
+
+    all_mean = torch.cat(all_mean)
+    all_labels = torch.cat(all_labels)
+
+    # Apply t-SNE to reduce the dimensionality to 2
+    tsne = TSNE(n_components=2, random_state=42)
+    all_mean_2d = tsne.fit_transform(all_mean)
+
+    # Plot the t-SNE result
+    plt.figure(figsize=(8, 6))
+    x = all_mean_2d[:, 0]
+    y = all_mean_2d[:, 1]
+    scatter = plt.scatter(x, y, c=all_labels.numpy(), cmap='tab10', alpha=0.4, s=10)
+    legend1 = plt.legend(*scatter.legend_elements(), title="Cat", fontsize=8)
+    plt.gca().add_artist(legend1)
+    plt.xlabel('t-SNE Dimension 1', fontsize=8)
+    plt.ylabel('t-SNE Dimension 2', fontsize=8)
+    plt.title(f'{data_name.upper()} Data Latent Space (t-SNE) Scatter Plot', fontsize=10)
+    plt.grid(True, which='both')
+    plt.savefig(os.path.join(here, f'latent_space_tsne_{data_name}.png'))
+    plt.show()
+
+    return all_mean
+
+# Example call (to be placed in your main function or where appropriate):
+# latent_vectors = plot_latent_space_tsne(model, valid_loader, 'mnist', device)
 
 
 def main(args):
@@ -125,6 +169,8 @@ def main(args):
 
     # Plot histograms of latent dimensions
     plot_histograms(latent_vectors_train)
+
+    plot_latent_space_tsne(model, valid_loader, 'valid', device)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate images with a trained Variational Autoencoder")
