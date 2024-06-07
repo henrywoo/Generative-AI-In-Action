@@ -2,6 +2,9 @@
 
 ![](euler.png)
 
+> https://www.youtube.com/watch?v=-dhHrg-KbJ0
+
+
 ## Common Loss Functions
 
 The following table outlines the common loss functions:
@@ -104,7 +107,7 @@ While the table covers the basics, deep neural networks offer a world of custom 
 
 ![](eigen.webp)
 
-```angular2html
+```python
 # Define transformations
 k = 1.5
 k1, k2 = 1.5, 0.5

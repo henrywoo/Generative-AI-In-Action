@@ -14,7 +14,7 @@ if __name__ == '__main__':
     vqvae = VQVAE(latent_dim=16, num_embeddings=128).to(device)
 
     # Load VQVAE model if exists
-    vqvae_path = 'vq_vae.pth'
+    vqvae_path = 'model_vqvae.pth'
     if os.path.exists(vqvae_path):
         vqvae.load_state_dict(torch.load(vqvae_path))
         print(f"Loaded VQVAE model from {vqvae_path}")
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     pixelcnn = PixelCNN(num_embeddings=128).to(device)
 
     # Load PixelCNN model if exists
-    pixelcnn_path = 'pixel_cnn.pth'
+    pixelcnn_path = 'model_pixelcnn.pth'
     if os.path.exists(pixelcnn_path):
         pixelcnn.load_state_dict(torch.load(pixelcnn_path))
         print(f"Loaded PixelCNN model from {pixelcnn_path}")

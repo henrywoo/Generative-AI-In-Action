@@ -1,24 +1,22 @@
+import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import numpy as np
 import matplotlib.pyplot as plt
-import os
 from pathlib import Path
 from torchvision import datasets, transforms
 
 # --- Data Handling ---
-DATA_PATH = Path() / "data"
-DATA_PATH.mkdir(parents=True, exist_ok=True)
+def load_data(data_path, batch_size):
+    transform = transforms.Compose([transforms.ToTensor()])  # Convert to PyTorch Tensors
+    train_dataset = datasets.FashionMNIST(data_path, train=True, download=True, transform=transform)
+    valid_dataset = datasets.FashionMNIST(data_path, train=False, download=True, transform=transform)
 
-# Load FashionMNIST (using torchvision for convenience)
-transform = transforms.Compose([transforms.ToTensor()])  # Convert to PyTorch Tensors
-train_dataset = datasets.FashionMNIST(DATA_PATH, train=True, download=True, transform=transform)
-valid_dataset = datasets.FashionMNIST(DATA_PATH, train=False, download=True, transform=transform)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
-valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=128, shuffle=False)
+    return train_loader, valid_loader
 
 # --- Model Definition ---
 class VariationalEncoder(nn.Module):
@@ -66,26 +64,16 @@ class VariationalAutoencoder(nn.Module):
         z = self.reparameterize(mean, log_var)
         return self.decoder(z), mean, log_var
 
-
 # --- Loss Function and Training ---
 def vae_loss(reconstruction, original, mean, log_var):
     reconstruction_loss = F.mse_loss(reconstruction, original)
     kl_divergence = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
     return reconstruction_loss + kl_divergence
 
-# --- Training ---
-torch.manual_seed(42)
-codings_size = 10
-
-model = VariationalAutoencoder(codings_size)
-optimizer = optim.Adam(model.parameters())
-epochs = 25
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-
-for epoch in range(1, epochs + 1):
+def train(model, train_loader, optimizer, device):
+    model.train()
     train_loss = 0
-    for batch_idx, (data, _) in enumerate(train_loader):
+    for data, _ in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mean, log_var = model(data)
@@ -93,9 +81,8 @@ for epoch in range(1, epochs + 1):
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-    print(f'Epoch: {epoch} Average loss: {train_loss / len(train_loader.dataset):.4f}')
+    return train_loss / len(train_loader.dataset)
 
-# --- Plotting Reconstructions ---
 def plot_reconstructions(model, images, n_images=5):
     model.eval()
     with torch.no_grad():
@@ -110,11 +97,43 @@ def plot_reconstructions(model, images, n_images=5):
         axes[1, i].axis('off')
     plt.show()
 
-# Get a batch of images from the validation set for plotting
-sample_data, _ = next(iter(valid_loader))
-plot_reconstructions(model, sample_data[:5])
+def main(args):
+    # Paths
+    DATA_PATH = Path(args.data_path)
+    MODEL_PATH = Path(args.model_path)
+    MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
-# --- Save the Model ---
-MODEL_PATH = Path() / "models"
-MODEL_PATH.mkdir(parents=True, exist_ok=True)
-torch.save(model.state_dict(), MODEL_PATH / "vae_fashion_mnist.pth")
+    # Data
+    train_loader, valid_loader = load_data(DATA_PATH, args.batch_size)
+
+    # Model
+    model = VariationalAutoencoder(args.codings_size).to(device)
+    optimizer = optim.Adam(model.parameters())
+    torch.manual_seed(args.seed)
+
+    # Training
+    for epoch in range(1, args.epochs + 1):
+        train_loss = train(model, train_loader, optimizer, device)
+        print(f'Epoch: {epoch} Average loss: {train_loss:.4f}')
+
+    # Plotting Reconstructions
+    sample_data, _ = next(iter(valid_loader))
+    plot_reconstructions(model, sample_data[:5])
+
+    # Save Model
+    torch.save(model.state_dict(), MODEL_PATH / "vae_fashion_mnist.pth")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Variational Autoencoder for FashionMNIST")
+    parser.add_argument('--data_path', type=str, default='data', help='Path to dataset')
+    parser.add_argument('--model_path', type=str, default='models', help='Path to save the model')
+    parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
+    parser.add_argument('--epochs', type=int, default=25, help='Number of epochs to train')
+    parser.add_argument('--codings_size', type=int, default=10, help='Size of the latent codings')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed')
+
+    args = parser.parse_args()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    main(args)
