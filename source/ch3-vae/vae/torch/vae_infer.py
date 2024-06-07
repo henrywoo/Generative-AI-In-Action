@@ -58,7 +58,7 @@ def plot_histograms(latent_vectors, num_bins=30):
     num_cols = 2
     num_rows = (num_dimensions + 1) // num_cols
 
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 2))
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(6, int(num_rows*1.2)))
     axes = axes.flatten()
 
     for i in range(num_dimensions):
@@ -70,11 +70,11 @@ def plot_histograms(latent_vectors, num_bins=30):
         xmin, xmax = ax.get_xlim()
         x = torch.linspace(xmin, xmax, 100)
         p = torch.exp(-0.5 * ((x - mu) / std) ** 2) / (std * (2 * torch.pi) ** 0.5)
-        ax.plot(x.numpy(), p.numpy(), 'k', linewidth=2)
-        title = f'Histogram of Latent Dimension {i + 1}'
-        ax.set_title(title)
-        ax.set_xlabel('Value')
-        ax.set_ylabel('Density')
+        ax.plot(x.numpy(), p.numpy(), 'k', linewidth=1)
+        title = f'Latent Dimension {i + 1}'
+        ax.set_title(title, fontsize=10)
+        ax.set_xlabel('Value', fontsize=8)
+        ax.set_ylabel('Density', fontsize=8)
 
     # Hide any unused subplots
     for i in range(num_dimensions, num_rows * num_cols):
@@ -85,7 +85,7 @@ def plot_histograms(latent_vectors, num_bins=30):
     plt.show()
 
 
-def plot_latent_space(model, dataloader, device):
+def plot_latent_space(model, dataloader, data_name, device):
     model.eval()
     all_mean = []
     all_labels = []
@@ -99,13 +99,14 @@ def plot_latent_space(model, dataloader, device):
     all_mean = torch.cat(all_mean)
     all_labels = torch.cat(all_labels)
 
-    plt.figure(figsize=(8, 6))
-    scatter = plt.scatter(all_mean[:, 0].numpy(), all_mean[:, 1].numpy(), c=all_labels.numpy(), cmap='tab10', alpha=0.7)
-    legend1 = plt.legend(*scatter.legend_elements(), title="Digits")
+    plt.figure(figsize=(6, 4))
+    scatter = plt.scatter(all_mean[:, 0].numpy(), all_mean[:, 1].numpy(), c=all_labels.numpy(), cmap='tab10', alpha=0.4)
+    legend1 = plt.legend(*scatter.legend_elements(), title="Digits", fontsize=8)
     plt.gca().add_artist(legend1)
-    plt.xlabel('Latent Dimension 1')
-    plt.ylabel('Latent Dimension 2')
-    plt.title('Latent Space Distribution')
+    plt.xlabel('Latent Dimension 1', fontsize=8)
+    plt.ylabel('Latent Dimension 2', fontsize=8)
+    plt.title(f'{data_name.upper()} Data Latent Space Scatter Plot', fontsize=10)
+    plt.savefig(os.path.join(here, f'latent_space_scatter_{data_name}.png'))
     plt.show()
 
     return all_mean
@@ -119,10 +120,11 @@ def main(args):
 
     DATA_PATH = Path(args.data_path)
     train_loader, valid_loader = load_data(DATA_PATH, args.batch_size)
-    latent_vectors = plot_latent_space(model, valid_loader, device)
+    latent_vectors_train = plot_latent_space(model, train_loader, "train", device)
+    plot_latent_space(model, valid_loader, "valid", device)
 
     # Plot histograms of latent dimensions
-    plot_histograms(latent_vectors)
+    plot_histograms(latent_vectors_train)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate images with a trained Variational Autoencoder")
