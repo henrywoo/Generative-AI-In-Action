@@ -52,6 +52,39 @@ def semantic_interpolation(model, device, codings_size=10, num_steps=8):
     plt.savefig(os.path.join(here, 'semantic_interpolation.png'))
     plt.show()
 
+
+def plot_histograms(latent_vectors, num_bins=30):
+    num_dimensions = latent_vectors.shape[1]
+    num_cols = 2
+    num_rows = (num_dimensions + 1) // num_cols
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(10, num_rows * 2))
+    axes = axes.flatten()
+
+    for i in range(num_dimensions):
+        ax = axes[i]
+        ax.hist(latent_vectors[:, i].numpy(), bins=num_bins, density=True, alpha=0.6, color='g')
+
+        # Plotting the Gaussian distribution for comparison
+        mu, std = latent_vectors[:, i].mean(), latent_vectors[:, i].std()
+        xmin, xmax = ax.get_xlim()
+        x = torch.linspace(xmin, xmax, 100)
+        p = torch.exp(-0.5 * ((x - mu) / std) ** 2) / (std * (2 * torch.pi) ** 0.5)
+        ax.plot(x.numpy(), p.numpy(), 'k', linewidth=2)
+        title = f'Histogram of Latent Dimension {i + 1}'
+        ax.set_title(title)
+        ax.set_xlabel('Value')
+        ax.set_ylabel('Density')
+
+    # Hide any unused subplots
+    for i in range(num_dimensions, num_rows * num_cols):
+        fig.delaxes(axes[i])
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(here, 'latent_space_dist.png'))
+    plt.show()
+
+
 def plot_latent_space(model, dataloader, device):
     model.eval()
     all_mean = []
@@ -75,6 +108,9 @@ def plot_latent_space(model, dataloader, device):
     plt.title('Latent Space Distribution')
     plt.show()
 
+    return all_mean
+
+
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, codings_size = load_checkpoint(args.checkpoint_path, device)
@@ -83,7 +119,10 @@ def main(args):
 
     DATA_PATH = Path(args.data_path)
     train_loader, valid_loader = load_data(DATA_PATH, args.batch_size)
-    plot_latent_space(model, valid_loader, device)
+    latent_vectors = plot_latent_space(model, valid_loader, device)
+
+    # Plot histograms of latent dimensions
+    plot_histograms(latent_vectors)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate images with a trained Variational Autoencoder")
