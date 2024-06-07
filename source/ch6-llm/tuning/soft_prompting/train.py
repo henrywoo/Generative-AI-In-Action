@@ -2,9 +2,11 @@ import torch
 from torch.optim import Adam
 from datasets import load_dataset
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 from model import SoftPromptTuning
 import os
-from tqdm import tqdm
+
 
 def save_checkpoint(model, optimizer, epoch, loss, filepath='best.pt'):
     state = {
@@ -39,58 +41,63 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
         start_epoch = checkpoint['epoch'] + 1
         best_val_loss = checkpoint['loss']
 
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=4, pin_memory=True)
+
+    model.to('cuda')
+    scaler = torch.cuda.amp.GradScaler()
+
     train_losses = []
     val_losses = []
 
     for epoch in tqdm(range(start_epoch, epochs), desc="Training Epochs"):
         model.train()
         epoch_train_loss = 0
-        for batch in train_dataset:
-            inputs = model.tokenizer(batch['context'], return_tensors='pt', padding=True, truncation=True)
+        for batch in train_loader:
+            inputs = model.tokenizer(batch['context'], return_tensors='pt', padding=True, truncation=True).to('cuda')
             labels = model.tokenizer(batch['answers']['text'][0], return_tensors='pt', padding=True,
-                                     truncation=True).input_ids
+                                     truncation=True).input_ids.to('cuda')
 
             optimizer.zero_grad()
-            outputs = model(inputs.input_ids, attention_mask=inputs.attention_mask)
-            logits = outputs.logits[:, model.soft_prompt_len:-1, :].contiguous()
+            with torch.cuda.amp.autocast():
+                outputs = model(inputs.input_ids, attention_mask=inputs.attention_mask)
+                logits = outputs.logits[:, model.soft_prompt_len:-1, :].contiguous()
 
-            # Ensure the logits and labels have the same shape
-            logits = logits.view(-1, logits.size(-1))
-            labels = labels.view(-1)
+                logits = logits.view(-1, logits.size(-1))
+                labels = labels.view(-1)
 
-            # Ensure labels and logits have the same length
-            if logits.size(0) != labels.size(0):
-                min_size = min(logits.size(0), labels.size(0))
-                logits = logits[:min_size]
-                labels = labels[:min_size]
+                if logits.size(0) != labels.size(0):
+                    min_size = min(logits.size(0), labels.size(0))
+                    logits = logits[:min_size]
+                    labels = labels[:min_size]
 
-            loss = criterion(logits, labels)
+                loss = criterion(logits, labels)
 
-            loss.backward()
-            optimizer.step()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             epoch_train_loss += loss.item()
 
-        epoch_train_loss /= len(train_dataset)
+        epoch_train_loss /= len(train_loader)
         train_losses.append(epoch_train_loss)
 
         # Validation
         model.eval()
         epoch_val_loss = 0
         with torch.no_grad():
-            for batch in val_dataset:
-                inputs = model.tokenizer(batch['context'], return_tensors='pt', padding=True, truncation=True)
+            for batch in val_loader:
+                inputs = model.tokenizer(batch['context'], return_tensors='pt', padding=True, truncation=True).to(
+                    'cuda')
                 labels = model.tokenizer(batch['answers']['text'][0], return_tensors='pt', padding=True,
-                                         truncation=True).input_ids
+                                         truncation=True).input_ids.to('cuda')
 
                 outputs = model(inputs.input_ids, attention_mask=inputs.attention_mask)
                 logits = outputs.logits[:, model.soft_prompt_len:-1, :].contiguous()
 
-                # Ensure the logits and labels have the same shape
                 logits = logits.view(-1, logits.size(-1))
                 labels = labels.view(-1)
 
-                # Ensure labels and logits have the same length
                 if logits.size(0) != labels.size(0):
                     min_size = min(logits.size(0), labels.size(0))
                     logits = logits[:min_size]
@@ -100,12 +107,11 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
 
                 epoch_val_loss += loss.item()
 
-        epoch_val_loss /= len(val_dataset)
+        epoch_val_loss /= len(val_loader)
         val_losses.append(epoch_val_loss)
 
         print(f"Epoch: {epoch + 1}, Train Loss: {epoch_train_loss}, Val Loss: {epoch_val_loss}")
 
-        # Checkpoint saving
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
             save_checkpoint(model, optimizer, epoch, best_val_loss, checkpoint_path)
@@ -113,12 +119,10 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
         else:
             patience_counter += 1
 
-        # Early stopping
         if patience_counter >= patience:
             print("Early stopping triggered")
             break
 
-    # Plotting learning curves
     plt.figure()
     plt.plot(train_losses, label='Train Loss')
     plt.plot(val_losses, label='Validation Loss')
@@ -128,20 +132,16 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
     plt.show()
 
 
-# Example usage
 def main():
     model = SoftPromptTuning()
 
-    # Add a new pad_token to the tokenizer
     model.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     model.model.resize_token_embeddings(len(model.tokenizer))
 
-    # Load SQuAD dataset
     squad = load_dataset('squad')
     train_data = squad['train']
     val_data = squad['validation']
 
-    # Training loop
     train(model, train_data, val_data)
 
 
