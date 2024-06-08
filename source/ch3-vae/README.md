@@ -85,7 +85,7 @@ In VQVAE, the Encoder learns intermediate encodings, which are then mapped to on
 
 As an autoencoder, a notable feature of VQ-VAE is that the encoded vector is discrete. In other words, each element of the final encoded vector is an integer. This is the meaning of "Quantized", which we can refer to as "quantization" (similar to the term "quantum" in quantum mechanics, both implying discretization).
 
-[The original paper](https://arxiv.org/abs/1711.00937) looks deliberately complicated. First, **VQ-VAE is actually an AE (autoencoder) rather than a VAE (variational autoencoder)** and "VQ-AE" might be a technically more precise term.
+[The original paper](https://arxiv.org/abs/1711.00937) looks deliberately complicated. First, **VQ-VAE is actually an AE (autoencoder) rather than a VAE (variational autoencoder)** and "VQ-AE" might be a technically more precise term. The key evidence is that, even with a uniform prior, you cannot directly sample from the latent space to generate realistic images. Instead, you need a PixelCNN to model the distribution of the discrete codes and generate images sequentially. This suggests that **the latent space in VQ-VAE is more of a discrete representation rather than a probabilistic distribution**.
 
 Secondly, one of the core steps of VQ-VAE is the **STE(Straight-Through Estimator)**, an optimization technique used to handle the non-differentiable nature of the quantization process. It allows gradients to flow through the quantization step during backpropagation by approximating the gradient. The original paper does not provide a slightly detailed explanation, making it necessary to look at the source code to understand it better.
 
@@ -216,7 +216,35 @@ Both Gumbel-Softmax and STE have been used successfully in VQ-VAE training. The 
 * **STE:** Might be preferred for its simplicity and computational efficiency. It often works well in practice and is the default choice in many VQ-VAE implementations.
 
 
-## Why there is no KL Divergence in VA-VAE loss function?
+## What are the Prior Distribution of z in AE, VAE, and VQ-VAE?
+
+**VQ-VAE (Vector Quantized Variational Autoencoder):**
+
+* **Latent Space:** Discrete (represented by indices of codebook entries)
+* **Prior Distribution of z:** Implicitly defined by the distribution of codes in the learned codebook. This distribution is not necessarily uniform and can adapt to the data during training. It is not assumed to follow a k-dimensional multinomial distribution with equal probabilities.
+
+**VAE (Variational Autoencoder):**
+
+* **Latent Space:** Continuous
+* **Prior Distribution of z:** Typically assumed to be a standard normal distribution (Gaussian with zero mean and unit variance). This is a design choice to encourage the model to learn a smooth and well-structured latent space.
+
+**AE (Autoencoder):**
+
+* **Latent Space:** Continuous
+* **Prior Distribution of z:** No explicit prior assumption is made about the distribution of z. It is learned from the data during training and depends on the specific architecture of the encoder.
+
+**Key Differences:**
+
+| Feature        | VQ-VAE                                                                    | VAE                                                                     | AE                                                                          |
+| :------------- |:--------------------------------------------------------------------------| :----------------------------------------------------------------------- |:----------------------------------------------------------------------------|
+| Latent Space   | Discrete (codebook entries)                                               | Continuous                                                                | Continuous                                                                  |
+| Prior of z     | Implicitly defined by the distribution of codes in the learned codebook   | Standard normal distribution (Gaussian with zero mean and unit variance) | No explicit assumption, depends on the data and encoder architecture        |
+| Training       | Reconstruction loss + VQ loss(e.g. loss_codebook + beta * loss_commit)    | Reconstruction loss + KL divergence                                      | Reconstruction loss (e.g. MSE)                                              |
+| Generation     | Requires PixelCNN or similar model to generate images from discrete codes | Decoder directly generates images from the continuous latent representation | Decoder directly generates images from the continuous latent representation |
+
+> **VQ loss** is typically implemented by moving the encoder outputs towards their nearest codebook vectors (commitment loss) and moving the codebook vectors towards the encoder outputs (codebook update loss).
+
+## Why there is no KL Divergence in VQ-VAE loss function?
 
 The absence of the KL Divergence term in VQ-VAE (Vector Quantized Variational Autoencoder) is a deliberate design choice and a key difference compared to standard VAEs. Here's why:
 
@@ -246,36 +274,6 @@ The absence of the KL Divergence term in VQ-VAE (Vector Quantized Variational Au
 While VQ-VAEs don't use the KL divergence in their main loss function, they might still incorporate it in other ways. For example, some variants of VQ-VAEs use the KL divergence to measure the distance between the encoder's output and the quantized representation during training.
 
 Overall, the absence of the KL divergence term in VQ-VAEs is a deliberate design choice that simplifies the model and allows it to focus on accurate reconstruction and learning a discrete latent space.
-
-## What are the Prior Distribution of z in AE, VAE, and VQ-VAE?
-
-**VQ-VAE (Vector Quantized Variational Autoencoder):**
-
-* **Latent Space:** Discrete (represented by indices of codebook entries)
-* **Prior Distribution of z:** Implicitly defined by the distribution of codes in the learned codebook. This distribution is not necessarily uniform and can adapt to the data during training. It is not assumed to follow a k-dimensional multinomial distribution with equal probabilities.
-
-**VAE (Variational Autoencoder):**
-
-* **Latent Space:** Continuous
-* **Prior Distribution of z:** Typically assumed to be a standard normal distribution (Gaussian with zero mean and unit variance). This is a design choice to encourage the model to learn a smooth and well-structured latent space.
-
-**AE (Autoencoder):**
-
-* **Latent Space:** Continuous
-* **Prior Distribution of z:** No explicit prior assumption is made about the distribution of z. It is learned from the data during training and depends on the specific architecture of the encoder.
-
-**Key Differences:**
-
-| Feature        | VQ-VAE                                                                    | VAE                                                                     | AE                                                                          |
-| :------------- |:--------------------------------------------------------------------------| :----------------------------------------------------------------------- |:----------------------------------------------------------------------------|
-| Latent Space   | Discrete (codebook entries)                                               | Continuous                                                                | Continuous                                                                  |
-| Prior of z     | Implicitly defined by the distribution of codes in the learned codebook   | Standard normal distribution (Gaussian with zero mean and unit variance) | No explicit assumption, depends on the data and encoder architecture        |
-| Training       | Reconstruction loss + VQ loss(e.g. loss_codebook + beta * loss_commit)    | Reconstruction loss + KL divergence                                      | Reconstruction loss (e.g. MSE)                                              |
-| Generation     | Requires PixelCNN or similar model to generate images from discrete codes | Decoder directly generates images from the continuous latent representation | Decoder directly generates images from the continuous latent representation |
-
-> **VQ loss** is typically implemented by moving the encoder outputs towards their nearest codebook vectors (commitment loss) and moving the codebook vectors towards the encoder outputs (codebook update loss).
-
-
 
 ## Reference
 
