@@ -2,6 +2,8 @@
 
 ## VAE
 
+![](vae.jpg)
+
 **Variational Autoencoders (VAEs): A Bayesian Approach to Representation Learning**
 
 VAEs are a powerful tool for learning meaningful, compressed representations (latent variables) from complex data, such as images.  They combine the strengths of neural networks with the principles of Bayesian inference.
@@ -40,4 +42,8 @@ VAEs can be seen as performing approximate Bayesian inference. The prior distrib
 * VAEs are powerful for unsupervised learning of meaningful representations.
 * They combine neural networks with Bayesian principles.
 * The ELBO balances data reconstruction accuracy with the complexity of the latent space model.
+
+## VQ-VAE
+
+![](vqvae.png)
 
