@@ -52,7 +52,7 @@ As shown, the advantage of VAE over a traditional AutoEncoder is that when diffe
 
 2. **Approximate Posterior (q(z|x)):** Calculating the exact posterior distribution is often infeasible.  VAEs use a neural network (the encoder) to approximate this posterior. It takes the observed data as input and outputs parameters for a distribution over the latent variables.
 
-3. **Evidence Lower Bound (ELBO):** The ELBO serves as the objective function for training VAEs.  It's a lower bound on the log-likelihood of the data and balances two key aspects:
+3. **Evidence Lower Bound (ELBO):** The ELBO serves as **the objective function** for training VAEs.  It's a lower bound on the log-likelihood of the data and balances two key aspects:
 
 ```
 ELBO = E[log p(x|z)] - DKL[q(z|x) || p(z)]
@@ -81,13 +81,51 @@ In VAE, each training sample x is mapped to a distribution p(z|x) in the latent 
 
 In VQVAE, the Encoder learns intermediate encodings, which are then mapped to one of the K vectors in the codebook through nearest-neighbor search. The Decoder reconstructs the image from these latent codes.
 
+![](vqvae.png)
+
+As an autoencoder, a notable feature of VQ-VAE is that the encoded vector is discrete. In other words, each element of the final encoded vector is an integer. This is the meaning of "Quantized", which we can refer to as "quantization" (similar to the term "quantum" in quantum mechanics, both implying discretization).
+
+[The original paper](https://arxiv.org/abs/1711.00937) looks deliberately complicated. First, **VQ-VAE is actually an AE (autoencoder) rather than a VAE (variational autoencoder)** and "VQ-AE" might be a technically more precise term.
+
+Secondly, one of the core steps of VQ-VAE is the **STE(Straight-Through Estimator)**, an optimization technique used to handle the non-differentiable nature of the quantization process. It allows gradients to flow through the quantization step during backpropagation by approximating the gradient. The original paper does not provide a slightly detailed explanation, making it necessary to look at the source code to understand it better.
+
 Because nearest-neighbor search uses `argmax` to find the index in the codebook, it introduces a **non-differentiable problem**. VQVAE uses the **stop-gradient operation** to avoid this issue. This means that during the forward pass, gradients are stopped, and during the backward pass, the gradients from the decoder input are copied to the encoder output.
 
 ```python
 quantize = input + (quantize - input).detach()
-# During forward propagation, it works as usual.
-# During backpropagation, the gradient for the detach() part is 0, and the gradients of quantize and input are the same.
-# This effectively copies quantize to input.
+```
+
+During forward propagation, it works as usual.
+During backpropagation, the gradient for the detach() part is 0, and the gradients of _quantize_ and input are the same.
+This effectively copies _quantize_ to input. A detailed pyton code is as follows:
+
+```python
+import torch
+from torch.autograd import Function
+
+class StraightThroughEstimator(Function):
+    @staticmethod
+    def forward(ctx, input):
+        # During the forward pass, perform quantization (e.g., binarization)
+        return torch.sign(input)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # During the backward pass, bypass the quantization step (act as identity)
+        return grad_output
+
+# Create a module to encapsulate the STE functionality
+class STEFunction(torch.nn.Module):
+    def __init__(self):
+        super(STEFunction, self).__init__()
+
+    def forward(self, x):
+        return StraightThroughEstimator.apply(x)
+
+# Example Usage:
+ste = STEFunction()
+input_tensor = torch.randn(5)  # Sample input
+quantized_output = ste(input_tensor)
 ```
 
 **Key Differences Between VQVAE and VAE:**
@@ -98,17 +136,146 @@ quantize = input + (quantize - input).detach()
 
 VQVAE's method of using a codebook to manage **discrete latent codes** lays the groundwork for later models like DALLE and VQGAN.
 
-![](vqvae.png)
 
-### Summary
 
-AutoEncoder, VAE, and VQVAE can be unified by the different designs of the probability distributions of their latent codes. 
 
-- **AutoEncoder**: Learns an arbitrary probability distribution through the network.
-- **VAE**: Designed with a normal distribution.
-- **VQVAE**: Uses a codebook with a discrete distribution.
+## PixelCNN
 
-In essence, the reconstruction concept of AutoEncoders is to use low-dimensional latent code distributions to represent high-dimensional data distributions. Both VAE and VQVAE aim to control the image generation process by designing the form of the latent code distribution.
+To trace the origin of VQ-VAE, we have to talk about autoregressive models. It can be said that the idea of VQ-VAE as a generative model stems from autoregressive models like PixelRNN and PixelCNN. These models take into account that the images we want to generate are discrete rather than continuous.
+
+Take the images in CIFAR-10 as an example. They are 32x32 3-channel images, meaning they are 32x32x3 matrices where each element is an integer between 0 and 255. This way, we can consider it as a sentence of length 32x32x3=3072, with a vocabulary size of 256. We can then use language modeling methods to generate an image pixel by pixel, recursively (by passing in all previous pixels to predict the next pixel). This is the so-called autoregressive method:
+
+p(x) = p(x1)p(x2|x1)...p(x3n2|x1, x2, ..., x3n2-1) (1)
+
+where p(x1), p(x2|x1), ..., p(x3n2|x1, x2, ..., x3n2-1) are each 256-class classification problems, except that the conditions they depend on are different.
+
+PixelRNN and PixelCNN have been widely discussed online, so I won't go into details here. Research on autoregressive models mainly focuses on two aspects: first, how to **design the recursive order** so that the model can better generate samples, because the image sequence is not a simple one-dimensional sequence, it is at least two-dimensional, and more often three-dimensional. In this case, whether you generate "from left to right and then from top to bottom", "from top to bottom and then from left to right", "from the middle to the surroundings", or other orders, it will greatly affect the generation effect. The second aspect is to research how to **speed up the sampling process**.
+
+The autoregressive method is very stable and can effectively estimate probability, but it has a fatal flaw: **it's slow**. Because it generates pixel by pixel, it requires random sampling for each pixel. The CIFAR-10 example mentioned above is already considered a small image. Currently, image generation needs to be at least 128x128x3 to be convincing, which is close to 50,000 pixels (imagine generating a sentence of length 50,000). It would be very time-consuming to generate pixel by pixel. Moreover, for such long sequences, neither RNN nor CNN models can capture such long dependencies well.
+
+The original autoregressive model also has another problem, which is that it cuts off the connection between categories. Although each pixel is discrete, so it can be seen as a 256-classification problem, the difference between consecutive pixels is actually very small, and **a pure classification problem cannot capture this connection**. More mathematically, our objective function, the cross-entropy, is -log(pt). If the target pixel is 100, and we predict it as 99, then pt is close to 0 because the categories are different, and -log(pt) will be very large, resulting in a large loss. But visually, there is not much difference between a pixel value of 100 or 99, so there should not be such a large loss.
+
+## When generating images, why do we need PixelCNN for VQ-VAE, but not VAE?
+
+The difference in image generation between VAE and VQ-VAE stems from the nature of their latent spaces:
+
+**VAE (Variational Autoencoder):**
+
+* **Latent Space:** Continuous
+* **Image Generation:** The decoder of a VAE directly maps the continuous latent representation to an image. Since the latent space is continuous, it can directly be used to generate images by sampling from this space and then passing the samples through the decoder.
+
+**VQ-VAE (Vector Quantized Variational Autoencoder):**
+
+* **Latent Space:** Discrete
+* **Image Generation:** The VQ-VAE's latent space is discrete due to vector quantization. This means it consists of a fixed set of vectors, and each encoded representation is assigned to one of these vectors.  This discrete nature makes it difficult to generate new images directly from the latent space, as there's no inherent way to interpolate or sample between the discrete vectors.
+
+* **PixelCNN's Role:** This is where PixelCNN comes in.  It is trained on the discrete latent space to model the distribution of the discrete codes. It learns the probabilities of different codes occurring together, effectively capturing the dependencies between the image components represented by the codes. By sampling from this PixelCNN-learned distribution, you can then generate new, coherent sequences of discrete codes, which the VQ-VAE decoder can translate back into images.
+
+**In summary:**
+
+* **VAE:** The continuous latent space allows for direct image generation from the decoder.
+* **VQ-VAE:** The discrete latent space requires a separate model (PixelCNN) to learn the distribution of discrete codes and generate new sequences of codes for image generation.
+
+**Analogy:**
+
+Think of the latent space as a map:
+
+* **VAE:** The map is continuous, like a topographical map with smooth gradients. You can easily pinpoint any location on the map and use it for navigation.
+* **VQ-VAE:** The map is discrete, like a city map with distinct blocks. You can't easily navigate just by looking at the map, you need additional information (the PixelCNN) to understand the relationships between the blocks and navigate effectively.
+
+
+## Gumbel-Softmax vs STE (Straight-Through Estimator)
+
+In the context of VQ-VAE (Vector Quantized Variational Autoencoder), Gumbel-Softmax is not directly used within the model itself. Instead, it's a technique that can be employed during training as an alternative to the standard straight-through estimator (STE) for backpropagating gradients through the non-differentiable quantization process.
+
+**Why Gumbel-Softmax?**
+
+* **Differentiable Approximation of Argmax:**  VQ-VAE involves selecting the closest embedding vector from a codebook based on the encoder's output. This is typically done using an argmax operation, which is non-differentiable. Gumbel-Softmax provides a differentiable approximation of the argmax, allowing for gradients to flow during training.
+
+* **Softer Assignments:** Unlike the STE, which makes hard assignments to a single embedding vector, Gumbel-Softmax produces soft assignments where each embedding vector has a probability of being chosen. This can lead to smoother gradients and potentially better training.
+
+**How Gumbel-Softmax Works**
+
+1. **Adding Gumbel Noise:** Gumbel noise is added to the logits (unnormalized probabilities) produced by the encoder.
+
+2. **Softmax:** The softmax function is applied to the perturbed logits to obtain a probability distribution over the embedding vectors.
+
+3. **Sampling or Hardening:** During training, you can either sample from the distribution (Gumbel-Softmax sampling) or use a temperature parameter to harden the distribution and select the most likely embedding vector (Gumbel-Softmax relaxation).
+
+**Alternatives to Gumbel-Softmax:**
+
+* **Straight-Through Estimator (STE):** The default method in VQ-VAE, it simply copies gradients from the decoder to the encoder during backpropagation, ignoring the non-differentiable quantization step.
+* **Other Differentiable Relaxations:** There are other techniques like Concrete distribution (another name for Gumbel-Softmax) or sparsemax that can also provide differentiable approximations of argmax.
+
+**Choosing between Gumbel-Softmax and STE:**
+
+Both Gumbel-Softmax and STE have been used successfully in VQ-VAE training. The choice often depends on the specific task and dataset.
+
+* **Gumbel-Softmax:** Might be preferred when softer assignments and smoother gradients are desired. It can also be useful for exploring the continuous relaxation of discrete variables.
+
+* **STE:** Might be preferred for its simplicity and computational efficiency. It often works well in practice and is the default choice in many VQ-VAE implementations.
+
+
+## Why there is no KL Divergence in VA-VAE loss function?
+
+The absence of the KL Divergence term in VQ-VAE (Vector Quantized Variational Autoencoder) is a deliberate design choice and a key difference compared to standard VAEs. Here's why:
+
+1. **Discrete Latent Space:**
+
+   * VQ-VAEs utilize a discrete latent space due to vector quantization. This means the latent representation is not a continuous probability distribution but a set of discrete codes. 
+   * The KL divergence is a measure of the difference between two probability distributions. Since the VQ-VAE's latent space is not probabilistic, the KL divergence term doesn't apply in the traditional sense.
+
+2. **Posterior Collapse Mitigation:**
+
+   * In standard VAEs, the KL divergence term acts as a regularizer to prevent posterior collapse, where the latent representation becomes meaningless and the model simply learns to reconstruct the input without learning useful representations.
+   * VQ-VAEs, however, address posterior collapse through the quantization process itself. The limited number of codebook entries forces the model to learn diverse and informative representations, even without the KL divergence term.
+
+3. **Alternative Loss Function:**
+
+   * VQ-VAEs use a different loss function that combines a reconstruction loss (to ensure accurate image reconstruction) and a codebook loss (to encourage the codebook vectors to be representative of the data). This loss function is sufficient for training VQ-VAEs effectively without the need for a KL divergence term.
+
+4. **Potential Benefits:**
+
+   * The absence of the KL divergence term in VQ-VAEs can lead to several benefits, including:
+     * **Sharper Reconstructions:** Without the KL divergence term pushing the latent distribution towards a standard normal, VQ-VAEs can focus on accurate reconstruction, often resulting in sharper images.
+     * **Simpler Training:** The loss function is simpler and easier to optimize without the KL divergence term.
+     * **Better for Certain Tasks:**  VQ-VAEs have shown particular promise for tasks that benefit from a discrete latent space, such as image generation, compression, and discrete representation learning.
+
+**Important Note:**
+
+While VQ-VAEs don't use the KL divergence in their main loss function, they might still incorporate it in other ways. For example, some variants of VQ-VAEs use the KL divergence to measure the distance between the encoder's output and the quantized representation during training.
+
+Overall, the absence of the KL divergence term in VQ-VAEs is a deliberate design choice that simplifies the model and allows it to focus on accurate reconstruction and learning a discrete latent space.
+
+## What are the Prior Distribution of z in AE, VAE, and VQ-VAE?
+
+**VQ-VAE (Vector Quantized Variational Autoencoder):**
+
+* **Latent Space:** Discrete (represented by indices of codebook entries)
+* **Prior Distribution of z:** Implicitly defined by the distribution of codes in the learned codebook. This distribution is not necessarily uniform and can adapt to the data during training. It is not assumed to follow a k-dimensional multinomial distribution with equal probabilities.
+
+**VAE (Variational Autoencoder):**
+
+* **Latent Space:** Continuous
+* **Prior Distribution of z:** Typically assumed to be a standard normal distribution (Gaussian with zero mean and unit variance). This is a design choice to encourage the model to learn a smooth and well-structured latent space.
+
+**AE (Autoencoder):**
+
+* **Latent Space:** Continuous
+* **Prior Distribution of z:** No explicit prior assumption is made about the distribution of z. It is learned from the data during training and depends on the specific architecture of the encoder.
+
+**Key Differences:**
+
+| Feature        | VQ-VAE                                                                    | VAE                                                                     | AE                                                                          |
+| :------------- |:--------------------------------------------------------------------------| :----------------------------------------------------------------------- |:----------------------------------------------------------------------------|
+| Latent Space   | Discrete (codebook entries)                                               | Continuous                                                                | Continuous                                                                  |
+| Prior of z     | Implicitly defined by the distribution of codes in the learned codebook   | Standard normal distribution (Gaussian with zero mean and unit variance) | No explicit assumption, depends on the data and encoder architecture        |
+| Training       | Reconstruction loss + VQ loss(e.g. loss_codebook + beta * loss_commit)    | Reconstruction loss + KL divergence                                      | Reconstruction loss (e.g. MSE)                                              |
+| Generation     | Requires PixelCNN or similar model to generate images from discrete codes | Decoder directly generates images from the continuous latent representation | Decoder directly generates images from the continuous latent representation |
+
+> **VQ loss** is typically implemented by moving the encoder outputs towards their nearest codebook vectors (commitment loss) and moving the codebook vectors towards the encoder outputs (codebook update loss).
+
+
 
 ## Reference
 
