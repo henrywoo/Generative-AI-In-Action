@@ -32,7 +32,6 @@ def extract_latent_codes(vqvae_model, dataloader, device):
     all_latents = torch.cat(all_latents)
     return all_latents
 
-
 # Example usage to extract latent codes and save them
 def save_latent_codes():
     batch_size = 32

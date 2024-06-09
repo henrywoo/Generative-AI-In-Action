@@ -5,18 +5,19 @@ import argparse
 import os
 from pixelcnn import PixelCNN
 import torch.nn.functional as F
+from torchvision import transforms
+from PIL import Image
+
 def sample_from_pixelcnn(model, shape, device):
     model.eval()
-    samples = torch.zeros(shape, device=device, dtype=torch.long)
+    samples = torch.zeros(shape, device=device, dtype=torch.long)  # Initialize as long for indices
     with torch.no_grad():
         for i in range(shape[2]):
             for j in range(shape[3]):
-                print(samples.shape)
-                out = model(samples)
+                out = model(samples.float())  # Convert samples to float for model input
                 probs = F.softmax(out[:, :, i, j], dim=1)
-                samples[:, :, i, j] = torch.multinomial(probs.view(shape[0], -1), 1).view(-1)
+                samples[:, 0, i, j] = torch.multinomial(probs, 1).squeeze(-1)
     return samples
-
 
 def load_model(model, file_path, device):
     model.load_state_dict(torch.load(file_path, map_location=device))
@@ -24,16 +25,21 @@ def load_model(model, file_path, device):
     model.eval()
     return model
 
-from torchvision import transforms
-from PIL import Image
-
 def generate_samples_from_pixelcnn(pixelcnn_model, vqvae_model, args):
     with torch.no_grad():
         z_q_indices = sample_from_pixelcnn(pixelcnn_model, (args.batch_size, args.hidden_size, 7, 7), args.device)
-        z_q = vqvae_model.codebook.embedding(z_q_indices)
-        z_q = z_q.permute(0, 3, 1, 2).contiguous()
+        print(f"z_q_indices shape: {z_q_indices.shape}")  # Debugging print
+        z_q_indices = z_q_indices.view(args.batch_size, -1, 7, 7)  # Shape: (batch_size, hidden_size, 7, 7)
+        print(f"z_q_indices shape after view: {z_q_indices.shape}")  # Debugging print
+
+        # Convert indices to embeddings using the codebook
+        z_q = vqvae_model.codebook.embedding(z_q_indices).permute(0, 3, 1, 2).contiguous()
+        print(f"z_q shape after embedding and permute: {z_q.shape}")  # Debugging print
+
+        # Decode the latent vectors to images
         x_tilde = vqvae_model.decode(z_q)
 
+        # Upscale images to 256x256
         upscaled_images = []
         for img in x_tilde:
             img_pil = transforms.ToPILImage()(img.cpu())
@@ -50,8 +56,7 @@ def main(args):
     vqvae_model = VectorQuantizedVAE(num_channels, args.hidden_size, args.k)
     vqvae_model = load_model(vqvae_model, args.vqvae_model_path, args.device)
 
-    #pixelcnn_model = PixelCNN(args.k, args.hidden_size)
-    pixelcnn_model = PixelCNN(args.k, num_channels)
+    pixelcnn_model = PixelCNN(args.k, args.hidden_size)
     pixelcnn_model = load_model(pixelcnn_model, args.pixelcnn_model_path, args.device)
 
     if not os.path.exists(args.output_folder):
