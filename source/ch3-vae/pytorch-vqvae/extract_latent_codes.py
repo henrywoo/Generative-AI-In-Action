@@ -22,12 +22,16 @@ def extract_latent_codes(vqvae_model, dataloader, device):
     with torch.no_grad():
         for data, _ in dataloader:
             data = data.to(device)
-            latents = vqvae_model.encode(data)  # Directly using encode method to get latents
-            latents = latents.argmax(dim=1)  # Get the indices of the closest embeddings
-            all_latents.append(latents.cpu())
+            z_e_x = vqvae_model.encoder(data)  # Encoder output shape (batch_size, 256, 7, 7)
+            indices = vqvae_model.codebook(z_e_x)  # Indices shape (batch_size, 7, 7)
+
+            # Convert indices to embeddings
+            z_q_x = vqvae_model.codebook.embedding(indices).permute(0, 3, 1, 2)  # Shape (batch_size, 256, 7, 7)
+            all_latents.append(z_q_x.cpu())
 
     all_latents = torch.cat(all_latents)
     return all_latents
+
 
 # Example usage to extract latent codes and save them
 def save_latent_codes():
@@ -37,14 +41,14 @@ def save_latent_codes():
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    vqvae_model = VectorQuantizedVAE(input_dim=1, dim=256, K=512)  # Adjust parameters based on your model definition
+    vqvae_model = VectorQuantizedVAE(input_dim=1, dim=256, k=512)  # Adjust parameters based on your model definition
     vqvae_model = load_model(vqvae_model, file_vqvae, device)
 
     latent_codes = extract_latent_codes(vqvae_model, dataloader, device)
+    print(f"Final latent codes shape: {latent_codes.shape}")  # Check the shape of the latent codes
+    # Final latent codes shape: torch.Size([60000, 256, 7, 7])
 
     # Save the latent codes to a file
     torch.save(latent_codes, file_codebook)
 
 save_latent_codes()
-
-

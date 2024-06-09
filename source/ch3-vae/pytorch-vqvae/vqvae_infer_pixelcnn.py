@@ -4,13 +4,14 @@ from modules import VectorQuantizedVAE
 import argparse
 import os
 from pixelcnn import PixelCNN
-
+import torch.nn.functional as F
 def sample_from_pixelcnn(model, shape, device):
     model.eval()
     samples = torch.zeros(shape, device=device, dtype=torch.long)
     with torch.no_grad():
         for i in range(shape[2]):
             for j in range(shape[3]):
+                print(samples.shape)
                 out = model(samples)
                 probs = F.softmax(out[:, :, i, j], dim=1)
                 samples[:, :, i, j] = torch.multinomial(probs.view(shape[0], -1), 1).view(-1)
@@ -28,7 +29,7 @@ from PIL import Image
 
 def generate_samples_from_pixelcnn(pixelcnn_model, vqvae_model, args):
     with torch.no_grad():
-        z_q_indices = sample_from_pixelcnn(pixelcnn_model, (args.batch_size, args.hidden_size, 8, 8), args.device)
+        z_q_indices = sample_from_pixelcnn(pixelcnn_model, (args.batch_size, args.hidden_size, 7, 7), args.device)
         z_q = vqvae_model.codebook.embedding(z_q_indices)
         z_q = z_q.permute(0, 3, 1, 2).contiguous()
         x_tilde = vqvae_model.decode(z_q)
@@ -49,7 +50,8 @@ def main(args):
     vqvae_model = VectorQuantizedVAE(num_channels, args.hidden_size, args.k)
     vqvae_model = load_model(vqvae_model, args.vqvae_model_path, args.device)
 
-    pixelcnn_model = PixelCNN(args.k, args.hidden_size)
+    #pixelcnn_model = PixelCNN(args.k, args.hidden_size)
+    pixelcnn_model = PixelCNN(args.k, num_channels)
     pixelcnn_model = load_model(pixelcnn_model, args.pixelcnn_model_path, args.device)
 
     if not os.path.exists(args.output_folder):
@@ -66,14 +68,14 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='VQ-VAE + PixelCNN Inference')
-    parser.add_argument('--dataset', type=str, help='name of the dataset (mnist, fashion-mnist, cifar10, miniimagenet)', required=True)
+    parser.add_argument('--dataset', default='fashion-mnist', help='name of the dataset (mnist, fashion-mnist, cifar10, miniimagenet)', required=True)
     parser.add_argument('--hidden-size', type=int, default=256, help='size of the latent vectors (default: 256)')
     parser.add_argument('--k', type=int, default=512, help='number of latent vectors (default: 512)')
     parser.add_argument('--batch-size', type=int, default=16, help='batch size (default: 16)')
     parser.add_argument('--num-images', type=int, default=64, help='number of images to generate (default: 64)')
     parser.add_argument('--output-folder', type=str, default='vqvae_infer', help='name of the output folder (default: vqvae_infer)')
-    parser.add_argument('--vqvae_model_path', type=str, required=True, help='path to the trained VQ-VAE model file (e.g., best_vqvae.pt)')
-    parser.add_argument('--pixelcnn_model_path', type=str, required=True, help='path to the trained PixelCNN model file (e.g., best_pixelcnn.pt)')
+    parser.add_argument('--vqvae_model_path', type=str, default="models/vqvae/best.pt", help='path to the trained VQ-VAE model file (e.g., best_vqvae.pt)')
+    parser.add_argument('--pixelcnn_model_path', type=str, default="models/vqvae/best_pixelcnn.pt", help='path to the trained PixelCNN model file (e.g., best_pixelcnn.pt)')
     parser.add_argument('--device', type=str, default='cuda', help='set the device (cpu or cuda, default: cuda)')
 
     args = parser.parse_args()
