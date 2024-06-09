@@ -1,10 +1,8 @@
 from config import *
 
 def get_pixelcnn(pixelcnn_input_shape, num_embeddings):
-    ## PixelCNN hyperparameters
     num_residual_blocks = 2
     num_pixelcnn_layers = 2
-    #pixelcnn_input_shape = encoded_outputs.shape[1:-1]
     print(f"Input shape of the PixelCNN: {pixelcnn_input_shape}")
 
     class PixelConvLayer(layers.Layer):

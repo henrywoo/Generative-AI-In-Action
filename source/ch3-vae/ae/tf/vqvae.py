@@ -1,13 +1,12 @@
 from config import *
 import tensorflow_probability as tfp
-from pixelcnn import get_pixelcnn
 from vqvae_plot import *
+from pixelcnn import get_pixelcnn
 
-# Define constants for model configuration
+
 LATENT_DIM = 16
 NUM_EMBEDDINGS = 128
 BATCH_SIZE = 128
-
 
 class VectorQuantizer(layers.Layer):
     def __init__(self, num_embeddings, embedding_dim, beta=0.25, **kwargs):
@@ -40,13 +39,12 @@ class VectorQuantizer(layers.Layer):
     def get_code_indices(self, flattened_inputs):
         similarity = tf.matmul(flattened_inputs, self.embeddings)
         distances = (
-                tf.reduce_sum(flattened_inputs ** 2, axis=1, keepdims=True)
-                + tf.reduce_sum(self.embeddings ** 2, axis=0)
-                - 2 * similarity
+            tf.reduce_sum(flattened_inputs**2, axis=1, keepdims=True)
+            + tf.reduce_sum(self.embeddings**2, axis=0)
+            - 2 * similarity
         )
         encoding_indices = tf.argmin(distances, axis=1)
         return encoding_indices
-
 
 class VQVAE(keras.Model):
     def __init__(self, latent_dim=16, num_embeddings=64, **kwargs):
@@ -76,7 +74,6 @@ class VQVAE(keras.Model):
         quantized_latents = self.quantizer(encoder_outputs)
         reconstructions = self.decoder(quantized_latents)
         return reconstructions
-
 
 class VQVAETrainer(keras.models.Model):
     def __init__(self, train_variance, latent_dim=32, num_embeddings=128, **kwargs):
@@ -115,13 +112,10 @@ class VQVAETrainer(keras.models.Model):
             "vqvae_loss": self.vq_loss_tracker.result(),
         }
 
-
 def create_vqvae_model(latent_dim=16, num_embeddings=64):
     return VQVAE(latent_dim=latent_dim, num_embeddings=num_embeddings)
 
-
 from tensorflow.keras.utils import get_custom_objects
-
 get_custom_objects().update({'create_vqvae_model': create_vqvae_model})
 
 
@@ -147,7 +141,6 @@ def load_or_train_vqvae():
         vqvae_trainer.vqvae.save(model_file)
     return vqvae_trainer, x_train_scaled, x_test_scaled
 
-
 vqvae_trainer, x_train_scaled, x_test_scaled = load_or_train_vqvae()
 trained_vqvae_model = vqvae_trainer.vqvae
 trained_vqvae_model.summary()
@@ -155,7 +148,6 @@ trained_vqvae_model.summary()
 idx = np.random.choice(len(x_test_scaled), 10)
 test_images = x_test_scaled[idx]
 reconstructions_test = trained_vqvae_model.predict(test_images)
-
 show_all_subplots(test_images, reconstructions_test)
 
 encoder = vqvae_trainer.vqvae.encoder
@@ -166,7 +158,11 @@ codebook_indices = quantizer.get_code_indices(flat_enc_outputs)
 codebook_indices = codebook_indices.numpy().reshape(encoded_outputs.shape[:-1])
 plot_original_vs_code(test_images, codebook_indices)
 
-pixel_cnn = get_pixelcnn(encoded_outputs.shape[1:-1], vqvae_trainer.num_embeddings)
+
+pixelcnn_input_shape = encoded_outputs.shape[1:-1]
+print(f"Input shape of the PixelCNN: {pixelcnn_input_shape}")
+
+pixel_cnn = get_pixelcnn(pixelcnn_input_shape, vqvae_trainer.vqvae.num_embeddings)
 pixel_cnn.summary()
 
 # Generate the codebook indices.
@@ -195,8 +191,9 @@ else:
         validation_split=0.1,
     )
     pixel_cnn.save(model_file)
+
 # Create a mini sampler model.
-inputs = layers.Input(shape=pixel_cnn.input_shape[1:])
+inputs = layers.Input(shape=pixelcnn_input_shape)
 outputs = pixel_cnn(inputs, training=False)
 categorical_layer = tfp.layers.DistributionLambda(tfp.distributions.Categorical)
 outputs = categorical_layer(outputs)
