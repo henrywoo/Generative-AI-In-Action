@@ -1,10 +1,13 @@
 from config import *
 import tensorflow_probability as tfp
+from pixelcnn import get_pixelcnn
+from vqvae_plot import *
 
 # Define constants for model configuration
 LATENT_DIM = 16
 NUM_EMBEDDINGS = 128
 BATCH_SIZE = 128
+
 
 class VectorQuantizer(layers.Layer):
     def __init__(self, num_embeddings, embedding_dim, beta=0.25, **kwargs):
@@ -37,12 +40,13 @@ class VectorQuantizer(layers.Layer):
     def get_code_indices(self, flattened_inputs):
         similarity = tf.matmul(flattened_inputs, self.embeddings)
         distances = (
-            tf.reduce_sum(flattened_inputs**2, axis=1, keepdims=True)
-            + tf.reduce_sum(self.embeddings**2, axis=0)
-            - 2 * similarity
+                tf.reduce_sum(flattened_inputs ** 2, axis=1, keepdims=True)
+                + tf.reduce_sum(self.embeddings ** 2, axis=0)
+                - 2 * similarity
         )
         encoding_indices = tf.argmin(distances, axis=1)
         return encoding_indices
+
 
 class VQVAE(keras.Model):
     def __init__(self, latent_dim=16, num_embeddings=64, **kwargs):
@@ -72,6 +76,7 @@ class VQVAE(keras.Model):
         quantized_latents = self.quantizer(encoder_outputs)
         reconstructions = self.decoder(quantized_latents)
         return reconstructions
+
 
 class VQVAETrainer(keras.models.Model):
     def __init__(self, train_variance, latent_dim=32, num_embeddings=128, **kwargs):
@@ -110,10 +115,13 @@ class VQVAETrainer(keras.models.Model):
             "vqvae_loss": self.vq_loss_tracker.result(),
         }
 
+
 def create_vqvae_model(latent_dim=16, num_embeddings=64):
     return VQVAE(latent_dim=latent_dim, num_embeddings=num_embeddings)
 
+
 from tensorflow.keras.utils import get_custom_objects
+
 get_custom_objects().update({'create_vqvae_model': create_vqvae_model})
 
 
@@ -139,6 +147,7 @@ def load_or_train_vqvae():
         vqvae_trainer.vqvae.save(model_file)
     return vqvae_trainer, x_train_scaled, x_test_scaled
 
+
 vqvae_trainer, x_train_scaled, x_test_scaled = load_or_train_vqvae()
 trained_vqvae_model = vqvae_trainer.vqvae
 trained_vqvae_model.summary()
@@ -146,21 +155,7 @@ trained_vqvae_model.summary()
 idx = np.random.choice(len(x_test_scaled), 10)
 test_images = x_test_scaled[idx]
 reconstructions_test = trained_vqvae_model.predict(test_images)
-def show_all_subplots(originals, reconstructions, fig_title="Original vs. Reconstructed"):
-    num_images = len(originals)
-    fig, axes = plt.subplots(2, num_images, figsize=(num_images * 0.7, 2))
 
-    for i in range(num_images):
-        axes[0, i].imshow(originals[i].squeeze() + 0.5)
-        axes[0, i].axis("off")
-
-        axes[1, i].imshow(reconstructions[i].squeeze() + 0.5)
-        axes[1, i].axis("off")
-
-    fig.suptitle(fig_title, fontsize=10)
-    plt.tight_layout()
-    save_fig("vqvae_ori_recon")
-    plt.show()
 show_all_subplots(test_images, reconstructions_test)
 
 encoder = vqvae_trainer.vqvae.encoder
@@ -169,97 +164,9 @@ encoded_outputs = encoder.predict(test_images)
 flat_enc_outputs = encoded_outputs.reshape(-1, encoded_outputs.shape[-1])
 codebook_indices = quantizer.get_code_indices(flat_enc_outputs)
 codebook_indices = codebook_indices.numpy().reshape(encoded_outputs.shape[:-1])
-
-
-def plot_original_vs_code(test_images, codebook_indices, fig_title="Original vs. Code"):
-    num_images = len(test_images)
-    fig, axs = plt.subplots(2, num_images, figsize=(num_images * 0.7, 2))
-    for i in range(num_images):
-        axs[0, i].imshow(test_images[i].squeeze() + 0.5)
-        axs[0, i].axis("off")
-        axs[1, i].imshow(codebook_indices[i])
-        axs[1, i].axis("off")
-    fig.suptitle(fig_title, fontsize=10)
-    plt.tight_layout()
-    save_fig("vqvae_ori_code")
-    plt.show()
 plot_original_vs_code(test_images, codebook_indices)
 
-## PixelCNN hyperparameters
-num_residual_blocks = 2
-num_pixelcnn_layers = 2
-pixelcnn_input_shape = encoded_outputs.shape[1:-1]
-print(f"Input shape of the PixelCNN: {pixelcnn_input_shape}")
-
-class PixelConvLayer(layers.Layer):
-    def __init__(self, mask_type, **kwargs):
-        super().__init__()
-        self.mask_type = mask_type
-        self.conv = layers.Conv2D(**kwargs)
-
-    def build(self, input_shape):
-        # Build the conv2d layer to initialize kernel variables
-        self.conv.build(input_shape)
-        # Use the initialized kernel to create the mask
-        kernel_shape = self.conv.kernel.get_shape()
-        self.mask = np.zeros(shape=kernel_shape)
-        self.mask[: kernel_shape[0] // 2, ...] = 1.0
-        self.mask[kernel_shape[0] // 2, : kernel_shape[1] // 2, ...] = 1.0
-        if self.mask_type == "B":
-            self.mask[kernel_shape[0] // 2, kernel_shape[1] // 2, ...] = 1.0
-
-    def call(self, inputs):
-        self.conv.kernel.assign(self.conv.kernel * self.mask)
-        return self.conv(inputs)
-class ResidualBlock(keras.layers.Layer):
-    def __init__(self, filters, **kwargs):
-        super().__init__(**kwargs)
-        self.conv1 = keras.layers.Conv2D(
-            filters=filters, kernel_size=1, activation="relu"
-        )
-        self.pixel_conv = PixelConvLayer(
-            mask_type="B",
-            filters=filters // 2,
-            kernel_size=3,
-            activation="relu",
-            padding="same",
-        )
-        self.conv2 = keras.layers.Conv2D(
-            filters=filters, kernel_size=1, activation="relu"
-        )
-
-    def call(self, inputs):
-        x = self.conv1(inputs)
-        x = self.pixel_conv(x)
-        x = self.conv2(x)
-        return keras.layers.add([inputs, x])
-
-
-pixelcnn_inputs = keras.Input(shape=pixelcnn_input_shape, dtype=tf.int32)
-ohe = tf.one_hot(pixelcnn_inputs, vqvae_trainer.num_embeddings)
-filters_no = vqvae_trainer.num_embeddings
-x = PixelConvLayer(
-    mask_type="A", filters=filters_no, kernel_size=pixelcnn_inputs.shape[1], activation="relu", padding="same"
-)(ohe)
-
-for _ in range(num_residual_blocks):
-    x = ResidualBlock(filters=filters_no)(x)
-
-for _ in range(num_pixelcnn_layers):
-    x = PixelConvLayer(
-        mask_type="B",
-        filters=filters_no,
-        kernel_size=1,
-        strides=1,
-        activation="relu",
-        padding="valid",
-    )(x)
-
-out = keras.layers.Conv2D(
-    filters=vqvae_trainer.num_embeddings, kernel_size=1, strides=1, padding="valid"
-)(x)
-
-pixel_cnn = keras.Model(pixelcnn_inputs, out, name="pixel_cnn")
+pixel_cnn = get_pixelcnn(encoded_outputs.shape[1:-1], vqvae_trainer.num_embeddings)
 pixel_cnn.summary()
 
 # Generate the codebook indices.
@@ -321,18 +228,4 @@ quantized = tf.reshape(quantized, (-1, *(encoded_outputs.shape[1:])))
 # Generate novel images.
 decoder = vqvae_trainer.vqvae.get_layer("decoder")
 generated_samples = decoder.predict(quantized)
-
-# Assuming `priors` and `generated_samples` are defined and have the same batch size
-def plot_code_vs_generated(priors, generated_samples, fig_title="Code vs. Generated"):
-    num_images = len(priors)
-    fig, axs = plt.subplots(2, num_images, figsize=(num_images * 0.7, 2))
-    for i in range(num_images):
-        axs[0, i].imshow(priors[i])
-        axs[0, i].axis("off")
-        axs[1, i].imshow(generated_samples[i].squeeze() + 0.5)
-        axs[1, i].axis("off")
-    fig.suptitle(fig_title, fontsize=10)
-    plt.tight_layout()
-    save_fig("vqvae_generated")
-    plt.show()
 plot_code_vs_generated(priors, generated_samples)
