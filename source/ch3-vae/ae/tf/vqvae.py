@@ -3,7 +3,8 @@ import tensorflow_probability as tfp
 
 # Define constants for model configuration
 LATENT_DIM = 16
-NUM_EMBEDDINGS = 64
+NUM_EMBEDDINGS = 128
+BATCH_SIZE = 128
 
 class VectorQuantizer(layers.Layer):
     def __init__(self, num_embeddings, embedding_dim, beta=0.25, **kwargs):
@@ -109,6 +110,13 @@ class VQVAETrainer(keras.models.Model):
             "vqvae_loss": self.vq_loss_tracker.result(),
         }
 
+def create_vqvae_model(latent_dim=16, num_embeddings=64):
+    return VQVAE(latent_dim=latent_dim, num_embeddings=num_embeddings)
+
+from tensorflow.keras.utils import get_custom_objects
+get_custom_objects().update({'create_vqvae_model': create_vqvae_model})
+
+
 def load_or_train_vqvae():
     model_path = Path("mbin/vqvae")
     model_path.mkdir(parents=True, exist_ok=True)
@@ -122,35 +130,37 @@ def load_or_train_vqvae():
     vqvae_trainer = VQVAETrainer(data_variance, latent_dim=LATENT_DIM, num_embeddings=NUM_EMBEDDINGS)
     vqvae_trainer.compile(optimizer=keras.optimizers.Adam())
     if model_file.exists():
-        with keras.utils.custom_object_scope({'VectorQuantizer': VectorQuantizer, 'VQVAE': VQVAE}):
-            vqvae_trainer.vqvae = keras.models.load_model(model_file)
+        with keras.utils.custom_object_scope(
+                {'VectorQuantizer': VectorQuantizer, 'VQVAE': VQVAE, 'create_vqvae_model': create_vqvae_model}):
+            vqvae_trainer.vqvae = keras.models.load_model(model_file, custom_objects={
+                'VQVAE': lambda: create_vqvae_model(LATENT_DIM, NUM_EMBEDDINGS)})
     else:
-        vqvae_trainer.fit(x_train_scaled, epochs=3, batch_size=128)
+        vqvae_trainer.fit(x_train_scaled, epochs=30, batch_size=BATCH_SIZE)
         vqvae_trainer.vqvae.save(model_file)
     return vqvae_trainer, x_train_scaled, x_test_scaled
 
-def show_all_subplots(originals, reconstructions):
-    num_images = len(originals)
-    fig, axes = plt.subplots(2, num_images, figsize=(num_images * 1.2, 3))
-
-    for i in range(num_images):
-        axes[0, i].imshow(originals[i].squeeze() + 0.5)
-        axes[0, i].set_title("Original")
-        axes[0, i].axis("off")
-
-        axes[1, i].imshow(reconstructions[i].squeeze() + 0.5)
-        axes[1, i].set_title("Reconstructed")
-        axes[1, i].axis("off")
-
-    plt.tight_layout()
-    plt.show()
-
 vqvae_trainer, x_train_scaled, x_test_scaled = load_or_train_vqvae()
 trained_vqvae_model = vqvae_trainer.vqvae
+trained_vqvae_model.summary()
 
 idx = np.random.choice(len(x_test_scaled), 10)
 test_images = x_test_scaled[idx]
 reconstructions_test = trained_vqvae_model.predict(test_images)
+def show_all_subplots(originals, reconstructions, fig_title="Original vs. Reconstructed"):
+    num_images = len(originals)
+    fig, axes = plt.subplots(2, num_images, figsize=(num_images * 0.7, 2))
+
+    for i in range(num_images):
+        axes[0, i].imshow(originals[i].squeeze() + 0.5)
+        axes[0, i].axis("off")
+
+        axes[1, i].imshow(reconstructions[i].squeeze() + 0.5)
+        axes[1, i].axis("off")
+
+    fig.suptitle(fig_title, fontsize=10)
+    plt.tight_layout()
+    save_fig("vqvae_ori_recon")
+    plt.show()
 show_all_subplots(test_images, reconstructions_test)
 
 encoder = vqvae_trainer.vqvae.encoder
@@ -161,19 +171,19 @@ codebook_indices = quantizer.get_code_indices(flat_enc_outputs)
 codebook_indices = codebook_indices.numpy().reshape(encoded_outputs.shape[:-1])
 
 
-# Plot the original and code images
-fig, axs = plt.subplots(2, len(test_images), figsize=(15, 3))
-for i in range(len(test_images)):
-    axs[0, i].imshow(test_images[i].squeeze() + 0.5)
-    axs[0, i].set_title("Original")
-    axs[0, i].axis("off")
-
-    axs[1, i].imshow(codebook_indices[i])
-    axs[1, i].set_title("Code")
-    axs[1, i].axis("off")
-
-plt.tight_layout()
-plt.show()
+def plot_original_vs_code(test_images, codebook_indices, fig_title="Original vs. Code"):
+    num_images = len(test_images)
+    fig, axs = plt.subplots(2, num_images, figsize=(num_images * 0.7, 2))
+    for i in range(num_images):
+        axs[0, i].imshow(test_images[i].squeeze() + 0.5)
+        axs[0, i].axis("off")
+        axs[1, i].imshow(codebook_indices[i])
+        axs[1, i].axis("off")
+    fig.suptitle(fig_title, fontsize=10)
+    plt.tight_layout()
+    save_fig("vqvae_ori_code")
+    plt.show()
+plot_original_vs_code(test_images, codebook_indices)
 
 ## PixelCNN hyperparameters
 num_residual_blocks = 2
@@ -227,17 +237,18 @@ class ResidualBlock(keras.layers.Layer):
 
 pixelcnn_inputs = keras.Input(shape=pixelcnn_input_shape, dtype=tf.int32)
 ohe = tf.one_hot(pixelcnn_inputs, vqvae_trainer.num_embeddings)
+filters_no = vqvae_trainer.num_embeddings
 x = PixelConvLayer(
-    mask_type="A", filters=128, kernel_size=7, activation="relu", padding="same"
+    mask_type="A", filters=filters_no, kernel_size=pixelcnn_inputs.shape[1], activation="relu", padding="same"
 )(ohe)
 
 for _ in range(num_residual_blocks):
-    x = ResidualBlock(filters=128)(x)
+    x = ResidualBlock(filters=filters_no)(x)
 
 for _ in range(num_pixelcnn_layers):
     x = PixelConvLayer(
         mask_type="B",
-        filters=128,
+        filters=filters_no,
         kernel_size=1,
         strides=1,
         activation="relu",
@@ -284,9 +295,6 @@ categorical_layer = tfp.layers.DistributionLambda(tfp.distributions.Categorical)
 outputs = categorical_layer(outputs)
 sampler = keras.Model(inputs, outputs)
 
-
-
-
 # Create an empty array of priors.
 batch = 10
 priors = np.zeros(shape=(batch,) + (pixel_cnn.input_shape)[1:])
@@ -315,21 +323,16 @@ decoder = vqvae_trainer.vqvae.get_layer("decoder")
 generated_samples = decoder.predict(quantized)
 
 # Assuming `priors` and `generated_samples` are defined and have the same batch size
-
-num_images = len(priors)
-fig, axs = plt.subplots(2, num_images, figsize=(num_images * 1.2, 2.5))
-
-for i in range(num_images):
-    # Plot the code image
-    axs[0, i].imshow(priors[i])
-    axs[0, i].set_title("Code")
-    axs[0, i].axis("off")
-
-    # Plot the generated sample
-    axs[1, i].imshow(generated_samples[i].squeeze() + 0.5)
-    axs[1, i].set_title("Generated Sample")
-    axs[1, i].axis("off")
-
-plt.tight_layout()
-save_fig("vqvae_generated_samples")
-plt.show()
+def plot_code_vs_generated(priors, generated_samples, fig_title="Code vs. Generated"):
+    num_images = len(priors)
+    fig, axs = plt.subplots(2, num_images, figsize=(num_images * 0.7, 2))
+    for i in range(num_images):
+        axs[0, i].imshow(priors[i])
+        axs[0, i].axis("off")
+        axs[1, i].imshow(generated_samples[i].squeeze() + 0.5)
+        axs[1, i].axis("off")
+    fig.suptitle(fig_title, fontsize=10)
+    plt.tight_layout()
+    save_fig("vqvae_generated")
+    plt.show()
+plot_code_vs_generated(priors, generated_samples)
