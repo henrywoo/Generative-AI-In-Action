@@ -13,7 +13,7 @@ class VectorQuantizer(nn.Module):
         self.num_embeddings = num_embeddings
         self.beta = beta
 
-        self.embeddings = nn.Parameter(torch.randn(embedding_dim, num_embeddings))
+        self.embeddings = nn.Parameter(torch.randn(num_embeddings, embedding_dim))
 
     def forward(self, x):
         # Flatten input
@@ -24,7 +24,7 @@ class VectorQuantizer(nn.Module):
         encoding_indices = self.get_code_indices(flat_x)
         encodings = torch.zeros(encoding_indices.size(0), self.num_embeddings, device=x.device)
         encodings.scatter_(1, encoding_indices.unsqueeze(1), 1)
-        quantized = torch.matmul(encodings, self.embeddings.t())
+        quantized = torch.matmul(encodings, self.embeddings)
 
         # Reshape back to input shape
         quantized = quantized.view(input_shape)
@@ -38,10 +38,11 @@ class VectorQuantizer(nn.Module):
         return quantized, loss
 
     def get_code_indices(self, flat_x):
-        distances = (torch.sum(flat_x ** 2, dim=1, keepdim=True)
-                     + torch.sum(self.embeddings ** 2, dim=0)
-                     - 2 * torch.matmul(flat_x, self.embeddings))
-
+        distances = (
+            torch.sum(flat_x ** 2, dim=1, keepdim=True)
+            + torch.sum(self.embeddings ** 2, dim=1)
+            - 2 * torch.matmul(flat_x, self.embeddings.t())
+        )
         encoding_indices = torch.argmin(distances, dim=1)
         return encoding_indices
 
@@ -139,8 +140,6 @@ with torch.no_grad():
         x_recon, _ = model(x)
         for original, reconstructed in zip(x, x_recon):
             show_subplot(original, reconstructed)
-
-        # Uncomment the break if you only want to visualize one batch
         break
 
 # Generate the codebook indices.
@@ -216,7 +215,7 @@ pixelcnn = PixelCNN(input_shape, num_residual_blocks=2, num_pixelcnn_layers=2, n
 optimizer = optim.Adam(pixelcnn.parameters(), lr=3e-4)
 criterion = nn.CrossEntropyLoss()
 
-codebook_indices_tensor = torch.tensor(codebook_indices, dtype=torch.long, device=device)
+codebook_indices_tensor = torch.tensor(codebook_indices, device=device, dtype=torch.long)
 train_loader_pixelcnn = DataLoader(codebook_indices_tensor, batch_size=128, shuffle=True)
 
 for epoch in range(30):
