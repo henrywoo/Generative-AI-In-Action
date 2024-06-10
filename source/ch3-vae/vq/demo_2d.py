@@ -13,6 +13,10 @@ import os
 
 plt.style.use('ggplot')
 
+def create_images_folder():
+    if not os.path.exists("images"):
+        os.makedirs("images")
+
 def load_image(image_name):
     if image_name == "astronaut":
         return img_as_float(data.astronaut())
@@ -44,9 +48,11 @@ def compress_image_kmeans(image, n_colors):
     return compressed_image, kmeans.cluster_centers_
 
 def plot_image(image, title, save_path):
+    create_images_folder()
     if save_path.startswith("http"):
         save_path = save_path.split("/")[-1]
         title = title.split("/")[-1]
+    save_path = os.path.join("images", save_path)
     plt.figure(figsize=(8, 8))
     if image.ndim == 2:
         plt.imshow(image, cmap='gray')
@@ -78,11 +84,8 @@ def main(image_name, n_colors):
     print(f"PSNR: {psnr}")
     plot_voronoi(centroids)
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="2D Vector Quantization using k-means clustering.")
-    # , choices=["astronaut", "camera", "coins", "horse", "rocket"]
-    # --image https://media-cldnry.s-nbcnews.com/image/upload/mpx/2704722219/2024_04/1713444872219_tdy_pop_8a_taylor_swift_book_240418_1920x1080-t6kjrp.jpg
     parser.add_argument("--image", type=str, default="astronaut", help="Image to process")
     parser.add_argument("--n_colors", type=int, default=16, help="Number of colors for quantization")
     args = parser.parse_args()

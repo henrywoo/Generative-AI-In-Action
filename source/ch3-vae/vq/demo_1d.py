@@ -1,6 +1,8 @@
+import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+
 try:
     from scipy.datasets import face
 except ImportError:
@@ -13,6 +15,12 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 
 plt.style.use("ggplot")
 
+
+def create_images_folder():
+    if not os.path.exists("images"):
+        os.makedirs("images")
+
+
 def load_raccoon_image(gray=True):
     global face
     try:
@@ -21,6 +29,7 @@ def load_raccoon_image(gray=True):
         from scipy.misc import face
         raccoon_face = face(gray=gray)
     return raccoon_face
+
 
 def load_image(image_name, gray=True):
     if image_name == "raccoon":
@@ -32,6 +41,7 @@ def load_image(image_name, gray=True):
         return x
     else:
         raise ValueError("Unsupported image name. Choose from 'raccoon', 'astronaut', or 'camera'.")
+
 
 def plot_image_and_histogram(image, title, save_path):
     fig, ax = plt.subplots(ncols=2, figsize=(9, 3.5))
@@ -48,6 +58,7 @@ def plot_image_and_histogram(image, title, save_path):
     plt.savefig(save_path)
     plt.show()
 
+
 def compress_image(image, n_bins=8, strategy='uniform'):
     encoder = KBinsDiscretizer(
         n_bins=n_bins,
@@ -61,6 +72,7 @@ def compress_image(image, n_bins=8, strategy='uniform'):
     bin_edges = encoder.bin_edges_[0]
     bin_center = bin_edges[:-1] + (bin_edges[1:] - bin_edges[:-1]) / 2
     return compressed_image, bin_center
+
 
 def plot_histograms_with_centers(image, bin_centers_uniform, bin_centers_kmeans, save_path):
     fig, ax = plt.subplots(ncols=2, figsize=(9, 3.5))
@@ -84,6 +96,7 @@ def plot_histograms_with_centers(image, bin_centers_uniform, bin_centers_kmeans,
     plt.savefig(save_path)
     plt.show()
 
+
 def calculate_psnr(original, compressed):
     mse = mean_squared_error(original, compressed)
     if mse == 0:
@@ -91,6 +104,7 @@ def calculate_psnr(original, compressed):
     max_pixel = 255.0
     psnr = 20 * log10(max_pixel / sqrt(mse))
     return psnr
+
 
 def plot_voronoi(centroids, title, save_path):
     if centroids.shape[1] < 2:
@@ -116,23 +130,27 @@ def plot_voronoi(centroids, title, save_path):
     plt.savefig(save_path)
     plt.show()
 
+
 def main(image_name, n_bins):
+    create_images_folder()
+
     image = load_image(image_name)
     print(f"The dimension of the image is {image.shape}")
     print(f"The data used to encode the image is of type {image.dtype}")
     print(f"The number of bytes taken in RAM is {image.nbytes}")
 
-    plot_image_and_histogram(image, f"Original image of {image_name}", f"{image_name}_original.png")
+    plot_image_and_histogram(image, f"Original image of {image_name}", f"images/{image_name}_original.png")
 
     compressed_image_uniform, bin_centers_uniform = compress_image(image, n_bins, "uniform")
     compressed_image_kmeans, bin_centers_kmeans = compress_image(image, n_bins, "kmeans")
 
     plot_image_and_histogram(compressed_image_uniform, f"{image_name} compressed using 3 bits and a uniform strategy",
-                             f"{image_name}_compressed_uniform.png")
+                             f"images/{image_name}_compressed_uniform.png")
     plot_image_and_histogram(compressed_image_kmeans, f"{image_name} compressed using 3 bits and a K-means strategy",
-                             f"{image_name}_compressed_kmeans.png")
+                             f"images/{image_name}_compressed_kmeans.png")
 
-    plot_histograms_with_centers(image, bin_centers_uniform, bin_centers_kmeans, f"{image_name}_dist_combined.png")
+    plot_histograms_with_centers(image, bin_centers_uniform, bin_centers_kmeans,
+                                 f"images/{image_name}_dist_combined.png")
 
     psnr_uniform = calculate_psnr(image, compressed_image_uniform)
     psnr_kmeans = calculate_psnr(image, compressed_image_kmeans)
@@ -150,7 +168,8 @@ def main(image_name, n_bins):
 
     # Plot Voronoi diagrams for k-means centroids
     plot_voronoi(bin_centers_kmeans.reshape(-1, 1), f"Voronoi Diagram for K-means Binning of {image_name}",
-                 f"{image_name}_voronoi_kmeans.png")
+                 f"images/{image_name}_voronoi_kmeans.png")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process and compress an image.")
