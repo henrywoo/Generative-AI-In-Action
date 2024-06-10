@@ -29,7 +29,8 @@ def load_image(image_name, gray=True):
     elif image_name == "astronaut":
         return data.astronaut() if not gray else data.astronaut()[:, :, 0]
     elif image_name == "camera":
-        return data.camera()
+        x = data.camera()
+        return x
     else:
         raise ValueError("Unsupported image name. Choose from 'raccoon', 'astronaut', or 'camera'.")
 
