@@ -1,0 +1,60 @@
+Epoch 1/30
+469/469 [==============================] - 4s 5ms/step - loss: 2.5549 - reconstruction_loss: 0.3538 - vqvae_loss: 1.8436
+Epoch 2/30
+469/469 [==============================] - 2s 5ms/step - loss: 1.6540 - reconstruction_loss: 0.1484 - vqvae_loss: 1.5014
+Epoch 3/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.8473 - reconstruction_loss: 0.1182 - vqvae_loss: 0.7223
+Epoch 4/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.4988 - reconstruction_loss: 0.1010 - vqvae_loss: 0.3937
+Epoch 5/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.3836 - reconstruction_loss: 0.0898 - vqvae_loss: 0.2915
+Epoch 6/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.3218 - reconstruction_loss: 0.0806 - vqvae_loss: 0.2391
+Epoch 7/30
+469/469 [==============================] - 2s 3ms/step - loss: 0.2949 - reconstruction_loss: 0.0752 - vqvae_loss: 0.2185
+Epoch 8/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2811 - reconstruction_loss: 0.0706 - vqvae_loss: 0.2093
+Epoch 9/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.2612 - reconstruction_loss: 0.0655 - vqvae_loss: 0.1947
+Epoch 10/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2513 - reconstruction_loss: 0.0620 - vqvae_loss: 0.1883
+Epoch 11/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2435 - reconstruction_loss: 0.0595 - vqvae_loss: 0.1835
+Epoch 12/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2379 - reconstruction_loss: 0.0576 - vqvae_loss: 0.1801
+Epoch 13/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2368 - reconstruction_loss: 0.0562 - vqvae_loss: 0.1802
+Epoch 14/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2347 - reconstruction_loss: 0.0549 - vqvae_loss: 0.1795
+Epoch 15/30
+469/469 [==============================] - 3s 5ms/step - loss: 0.2328 - reconstruction_loss: 0.0538 - vqvae_loss: 0.1787
+Epoch 16/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2329 - reconstruction_loss: 0.0529 - vqvae_loss: 0.1799
+Epoch 17/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2337 - reconstruction_loss: 0.0522 - vqvae_loss: 0.1815
+Epoch 18/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2331 - reconstruction_loss: 0.0515 - vqvae_loss: 0.1814
+Epoch 19/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2319 - reconstruction_loss: 0.0507 - vqvae_loss: 0.1810
+Epoch 20/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2292 - reconstruction_loss: 0.0500 - vqvae_loss: 0.1790
+Epoch 21/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2268 - reconstruction_loss: 0.0492 - vqvae_loss: 0.1773
+Epoch 22/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2230 - reconstruction_loss: 0.0483 - vqvae_loss: 0.1746
+Epoch 23/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2213 - reconstruction_loss: 0.0475 - vqvae_loss: 0.1736
+Epoch 24/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2203 - reconstruction_loss: 0.0472 - vqvae_loss: 0.1731
+Epoch 25/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.2198 - reconstruction_loss: 0.0468 - vqvae_loss: 0.1729
+Epoch 26/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.2188 - reconstruction_loss: 0.0464 - vqvae_loss: 0.1723
+Epoch 27/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.2173 - reconstruction_loss: 0.0461 - vqvae_loss: 0.1711
+Epoch 28/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.2150 - reconstruction_loss: 0.0455 - vqvae_loss: 0.1695
+Epoch 29/30
+469/469 [==============================] - 2s 4ms/step - loss: 0.2119 - reconstruction_loss: 0.0451 - vqvae_loss: 0.1668
+Epoch 30/30
+469/469 [==============================] - 2s 5ms/step - loss: 0.2092 - reconstruction_loss: 0.0446 - vqvae_loss: 0.1645

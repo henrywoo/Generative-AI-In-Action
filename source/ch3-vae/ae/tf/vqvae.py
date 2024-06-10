@@ -85,6 +85,11 @@ class VQVAETrainer(keras.models.Model):
         self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
         self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
         self.vq_loss_tracker = keras.metrics.Mean(name="vq_loss")
+        self.loss_history = {
+            "total_loss": [],
+            "reconstruction_loss": [],
+            "vqvae_loss": []
+        }
 
     @property
     def metrics(self):
@@ -106,12 +111,30 @@ class VQVAETrainer(keras.models.Model):
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
         self.vq_loss_tracker.update_state(sum(self.vqvae.losses))
 
+        self.loss_history["total_loss"].append(self.total_loss_tracker.result().numpy())
+        self.loss_history["reconstruction_loss"].append(self.reconstruction_loss_tracker.result().numpy())
+        self.loss_history["vqvae_loss"].append(self.vq_loss_tracker.result().numpy())
+
         return {
             "loss": self.total_loss_tracker.result(),
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "vqvae_loss": self.vq_loss_tracker.result(),
         }
 
+    def fit(self, x, epochs=1, batch_size=32, **kwargs):
+        # Custom fit logic
+        for epoch in range(epochs):
+            print(f"Epoch {epoch + 1}/{epochs}")
+            # Reset the metrics at the start of the next epoch
+            for metric in self.metrics:
+                metric.reset_states()
+            for step in range(0, len(x), batch_size):
+                batch_x = x[step:step + batch_size]
+                self.train_step(batch_x)
+            # Optionally, print the current loss
+            print(f"Total Loss: {self.total_loss_tracker.result().numpy()}, "
+                  f"Reconstruction Loss: {self.reconstruction_loss_tracker.result().numpy()}, "
+                  f"VQ-VAE Loss: {self.vq_loss_tracker.result().numpy()}")
 def create_vqvae_model(latent_dim=16, num_embeddings=64):
     return VQVAE(latent_dim=latent_dim, num_embeddings=num_embeddings)
 
@@ -138,6 +161,7 @@ def load_or_train_vqvae():
                 'VQVAE': lambda: create_vqvae_model(LATENT_DIM, NUM_EMBEDDINGS)})
     else:
         vqvae_trainer.fit(x_train_scaled, epochs=30, batch_size=BATCH_SIZE)
+        plot_training_losses(vqvae_trainer.loss_history)
         vqvae_trainer.vqvae.save(model_file)
     return vqvae_trainer, x_train_scaled, x_test_scaled
 
@@ -158,7 +182,7 @@ codebook_indices = quantizer.get_code_indices(flat_enc_outputs)
 codebook_indices = codebook_indices.numpy().reshape(encoded_outputs.shape[:-1])
 plot_original_vs_code(test_images, codebook_indices)
 
-
+########################################################################################
 pixelcnn_input_shape = encoded_outputs.shape[1:-1]
 print(f"Input shape of the PixelCNN: {pixelcnn_input_shape}")
 

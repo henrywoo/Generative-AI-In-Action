@@ -43,3 +43,26 @@ def plot_code_vs_generated(priors, generated_samples, fig_title="Code vs. Genera
     plt.tight_layout()
     save_fig("vqvae_generated")
     plt.show()
+
+def plot_training_losses(loss_history):
+    plt.style.use("ggplot")
+    plt.figure(figsize=(12, 4))
+    plt.plot(loss_history["total_loss"][1:], label="Total Loss", alpha=0.9, linewidth=2)
+    plt.plot(loss_history["reconstruction_loss"][1:], label="Reconstruction Loss", alpha=0.6, linestyle="--")
+    plt.plot(loss_history["vqvae_loss"][1:], label="VQ-VAE Loss", alpha=0.7, linestyle="-.")
+    plt.xlabel("Steps")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid(True)
+    plt.title("VQVAE Training Losses")
+    save_fig("vqvae_training_losses")
+    plt.show()
+
+if __name__ == "__main__":
+    # Example usage
+    loss_history = {
+        "total_loss": [0.6, 0.5, 0.4, 0.35, 0.3],  # Example data
+        "reconstruction_loss": [0.4, 0.35, 0.3, 0.28, 0.25],
+        "vqvae_loss": [0.2, 0.15, 0.1, 0.07, 0.05]
+    }
+    plot_training_losses(loss_history)

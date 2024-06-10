@@ -2,6 +2,9 @@ import sys
 from packaging import version
 import sklearn
 import torch.nn.functional as F
+from torchvision import datasets, transforms
+from tqdm import tqdm
+
 # Check Python version
 assert sys.version_info >= (3, 7)
 

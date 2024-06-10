@@ -5,6 +5,24 @@ assert sys.version_info >= (3, 7)
 from packaging import version
 import sklearn
 
+def set_seed(seed=42):
+    import random
+    import numpy as np
+    import tensorflow as tf
+    import torch
+    # Setting seed for random
+    random.seed(42)
+    # Setting seed for numpy
+    np.random.seed(42)
+    # Setting seed for tensorflow
+    tf.random.set_seed(42)
+    # Setting seed for torch
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+    np.random.seed(42)
+set_seed()
+
 assert version.parse(sklearn.__version__) >= version.parse("1.0.1")
 
 import tensorflow as tf
@@ -41,9 +59,6 @@ if not tf.config.list_physical_devices('GPU'):
         print("Go to Settings > Accelerator and select GPU.")
 
 import numpy as np
-
-# Set seed for reproducibility
-np.random.seed(42)
-tf.random.set_seed(42)  # extra code – ensures reproducibility on CPU
-
 import matplotlib as mpl
+
+
