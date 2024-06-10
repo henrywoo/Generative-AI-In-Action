@@ -7,22 +7,16 @@ def plot_voronoi(centroids):
     if centroids.shape[1] < 2:
         print("Voronoi diagram requires at least 2D data. Skipping Voronoi plot for grayscale image.")
         return
-
     vor = Voronoi(centroids[:, :2])  # Take only the first two dimensions for Voronoi plotting
-
     fig, ax = plt.subplots(figsize=(8, 8))
     voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_colors='blue', line_width=1.5, line_alpha=0.6)
-
     # Plot the centroids
     ax.plot(centroids[:, 0], centroids[:, 1], 'r*', markersize=10)
-
     # Set plot limits
     ax.set_xlim(centroids[:, 0].min() - 1, centroids[:, 0].max() + 1)
     ax.set_ylim(centroids[:, 1].min() - 1, centroids[:, 1].max() + 1)
-
     # Add title
     plt.title("Vector Quantization with Voronoi Diagram")
-
     # Show plot
     plt.show()
 
