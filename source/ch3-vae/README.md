@@ -558,6 +558,41 @@ Grouped Residual Quantization groups residuals within each secondary location ba
 
 In essence, VQ simplifies the process by using a single codebook to replace each address with its nearest town or city, which can lead to a lot of vectors if the data is diverse and requires high precision. In contrast, RVQ and Grouped Residual Quantization offer more refined and efficient approaches by using multiple levels of codebooks and grouping based on specific attributes, respectively.
 
+## What is Codebook Collapse? 
+
+Codebook collapse is a common problem in training deep generative models with discrete representation spaces, such as Vector Quantized Variational Autoencoders (VQ-VAEs) and discrete variational autoencoders (dVAE). 
+
+In these models, a codebook is a set of vectors used to represent the latent space. Ideally, each vector in the codebook should be used to represent a different feature or aspect of the data. However, in codebook collapse, the model learns to use only a small subset of the vectors in the codebook, leading to a loss of information and a decrease in the quality of the generated samples.
+
+**Causes of Codebook Collapse:**
+
+* **Overconfident probabilities:** The softmax function used to obtain a probability distribution over the codebook vectors can assign overconfident probabilities to the best matching vectors, leading to underutilization of other vectors.
+* **Deterministic quantization:** The deterministic quantization process in VQ-VAEs can force the model to choose the closest vector in the codebook, even if it's not the best representation.
+
+**Mitigation Strategies:**
+
+* **Evidential Deep Learning (EDL):** Replacing the softmax function with EDL can help to mitigate codebook collapse by providing more accurate uncertainty estimates. (This is the approach used in EdVAE)
+* **Probabilistic approaches:** Using probabilistic quantization instead of deterministic quantization can also help to avoid codebook collapse.
+* **Codebook reset and hyperparameter tuning:** Resetting the codebook during training or adjusting hyperparameters can sometimes help to prevent or recover from codebook collapse.
+
+### Examples
+
+Imagine you are training a VQ-VAE to generate images of handwritten digits (0-9). You use a codebook with 128 vectors, each representing a different visual feature of the digits (like curves, lines, angles, etc.).
+
+In an ideal scenario, each vector in the codebook would be used to represent a different feature, and the model would be able to generate a diverse set of digits. However, due to codebook collapse, the model might only learn to use a small subset of vectors, say 20. This means that even though you have a codebook of 128 vectors, only 20 of them are actually used to represent the data.
+
+**Consequences:**
+
+1. **Limited Diversity:** The generated digits will lack diversity. You might observe that the model only generates a few types of digits repeatedly because it's limited by the small subset of vectors it uses.
+2. **Blurry Images:** The generated images might also appear blurry or less sharp because the model doesn't have access to the full range of visual features represented in the codebook.
+
+**Real-World Example:**
+
+A real-world example of codebook collapse was observed in the early versions of VQ-VAE-2, a model for generating high-resolution images. The researchers noticed that the model was only using a small portion of its codebook, leading to less diverse and lower quality images. They addressed this issue by introducing techniques like codebook reseeding and a diversity loss to encourage the model to use the full codebook.
+
+
+
+
 ## Reference
 
 - [漫谈VAE和VQVAE，从连续分布到离散分布](https://zhuanlan.zhihu.com/p/388299884) 

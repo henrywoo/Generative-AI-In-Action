@@ -39,7 +39,7 @@ npoints_hd = 4096  # number of data points in high-dim space
 
 d_choices = [2, 3, 6, 8, 16, 32, 64, 128, 256, 512]  # dimensions to try
 cb_lengths = [25, 64, 256, 1024, 2048]  # codebook lengths
-K_choices = [1, 2, 3, 4, 6, 8, 10]  # variable numbers of codebooks
+K_choices = [1, 2, 3, 4, 6, 8, 10, 12, 14, 16]  # variable numbers of codebooks
 
 results = torch.empty((len(d_choices), len(cb_lengths), len(K_choices))).cpu()
 for q1, n_dim in enumerate(d_choices):
@@ -58,6 +58,7 @@ for q1, n_dim in enumerate(d_choices):
             results[q1, q2, q3] = error
     show_colored_data(results[q1], n_dim, cb_lengths, K_choices)
 
+# As we add codebooks to the RVQ algorithm, the error decreases exponentially!
 fig, ax = plt.subplots(figsize=(6.5, 4))
 ourdata = results[:, -1, :]  # max cb_len
 for q1, d in enumerate(d_choices):
