@@ -275,6 +275,220 @@ While VQ-VAEs don't use the KL divergence in their main loss function, they migh
 
 Overall, the absence of the KL divergence term in VQ-VAEs is a deliberate design choice that simplifies the model and allows it to focus on accurate reconstruction and learning a discrete latent space.
 
+## Explain RVQ To Kids
+
+Let's explain how RVQ (Residual Vector Quantization) works using the example of traveling to "600 Oracle Pkwy, Redwood City, CA 94065".
+
+### 1. **Primary Quantization (Primary Codebook) – Major City Hubs**
+First, consider "600 Oracle Pkwy, Redwood City, CA 94065" as a specific address. In RVQ, data points are initially mapped to a major region or hub. This is similar to flying from your original location to a major city hub, such as San Francisco International Airport (SFO).
+
+### 2. **Residual Calculation – From Hub to Smaller Region**
+Upon arriving at San Francisco International Airport, you have not yet reached your final destination. We need to calculate the difference or residual from San Francisco to Redwood City. In this step, the residual represents the difference between the original data point and the first quantized point (San Francisco).
+
+### 3. **Secondary Quantization (Secondary Codebook) – From Major City to Smaller City**
+Next, we quantize these residuals, which is similar to traveling from San Francisco to a smaller city or region like Redwood City. Here, Redwood City represents a secondary codebook entry, further refining the location of the data point.
+
+### 4. **Multiple Quantization Levels – From Smaller City to Specific Address**
+If more precision is needed, additional layers of quantization can be applied. For example, from the central point of Redwood City, we further refine down to the specific street address "600 Oracle Pkwy, Redwood City, CA 94065". This step involves quantizing from a smaller city's central point (like downtown Redwood City) down to specific streets and building numbers.
+
+### Steps in Detail:
+1. **Primary Quantization**: Map the data point to a primary hub, like San Francisco International Airport (SFO).
+2. **Residual Calculation**: Calculate the difference (residual) between the original data point (600 Oracle Pkwy) and the hub (San Francisco International Airport).
+3. **Secondary Quantization**: Quantize the residual to a secondary codebook, mapping to smaller regions like Redwood City.
+4. **Multiple Quantization Levels**: Continue quantizing the residuals for higher precision, eventually refining to the specific street address.
+
+### Advantages of RVQ:
+Through this layered quantization process, RVQ can accurately represent data points while reducing the total number of vectors needed. Each level of codebook incrementally refines the position of the data point, increasing overall quantization precision and efficiency.
+
+In summary, RVQ is like a step-by-step travel route, starting from major cities to smaller cities, and finally down to specific addresses, making data representation more efficient and accurate.
+
+----
+
+Let's delve into what the Primary Codebook and Secondary Codebook might look like with specific examples, using the context of air travel and geographic locations.
+
+### Primary Codebook
+
+The Primary Codebook represents major hubs or central points in the dataset. These could be major cities or key points of interest that serve as the first level of approximation for the data points.
+
+#### Example:
+- **Major Cities (Hubs)**:
+
+| Primary Hub | Major Cities (Hubs) |
+|-------------|----------------------|
+| 1           | San Francisco (SFO)  |
+| 2           | Los Angeles (LAX)    |
+| 3           | Chicago (ORD)        |
+| 4           | New York (JFK)       |
+| 5           | Atlanta (ATL)        |
+
+These major hubs provide a broad-level quantization of data points. Any location within a certain region will initially be approximated to one of these hubs.
+
+### Secondary Codebook
+
+The Secondary Codebook refines the approximation further, breaking down each major hub into smaller regions or cities. These could be smaller cities, districts, or neighborhoods within the broader region of the primary hub.
+
+#### Example:
+- **For San Francisco (SFO)**:
+
+| Secondary Location | Smaller Cities/Towns      |
+|--------------------|---------------------------|
+|  1                 | Redwood City              |
+|  2                 | Palo Alto                 |
+|  3                 | San Mateo                 |
+|  4                 | Mountain View             |
+|  5                 | San Jose                  |
+
+- **For Los Angeles (LAX)**:
+
+| Secondary Location | Smaller Cities/Towns      |
+|--------------------|---------------------------|
+|  1                 | Santa Monica              |
+|  2                 | Beverly Hills             |
+|  3                 | Long Beach                |
+|  4                 | Pasadena                  |
+|  5                 | Anaheim                   |
+
+These secondary locations provide a finer level of granularity, allowing for more precise quantization of data points within the vicinity of the primary hubs.
+
+### Detailed Travel Example:
+
+Let's say you're trying to map the location "600 Oracle Pkwy, Redwood City, CA 94065" using RVQ.
+
+1. **Primary Codebook**:
+   - The closest major hub from the primary codebook is **San Francisco (SFO)**.
+
+2. **Secondary Codebook**:
+   - Within the region of San Francisco, the closest secondary location from the secondary codebook is **Redwood City**.
+
+3. **Residual Quantization**:
+   - The remaining difference (residual) is the specific location within Redwood City, which can be further refined if needed.
+
+### Conceptual Diagram:
+
+1. **Primary Codebook Level**:
+   ```
+   Original Location → San Francisco (Primary Hub)
+   ```
+
+2. **Secondary Codebook Level**:
+   ```
+   San Francisco (Primary Hub) → Redwood City (Secondary Location)
+   ```
+
+3. **Further Refinement**:
+   ```
+   Redwood City → 600 Oracle Pkwy
+   ```
+
+In this way, RVQ uses multiple levels of codebooks to incrementally refine the representation of data points, allowing for efficient and accurate quantization.
+
+
+## Explain GroupedRVQ To Kids with emphasis on its difference with Tertiary Codebook
+
+**Grouped Residual Vector Quantization (GroupedResidualVQ)** is an extension of RVQ where the residual quantization process is grouped by certain attributes or features of the data, allowing for a more structured and efficient quantization process. Let's continue with the example of traveling to "600 Oracle Pkwy, Redwood City, CA 94065" and introduce the concept of GroupedResidualVQ.
+
+#### Concept
+
+1. **Primary Codebook**: Represents major hubs or central points.
+2. **Secondary Codebook**: Breaks down each major hub into smaller regions.
+3. **Grouped Residual Quantization**: Further groups within each region based on additional attributes (e.g., neighborhoods, specific landmarks).
+
+### GroupedResidualVQ Example with Detailed Travel Steps
+
+1. **Primary Codebook**: First, identify the nearest major hub.
+    - **Major Hub**: San Francisco (SFO)
+
+2. **Secondary Codebook**: Next, find the smaller city or region within the primary hub.
+    - **Smaller City**: Redwood City
+
+3. **Grouped Residual Quantization**: Further group within the smaller city based on additional attributes.
+    - **Neighborhood**: Oracle Campus
+
+### Detailed Breakdown
+
+#### Primary Codebook
+
+| Primary Hub | Major Cities (Hubs)   |
+|-------------|------------------------|
+| Hub 1       | San Francisco (SFO)    |
+| Hub 2       | Los Angeles (LAX)      |
+| Hub 3       | Chicago (ORD)          |
+| Hub 4       | New York (JFK)         |
+| Hub 5       | Atlanta (ATL)          |
+
+#### Secondary Codebook for San Francisco (SFO)
+
+| Secondary Location | Smaller Cities/Towns      |
+|--------------------|---------------------------|
+| Location 1         | Redwood City              |
+| Location 2         | Palo Alto                 |
+| Location 3         | San Mateo                 |
+| Location 4         | Mountain View             |
+| Location 5         | San Jose                  |
+
+#### Grouped Residual Quantization for Redwood City
+
+| Grouped Location   | Specific Attributes/Features   |
+|--------------------|-------------------------------|
+| Group 1            | **Commercial Areas**          |
+|                    | Oracle Campus                 |
+|                    | Redwood City Tech Park        |
+| Group 2            | **Residential Areas**         |
+|                    | Downtown Residential Area     |
+|                    | Redwood Shores Residences     |
+| Group 3            | **Parks and Recreation**      |
+|                    | Emerald Hills Park Area       |
+|                    | Woodside Trails               |
+
+### Detailed Travel Path:
+
+1. **Primary Quantization**:
+    - Start from the original location.
+    - Map to the nearest primary hub: **San Francisco (SFO)**.
+
+2. **Secondary Quantization**:
+    - From San Francisco, map to a smaller city: **Redwood City**.
+
+3. **Grouped Residual Quantization**:
+    - Within Redwood City, further refine the location to a specific commercial area: **Oracle Campus**.
+
+4. **Final Quantization**:
+    - Finally, pinpoint the exact address: **600 Oracle Pkwy, Oracle Campus, Redwood City, CA 94065**.
+
+
+### Third Level of Codebook (Tertiary Codebook)
+
+A Tertiary Codebook adds another level of uniform quantization, applying a hierarchical approach across the entire dataset. This method continues the hierarchical breakdown seen in the primary and secondary levels but goes further to refine data points within each secondary location.
+
+**Tertiary Codebook for Redwood City**:
+
+| Tertiary Location  | Neighborhoods/Streets     |
+|--------------------|---------------------------|
+| Location 1         | Oracle Parkway Area       |
+| Location 2         | Downtown Redwood City     |
+| Location 3         | Redwood Shores            |
+| Location 4         | Emerald Hills             |
+| Location 5         | Woodside                  |
+
+
+### Comparison Table
+
+| **Level**                | **Tertiary Codebook**                                      | **Grouped Residual Quantization**                                     |
+|--------------------------|------------------------------------------------------------|----------------------------------------------------------------------|
+| **Primary Codebook**     | San Francisco (SFO)                                        | San Francisco (SFO)                                                  |
+| **Secondary Codebook**   | Redwood City, Palo Alto, San Mateo, Mountain View, San Jose| Redwood City, Palo Alto, San Mateo, Mountain View, San Jose           |
+| **Third Level/Group**    | Oracle Parkway, Downtown, Redwood Shores, Emerald Hills, Woodside | Commercial Areas (Oracle Campus, Tech Park), Residential Areas (Downtown, Redwood Shores), Parks (Emerald Hills, Woodside) |
+
+### Summary
+
+- **Tertiary Codebook**: Adds another uniform level of quantization, dividing secondary locations into even finer sub-regions like neighborhoods or streets. Each level is treated uniformly without specific consideration of local attributes.
+  
+- **Grouped Residual Quantization**: Further refines residuals within each secondary location based on specific attributes or features (e.g., commercial, residential, parks). This approach allows for more localized and adaptive quantization, tailored to the characteristics of each secondary location.
+
+In GroupedResidualVQ, after the primary and secondary quantizations, the residuals are further grouped by specific attributes or features within each secondary location. This method refines the quantization process even further, ensuring high precision while maintaining efficiency. For our example, this means mapping the travel route through major hubs, smaller cities, and then specific neighborhoods or landmarks before reaching the final address.
+
+
+
 ## Reference
 
 - [漫谈VAE和VQVAE，从连续分布到离散分布](https://zhuanlan.zhihu.com/p/388299884) 
