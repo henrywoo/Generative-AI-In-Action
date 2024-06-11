@@ -1,9 +1,11 @@
 from matplotlib import collections as mc
 from points import *
 
-def plot_data_grid_with_resids(data, n_grid=5, hide_tick_labels=True, show_indices=False, show_centroids=False,
-                               show_next_level_grid=False, show_resids=True, codebook=None, show_grid=True):
-    "big ol' workhorse plotting routine that we'll progressively make use of as the lesson proceeds"
+
+def plot_data_grid_with_resids(data, n_grid=5, hide_tick_labels=True,
+                               show_indices=False, show_centroids=False,
+                               show_next_level_grid=False, show_resids=True,
+                               codebook=None, show_grid=True):
     fig, ax = plt.subplots(figsize=(3, 3))
     h = 1.0 / n_grid
     ax.set_xlim(DATA_MIN, DATA_MAX)
@@ -11,19 +13,19 @@ def plot_data_grid_with_resids(data, n_grid=5, hide_tick_labels=True, show_indic
 
     if show_grid:
         for i in range(n_grid + 1):
-            ax.axhline(DATA_MIN + i * h, color='black')
-            ax.axvline(DATA_MIN + i * h, color='black')
+            ax.axhline(DATA_MIN + i * h, color='black', alpha=0.8)
+            ax.axvline(DATA_MIN + i * h, color='black', alpha=0.8)
 
     if show_next_level_grid:  # draws lines in the middle
         x_start = 2 * h
         y_start = -h / 2
         for i in range(n_grid):  # horizontal lines
             y = y_start + i * h / n_grid
-            ax.axhline(y, xmin=x_start, xmax=x_start + h, color='black')
+            ax.axhline(y, xmin=x_start, xmax=x_start + h, color='black', alpha=0.8)
         y_start, x_start = x_start, y_start
         for j in range(n_grid):  # horizontal lines
             x = x_start + j * h / n_grid
-            ax.axvline(x, ymin=y_start, ymax=y_start + h, color='black')
+            ax.axvline(x, ymin=y_start, ymax=y_start + h, color='black', alpha=0.8)
 
     if show_indices:
         index = 0
@@ -39,7 +41,7 @@ def plot_data_grid_with_resids(data, n_grid=5, hide_tick_labels=True, show_indic
             for i in range(n_grid):
                 x = DATA_MIN + (i + 0.5) * h
                 y = DATA_MIN + (j + 0.5) * h
-                ax.plot(x, y, 'bv', markersize=6)
+                ax.plot(x, y, 'bv', markersize=4)
 
     if show_resids and codebook is not None:
         memb = get_region_membership(data, codebook=codebook)
@@ -48,7 +50,7 @@ def plot_data_grid_with_resids(data, n_grid=5, hide_tick_labels=True, show_indic
         for i, p in enumerate(data):
             # resids[i] = p - codebook[memb[i]] # don't actually need to compute resids for this
             lines.append([p, codebook[memb[i]]])
-        lc = mc.LineCollection(lines, colors=(1, 0, 1, 1), linewidths=1, linestyles='--', alpha=0.5)
+        lc = mc.LineCollection(lines, colors=(1, 0, 1, 1), linewidths=1, alpha=1)
         ax.add_collection(lc)
 
     if hide_tick_labels:
@@ -63,9 +65,12 @@ def plot_data_grid_with_resids(data, n_grid=5, hide_tick_labels=True, show_indic
 
 n_grid = 5
 codebook = generate_codebook(n_grid)
+np.random.seed(9)  # for reproducibility
+data = DATA_MIN + (DATA_MAX - DATA_MIN) * np.random.rand(n_points, 2)
 plot_data_grid_with_resids(data, n_grid=n_grid, show_next_level_grid=True, show_centroids=True,
                            hide_tick_labels=False, codebook=codebook, show_resids=False)
 plot_data_grid_with_resids(data, n_grid=n_grid, show_next_level_grid=True, show_centroids=True,
-                           hide_tick_labels=True, codebook=codebook, show_resids=True)
+                           hide_tick_labels=False, codebook=codebook, show_resids=True)
 plot_data_grid_with_resids(data, n_grid=n_grid, show_next_level_grid=False, show_centroids=False,
-                           hide_tick_labels=False, codebook=np.zeros((data.shape[0],2)), show_resids=True, show_grid=False)
+                           hide_tick_labels=False, codebook=np.zeros((data.shape[0], 2)), show_resids=True,
+                           show_grid=False)

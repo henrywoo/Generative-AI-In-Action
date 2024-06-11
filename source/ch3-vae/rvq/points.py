@@ -25,7 +25,6 @@ def generate_codebook(n_grid, n_dim=2, debug=False):
     return centroids
 
 def distance(p1, p2):
-    "euclidean distance squared. we don't need the square root b/c we're only interested in ordering by distance"
     return np.sum((p1-p2)**2, axis=1)
 
 def calc_cluster_membership(data, centroids):
@@ -70,6 +69,7 @@ def plot_random_data():
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     plt.scatter(data[:, 0], data[:, 1], s=16)
+    plt.savefig('images/data2d.png')
     plt.show()
 
 
