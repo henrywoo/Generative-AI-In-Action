@@ -74,7 +74,8 @@ in between the decoder and the encoder, so that the decoder gradients are direct
 to the encoder. As the encoder and decoder share the same channel space, the decoder gradients are
 still meaningful to the encoder.
 """
-
+# Enable eager execution
+tf.config.run_functions_eagerly(True)
 
 class VectorQuantizer(layers.Layer):
     def __init__(self, num_embeddings, embedding_dim, beta=0.25, **kwargs):
@@ -115,6 +116,7 @@ class VectorQuantizer(layers.Layer):
         # the original paper to get a handle on the formulation of the loss function.
         commitment_loss = tf.reduce_mean((tf.stop_gradient(quantized) - x) ** 2)
         codebook_loss = tf.reduce_mean((quantized - tf.stop_gradient(x)) ** 2)
+        tf.print("loss_equal?", commitment_loss == codebook_loss)
         self.add_loss(self.beta * commitment_loss + codebook_loss)
 
         # Straight-through estimator.

@@ -21,14 +21,10 @@ class VectorQuantizer(nn.Module):
         encodings = F.one_hot(encoding_indices, self.num_embeddings).float()
         quantized = torch.matmul(encodings, self.embeddings)
         quantized = quantized.view(input_shape)
-
-        # Compute commitment loss
-        commitment_loss = F.mse_loss(x, quantized.detach())
-
-        # Compute codebook update loss
+        commitment_loss = F.mse_loss(quantized.detach(), x)
         codebook_loss = F.mse_loss(quantized, x.detach())
-
         total_loss = self.beta * commitment_loss + codebook_loss
+        quantized = x + (quantized - x).detach()
         return quantized, commitment_loss, codebook_loss, total_loss
 
     def get_code_indices(self, flattened_inputs):
@@ -53,10 +49,9 @@ def print_array(arr):
     arr_str = str(arr).replace('\n', ' ')
     return arr_str
 
-
 def plot_embeddings(embeddings_list):
     num_steps = len(embeddings_list)
-    fig, axes = plt.subplots(1, num_steps, figsize=(2 * num_steps, 4))
+    fig, axes = plt.subplots(1, num_steps, figsize=(0.55 * num_steps, 1.4))
     for step in range(num_steps):
         embeddings_np = embeddings_list[step].detach().numpy()
         ax = axes[step]  # Access the correct subplot in a single row layout
@@ -65,29 +60,31 @@ def plot_embeddings(embeddings_list):
             text = ax.text(0, i, f'{embeddings_np[i, 0]:.2f}', ha='center', va='center', color='white', fontsize=8)
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_title(f'Step {step}', fontsize=9)
+        ax.set_title(f'ep{step}', fontsize=8)
     plt.tight_layout()
+    plt.suptitle("Codebook Changes During Training", fontsize=9)
+    plt.savefig('images/codebook_changes_during_training.png')
     plt.show()
-
 
 def plot_losses(commitment_losses, codebook_losses):
+    plt.style.use('ggplot')
     plt.figure(figsize=(10, 4))
-    plt.plot(commitment_losses, label='Commitment Loss')
-    plt.plot(codebook_losses, label='Codebook Loss')
-    plt.xlabel('Training Step')
+    plt.plot(commitment_losses, label='Commitment Loss', marker='o', alpha=0.5)
+    plt.plot(codebook_losses, label='Codebook Loss', marker='x', alpha=0.5)
+    plt.xlabel('epoch', fontsize=8)
     plt.ylabel('Loss')
-    plt.title('Commitment and Codebook Losses Over Training Steps')
+    plt.title('Commitment and Codebook Losses')
     plt.legend()
+    plt.savefig('images/codebook_commitment_losses.png')
     plt.show()
-
 
 # Initialize the quantizer
 num_embeddings = 3
 embedding_dim = 1
 vector_quantizer = VectorQuantizer(num_embeddings, embedding_dim)
 
-# Specific input to illustrate different losses
-x = torch.tensor([[0.2], [1.7]], dtype=torch.float32)
+# Example input
+x = torch.tensor([[0.6], [1.8]], dtype=torch.float32)
 
 # Training step
 optimizer = optim.Adam(vector_quantizer.parameters(), lr=0.1)
@@ -96,7 +93,7 @@ embeddings_list = []
 commitment_losses = []
 codebook_losses = []
 
-for i in range(4):
+for i in range(9):
     # Store the embeddings before the training step
     embeddings_list.append(vector_quantizer.embeddings.clone())
 
@@ -110,12 +107,10 @@ for i in range(4):
     print("Codebook Loss: ", codebook_loss.item())
     print("Total Loss: ", total_loss.item())
 
-    # Print losses to debug
-    print(f'Step {i} - Commitment Loss: {commitment_loss.item()}, Codebook Loss: {codebook_loss.item()}')
-
     # Store the losses
     commitment_losses.append(commitment_loss.item())
     codebook_losses.append(codebook_loss.item())
+    print("*"*60)
 
 # Store the final embeddings after all training steps
 embeddings_list.append(vector_quantizer.embeddings.clone())
