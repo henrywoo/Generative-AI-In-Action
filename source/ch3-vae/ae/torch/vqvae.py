@@ -35,7 +35,7 @@ class VectorQuantizer(nn.Module):
             + self.embeddings.weight.pow(2).sum(0, keepdim=True)
         )
 
-        # Find closest encodings
+        # Find the closest encodings
         encoding_indices = torch.argmin(distances, dim=1)
 
         # Quantize and unflatten

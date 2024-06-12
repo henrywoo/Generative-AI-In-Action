@@ -77,6 +77,96 @@ VAEs can be seen as performing approximate Bayesian inference. The prior distrib
 
 In VAE, each training sample x is mapped to a distribution p(z|x) in the latent space. Different samples x_i yield different distributions p(z_i | x_i). The KL divergence loss term encourages these p(z_i | x_i) distributions to approximate a standard normal distribution N(0, I). Therefore, VAE does **not encode the latent space as multiple normal distributions for different attributes**. Instead, VAE maps each input sample to a distribution in the latent space and uses the KL divergence to ensure that these distributions are close to the standard normal distribution. This allows for more structured and smooth sampling in the latent space, facilitating better generation and interpolation of new samples.
 
+
+## Vector Quantization
+
+
+### Example Setup
+
+Assume we have:
+- `embedding_dim = 1`: Each embedding vector is a single scalar value.
+- `num_embeddings = 3`: We have 3 embeddings in the codebook.
+- `input values` are scalars.
+
+### Step-by-Step Process
+
+1. **Initialization**:
+   Let's initialize our codebook (`self.embeddings`) with the following scalars:
+   ```
+   embeddings = [0.5, 1.0, 1.5]
+   ```
+
+2. **Input**:
+   Assume our input `x` has the following 2 scalar values:
+   ```
+   x = [0.6, 1.4]
+   ```
+
+3. **Flattening the Input**:
+   Since our input is already a list of scalars, flattening is trivial:
+   ```
+   flattened = x = [0.6, 1.4]
+   ```
+
+4. **Finding the Closest Embedding (Quantization)**:
+   We compute the distances between each input scalar and each embedding in the codebook.
+   
+   - For input value `0.6`:
+     ```
+     distances = [
+       ||0.6 - 0.5||^2 = (0.6 - 0.5)^2 = 0.01,
+       ||0.6 - 1.0||^2 = (0.6 - 1.0)^2 = 0.16,
+       ||0.6 - 1.5||^2 = (0.6 - 1.5)^2 = 0.81
+     ]
+     Closest embedding index: 0
+     ```
+   
+   - For input value `1.4`:
+     ```
+     distances = [
+       ||1.4 - 0.5||^2 = (1.4 - 0.5)^2 = 0.81,
+       ||1.4 - 1.0||^2 = (1.4 - 1.0)^2 = 0.16,
+       ||1.4 - 1.5||^2 = (1.4 - 1.5)^2 = 0.01
+     ]
+     Closest embedding index: 2
+     ```
+
+5. **One-hot Encoding of Indices**:
+   We convert the indices of the closest embeddings to one-hot encodings:
+   ```
+   encoding_indices = [0, 2]
+   encodings = [
+     [1, 0, 0],  # one-hot for index 0
+     [0, 0, 1]   # one-hot for index 2
+   ]
+   ```
+
+6. **Quantizing**:
+   We use the one-hot encodings to retrieve the corresponding embedding values:
+   ```
+   quantized = encodings @ embeddings = [
+     [1, 0, 0] @ [0.5, 1.0, 1.5] = 0.5,
+     [0, 0, 1] @ [0.5, 1.0, 1.5] = 1.5
+   ]
+   ```
+
+7. **Reshape to Original Input Shape**:
+   In this example, the input shape is already a list of scalars, so no additional reshaping is necessary:
+   ```
+   quantized = [0.5, 1.5]
+   ```
+
+### Summary of the Process
+
+- **Input Scalars**: `[0.6, 1.4]`
+- **Codebook (Embeddings)**: `[0.5, 1.0, 1.5]`
+- **Closest Embeddings**: For `0.6` it is `0.5` and for `1.4` it is `1.5`.
+- **Quantized Scalars**: `[0.5, 1.5]`
+
+This example clarifies the quantization process where each input scalar is replaced by the closest scalar from the codebook when `embedding_dim` is 1.
+
+
+
 ## Vector Quantized Variational AutoEncoder (VQVAE)
 
 In VQVAE, the Encoder learns intermediate encodings, which are then mapped to one of the K vectors in the codebook through nearest-neighbor search. The Decoder reconstructs the image from these latent codes.
@@ -591,6 +681,31 @@ In an ideal scenario, each vector in the codebook would be used to represent a d
 A real-world example of codebook collapse was observed in the early versions of VQ-VAE-2, a model for generating high-resolution images. The researchers noticed that the model was only using a small portion of its codebook, leading to less diverse and lower quality images. They addressed this issue by introducing techniques like codebook reseeding and a diversity loss to encourage the model to use the full codebook.
 
 
+## DVAE vs VQ-VAE
+
+Both Discrete Variational Autoencoders (DVAEs) and Vector Quantized Variational Autoencoders (VQ-VAEs) are types of generative models that learn to encode data into discrete representations. However, they differ in their architecture and approach to discretization.
+
+### Discrete Variational Autoencoders (DVAEs)
+
+1. **Architecture**: DVAEs are built on the standard VAE framework but modify the **latent space to be discrete** rather than continuous.
+2. **Discretization**: The latent space is modeled using discrete distributions, such as **categorical distributions**, instead of the Gaussian distributions used in standard VAEs.
+3. **Training**: Training DVAEs involves **maximizing a variational lower bound on the data likelihood**. The reparameterization trick is adapted for discrete variables, often using techniques like **Gumbel-Softmax** to enable backpropagation.
+4. **Purpose**: DVAEs aim to learn discrete latent representations, which can be more interpretable and suitable for tasks where discrete latent variables are natural, such as **text generation or clustering**.
+
+### Vector Quantized Variational Autoencoders (VQ-VAEs)
+
+1. **Architecture**: VQ-VAEs also modify the VAE framework but do so by introducing a **discrete codebook** of latent variables.
+2. **Discretization**: In VQ-VAEs, the continuous latent vectors are quantized to the nearest entry in a codebook of discrete vectors during the encoding process. This quantization process is non-differentiable.
+3. **Training**: VQ-VAEs bypass the need for the reparameterization trick by using a different approach for backpropagation. They use a combination of straight-through estimators and vector quantization techniques. The objective includes a reconstruction loss and a commitment loss to encourage the encoder to produce vectors close to the codebook entries.
+4. **Purpose**: VQ-VAEs are particularly effective for high-dimensional data like images, where the discrete codebook can capture rich and diverse features. They are useful for tasks like **image generation and representation learning**.
+
+### Key Differences
+- **Discretization Method**: DVAEs use a discrete distribution (e.g., categorical), while VQ-VAEs use a codebook of discrete latent vectors.
+- **Training Techniques**: DVAEs often require methods like Gumbel-Softmax for differentiability, whereas VQ-VAEs use vector quantization and straight-through estimators.
+- **Application Focus**: DVAEs are often more interpretable and suited for tasks with natural discrete latent structures, while VQ-VAEs are powerful for high-dimensional data, capturing complex features through their codebook.
+
+In summary, while both models aim to leverage discrete latent spaces, their approaches to discretization and training differ, making each suitable for different types of data and applications.
+
 
 
 ## Reference
@@ -600,3 +715,4 @@ A real-world example of codebook collapse was observed in the early versions of 
 - [生成模型之VAE与VQ-VAE](https://blog.csdn.net/m0_56214772/article/details/129711670)
 - [GAN 和 VAE 的本质区别是什么？为什么两者总是同时被提起？](https://www.zhihu.com/question/317623081/answer/1994238294)
 - [DALL-E论文笔记](https://www.p-chao.com/2024-01-21/dall-e%e8%ae%ba%e6%96%87%e7%ac%94%e8%ae%b0/#dVAE)
+- [Deep Generative Modeling of Sequential Data with Dynamical Variational Autoencoders 2021](https://dynamicalvae.github.io/tuto_icassp2021/DVAE_tutorial.html#152)

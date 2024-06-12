@@ -5,22 +5,38 @@ assert sys.version_info >= (3, 7)
 from packaging import version
 import sklearn
 
+
 def set_seed(seed=42):
-    import random
-    import numpy as np
-    import tensorflow as tf
-    import torch
-    # Setting seed for random
-    random.seed(42)
-    # Setting seed for numpy
-    np.random.seed(42)
-    # Setting seed for tensorflow
-    tf.random.set_seed(42)
-    # Setting seed for torch
-    torch.manual_seed(42)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(42)
-    np.random.seed(42)
+    import sys
+
+    try:
+        import random
+        random.seed(seed)
+    except ImportError as e:
+        print(f"Error importing random: {e}", file=sys.stderr)
+
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except ImportError as e:
+        print(f"Error importing numpy: {e}", file=sys.stderr)
+
+    try:
+        import tensorflow as tf
+        tf.random.set_seed(seed)
+    except ImportError as e:
+        print(f"Error importing tensorflow: {e}", file=sys.stderr)
+
+    try:
+        import torch
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+    except ImportError as e:
+        print(f"Error importing torch: {e}", file=sys.stderr)
+
+    print("Seed set to", seed)
+
 set_seed()
 
 assert version.parse(sklearn.__version__) >= version.parse("1.0.1")
