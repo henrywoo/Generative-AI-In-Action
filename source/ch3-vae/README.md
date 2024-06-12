@@ -706,7 +706,47 @@ Both Discrete Variational Autoencoders (DVAEs) and Vector Quantized Variational 
 
 In summary, while both models aim to leverage discrete latent spaces, their approaches to discretization and training differ, making each suitable for different types of data and applications.
 
+## Without Considering Commitment Weight, Is Commitment Loss Always Equal to CodeBook Loss in VQ? Why?
 
+The following is the loss function of VQ-VAE model from the original paper [Neural Discrete Representation Learning](https://arxiv.org/abs/1711.00937):
+
+![](loss_vqvae.png)
+
+Actually, the commitment loss and codebook loss in VQ-VAE are always equal in forward process. The reason we use them is we want to update them differently in back-propagating via setting a commit loss weight. The two losses serve different purposes while having the same value in the forward pass without considering the weight. If the weight less 1, it means we want to prioritize updating encoder over codebook.
+
+**The Loss Function Breakdown**
+
+The VQ-VAE loss function has three main components:
+
+1. **Reconstruction Loss (`log p(x|z_q(x))`)**:  This measures how well the decoder can reconstruct the original input `x` from the quantized latent representation `z_q(x)`.
+2. **Codebook Loss (`||sg[z_e(x)] - e||^2`)**: This encourages the codebook vectors `e` to move closer to the encoder's output `z_e(x)`. The `sg` (stop gradient) operation prevents the encoder from being updated by this loss.
+3. **Commitment Loss (`β||z_e(x) - sg[e]||^2`)**: This encourages the encoder's output `z_e(x)` to stay close to the quantized representation `sg[e]`. The stop gradient on `e` ensures the codebook isn't updated by this loss. `β` is a hyperparameter that balances the commitment loss with the reconstruction loss.
+
+**Why the Losses are Different**
+
+The key differences between the codebook loss and commitment loss arise from the use of stop gradients (`sg`):
+
+* **Codebook Loss:** Only the codebook vectors are updated to move closer to the encoder's output. The encoder itself is not affected by this loss. This helps the codebook learn a better representation of the data.
+
+* **Commitment Loss:** Only the encoder is updated to move its output closer to the codebook vectors. The codebook itself is not affected. This prevents the encoder from deviating too far from the discrete codebook space.
+
+**Intuitive Explanation**
+
+Think of the codebook vectors as anchor points in a latent space. The encoder wants to map input data to these anchor points.
+* The codebook loss helps to adjust the anchor points so that they are more representative of the data distribution.
+* The commitment loss encourages the encoder to "commit" to using these anchor points rather than generating outputs that fall far away from them.
+
+**In Summary:**
+
+Both the codebook loss and commitment loss work together to optimize the VQ-VAE model. They serve different purposes, and their magnitudes can vary depending on the specific data and hyperparameters used. By carefully balancing these losses, VQ-VAE can effectively learn discrete representations of data while maintaining good reconstruction quality.
+
+> Ze(x) is the output of the encoder network, and e is the embedding. They are mutually-related, and both need to be optimized. In general, the separation using stop-gradients can be understood, in my opinion, as an Alternating Projections kind of optimization algorithm, where you need to simultaneously optimize 2 mutually-related subsystems, so you do it by "freezing" one while optimizing the other, so that the optimization will not "collapse" into a trivial wrong solution.
+> 
+> In the context of the VQ-VAE paper, this is almost the same as the way the k-means algorithm operates, by alternating between (phase 1) estimating centroids and (phase 2) deciding which element belongs to each centroid. You can see that equations (1) and (2) in the paper are essentially a k-means criterion.
+> The similarity to a k-means criterion is not just my own opinion -- note in Appendix A.1 of the paper, where the authors explicitly mention this close similarity to k
+-means.
+> The paper further justifies the stop-gradient in the 2 paragraphs before equation (3), by emphasizing that the stop-gradient in different terms of the loss will cause the loss to effect learning (optimizing) in different subsystems of the overall system.
+> - https://stats.stackexchange.com/questions/592742/vq-vae-why-do-we-need-to-separate-the-codebook-alignment-loss-and-the-commitme
 
 ## Reference
 
