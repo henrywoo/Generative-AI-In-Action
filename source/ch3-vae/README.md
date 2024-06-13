@@ -1,5 +1,7 @@
 # Autoencoder
 
+## Autoencoder
+
 ### How to Reconstruct an Image?
 
 The facial image above can be described with various attributes, such as smiling, dark skin, male, bearded, not wearing glasses, and black hair. To reconstruct this facial image using a neural network architecture, you can first encode the image into different attributes and then decode these attributes to obtain the reconstructed image. This is the conventional approach of an autoencoder.
@@ -11,14 +13,31 @@ However, there's a problem to solve here: how to encode the attributes of an ima
 
 ![](dist.png)
 
-### AutoEncoder
+### Autoencoder
 
-The most basic AutoEncoder consists of an Encoder and a Decoder. The Encoder encodes the input image to obtain a latent code, which is then used by the Decoder to reconstruct the image. The reconstruction error between the input image and the generated image is calculated, and during training, this reconstruction error is minimized.
+The most basic autoencoder consists of an Encoder and a Decoder. The Encoder encodes the input image to obtain a latent code, which is then used by the Decoder to reconstruct the image. The reconstruction error between the input image and the generated image is calculated, and during training, this reconstruction error is minimized.
 
-An AutoEncoder can be understood as learning any probability distribution through the network, and then using the x-coordinate of the highest point of this probability distribution as the discrete value of the encoding. This leads to the generation process of the AutoEncoder being uncontrollable and sensitive to input noise, as the learned probability distribution cannot be known in advance.
+![](ae.png)
+
+An autoencoder can be understood as learning any probability distribution through the network, and then using the x-coordinate of the highest point of this probability distribution as the discrete value of the encoding. This leads to the generation process of the autoencoder being uncontrollable and sensitive to input noise, as the learned probability distribution cannot be known in advance.
+
+### Example
+
+The same flower's images from different angles as follows:
+
+![](flower1.png)
+
+After encoding, they can locate far away in vector spaces.
+
+![](flower2.png)
+
+The encoding can scatter everywhere.
+
+![](flower3.png)
 
 
-## Variational AutoEncoder (VAE)
+
+## Variational Autoencoder (VAE)
 
 ![](vae.jpg)
 
@@ -28,6 +47,13 @@ VAEs are a powerful tool for learning meaningful, compressed representations (la
 
 In a VAE, the Encoder learns two encodings: the mean and the standard deviation. It then randomly samples a code from a normal distribution, and through the formula `sampled_code = epsilon * std + mean`, it resamples to get the latent code, which is then reconstructed by the Decoder.
 
+Using the flower example above, the encodings by VAE are normalized due to Gaussian sampling:
+
+![](flower4.png)
+
+Due to the normalization, all features use the same scale, so similar flowers are close to each other and also closer to vector space center.
+![](flower5.png)
+
 Due to the continuity of the normal distribution, there is no issue with differentiability. The reparameterization trick allows for the recovery of the latent code and enables gradient updates through the chain rule.
 
 ![](vae.webp)
@@ -36,7 +62,7 @@ A VAE can be understood as a network learning the mean and standard deviation en
 
 ![](vae2.webp)
 
-As shown, the advantage of VAE over a traditional AutoEncoder is that when different samples are input, the VAE can robustly reconstruct images for any given sample. The VAE's generation process is controllable and insensitive to input noise, as each attribute is known to follow a normal distribution in advance.
+As shown, the advantage of VAE over a traditional autoencoder is that when different samples are input, the VAE can robustly reconstruct images for any given sample. The VAE's generation process is controllable and insensitive to input noise, as each attribute is known to follow a normal distribution in advance.
 
 **The Bayesian Framework:**
 
@@ -167,7 +193,7 @@ This example clarifies the quantization process where each input scalar is repla
 
 
 
-## Vector Quantized Variational AutoEncoder (VQVAE)
+## Vector Quantized Variational Autoencoder (VQVAE)
 
 In VQVAE, the Encoder learns intermediate encodings, which are then mapped to one of the K vectors in the codebook through nearest-neighbor search. The Decoder reconstructs the image from these latent codes.
 
@@ -756,3 +782,4 @@ Both the codebook loss and commitment loss work together to optimize the VQ-VAE 
 - [GAN 和 VAE 的本质区别是什么？为什么两者总是同时被提起？](https://www.zhihu.com/question/317623081/answer/1994238294)
 - [DALL-E论文笔记](https://www.p-chao.com/2024-01-21/dall-e%e8%ae%ba%e6%96%87%e7%ac%94%e8%ae%b0/#dVAE)
 - [Deep Generative Modeling of Sequential Data with Dynamical Variational Autoencoders 2021](https://dynamicalvae.github.io/tuto_icassp2021/DVAE_tutorial.html#152)
+- https://www.youtube.com/watch?v=wcqLFDXaDO8&ab_channel=Outlier

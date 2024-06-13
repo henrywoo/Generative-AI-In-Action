@@ -12,13 +12,18 @@ from hiq import set_seed
 import cv2  # Import OpenCV
 import argparse
 from models import Generator, Discriminator
+import matplotlib.pyplot as plt  # Import Matplotlib
+from torchmetrics.image.fid import FrechetInceptionDistance
+from torchmetrics.image.inception import InceptionScore
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def init_video_writer(frame_size, output_file='gan_training.mp4', fps=2.0):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec
     video_writer = cv2.VideoWriter(output_file, fourcc, fps, frame_size)
     return video_writer
+
 
 def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epochs, num_samples, nrows, output_dir):
     mnist = MnistDataset('train', im_path=im_path, im_ext=im_ext)
@@ -39,6 +44,17 @@ def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epoch
     steps = 0
     generated_sample_count = 0
     video_writer = None
+
+    # Initialize lists to store losses and metrics
+    generator_losses_per_epoch = []
+    discriminator_losses_per_epoch = []
+    total_minimax_losses_per_epoch = []
+    fid_scores_per_epoch = []
+    inception_scores_per_epoch = []
+
+    # Initialize FID and IS metrics
+    fid = FrechetInceptionDistance(feature=64).to(device)
+    inception_score = InceptionScore(feature=64).to(device)
 
     for epoch_idx in tqdm(range(num_epochs)):
         generator_losses = []
@@ -81,10 +97,47 @@ def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epoch
             if steps % 50 == 0:
                 with torch.no_grad():
                     generator.eval()
-                    infer_for_video(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir)
+                    infer_for_video(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer,
+                                    output_dir)
                     generated_sample_count += 1
                     generator.train()
             steps += 1
+
+            # Update FID with real images
+            real_ims_for_fid = (real_ims + 1) / 2  # Scale to [0, 1]
+            real_ims_for_fid = (real_ims_for_fid * 255).byte()  # Scale to [0, 255] and convert to uint8
+            real_ims_for_fid = real_ims_for_fid.repeat(1, 3, 1, 1)  # Convert to 3 channels
+            fid.update(real_ims_for_fid, real=True)
+
+        # Compute mean losses for the epoch
+        mean_gen_loss = np.mean(generator_losses)
+        mean_disc_loss = np.mean(discriminator_losses)
+
+        # Compute total minimax loss for the epoch
+        total_minimax_loss = mean_gen_loss + mean_disc_loss
+        total_minimax_losses_per_epoch.append(total_minimax_loss)
+
+        # Append mean losses for the epoch
+        generator_losses_per_epoch.append(mean_gen_loss)
+        discriminator_losses_per_epoch.append(mean_disc_loss)
+
+        # Calculate FID and IS scores
+        fake_ims_for_metrics = generate_fake_samples(generator, latent_dim, num_samples)
+        fake_ims_for_metrics = (fake_ims_for_metrics * 255).byte()  # Scale to [0, 255] and convert to uint8
+        fake_ims_for_metrics = fake_ims_for_metrics.repeat(1, 3, 1, 1)  # Convert to 3 channels
+
+        fid.update(fake_ims_for_metrics, real=False)
+        inception_score.update(fake_ims_for_metrics)
+
+        fid_score = fid.compute().item()
+        inception_score_val = inception_score.compute()[0].item()  # Only take the first value
+
+        fid_scores_per_epoch.append(fid_score)
+        inception_scores_per_epoch.append(inception_score_val)
+
+        # Reset the metrics for the next epoch
+        fid.reset()
+        inception_score.reset()
 
         torch.save(generator.state_dict(), os.path.join(output_dir, 'generator_ckpt.pth'))
         torch.save(discriminator.state_dict(), os.path.join(output_dir, 'discriminator_ckpt.pth'))
@@ -93,8 +146,25 @@ def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epoch
     if video_writer:
         video_writer.release()
 
+    # Plot the losses and metrics
+    plot_separate_losses(generator_losses_per_epoch, discriminator_losses_per_epoch, output_dir)
+    plot_combined_losses(generator_losses_per_epoch, discriminator_losses_per_epoch, total_minimax_losses_per_epoch,
+                         output_dir)
+    plot_metrics(fid_scores_per_epoch, inception_scores_per_epoch, output_dir)
 
-def infer_for_video(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir, save_img=False):
+
+def generate_fake_samples(generator, latent_dim, num_samples):
+    generator.eval()
+    with torch.no_grad():
+        noise = torch.randn(num_samples, latent_dim, device=device)
+        fake_samples = generator(noise)
+        fake_samples = (fake_samples + 1) / 2  # Scale to [0, 1]
+        fake_samples = (fake_samples * 255).byte()  # Scale to [0, 255] and convert to uint8
+    return fake_samples
+
+
+def infer_for_video(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir,
+                    save_img=False):
     fake_im_noise = torch.randn((num_samples, latent_dim), device=device)
     fake_ims = generator(fake_im_noise)
     ims = torch.clamp(fake_ims, -1., 1.).detach().cpu()
@@ -112,6 +182,69 @@ def infer_for_video(generated_sample_count, generator, latent_dim, num_samples, 
         torchvision.utils.save_image(grid, img_output_path)
 
 
+def plot_separate_losses(generator_losses, discriminator_losses, output_dir):
+    epochs = range(len(generator_losses))
+    plt.style.use('ggplot')
+    plt.figure(figsize=(8, 6))
+    plt.subplot(2, 1, 1)
+    plt.plot(epochs, generator_losses, label='Generator Loss', alpha=0.75, linestyle='-.')
+    plt.xlabel('Epochs', fontsize=8)
+    plt.ylabel('Loss', fontsize=8)
+    plt.title('Generator Loss vs Epochs', fontsize=10)
+    plt.legend()
+    plt.subplot(2, 1, 2)
+    plt.plot(epochs, discriminator_losses, label='Discriminator Loss', alpha=0.75, linestyle='--')
+    plt.xlabel('Epochs', fontsize=8)
+    plt.ylabel('Loss', fontsize=8)
+    plt.title('Discriminator Loss vs Epochs', fontsize=10)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'generator_discriminator_losses_vs_epochs.png'))
+    plt.show()
+
+
+def plot_combined_losses(generator_losses, discriminator_losses, total_minimax_losses, output_dir):
+    epochs = range(len(generator_losses))
+    plt.style.use('ggplot')
+    plt.figure(figsize=(8, 3.6))
+    plt.plot(epochs, generator_losses, label='Generator Loss', alpha=0.75, linestyle='-.')
+    plt.plot(epochs, discriminator_losses, label='Discriminator Loss', alpha=0.75, linestyle='--')
+    plt.plot(epochs, total_minimax_losses, label='Total Minimax Loss')
+    plt.xlabel('Epochs', fontsize=8)
+    plt.ylabel('Loss', fontsize=8)
+    plt.title('Losses vs Epochs', fontsize=10)
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, 'combined_losses_vs_epochs.png'))
+    plt.show()
+
+
+def plot_metrics(fid_scores, inception_scores, output_dir):
+    epochs = range(len(fid_scores))
+    plt.style.use('ggplot')
+    plt.figure(figsize=(6, 4.8))  # Adjusted figure size for better visualization
+
+    # FID Score subplot
+    plt.subplot(2, 1, 1)
+    plt.plot(epochs, fid_scores, label='FID Score', alpha=0.75, linestyle='-.')
+    plt.xlabel('Epochs', fontsize=8)
+    plt.ylabel('FID Score', fontsize=8)
+    plt.title('FID Score vs Epochs', fontsize=10)
+    plt.legend()
+
+    # Inception Score subplot
+    plt.subplot(2, 1, 2)
+    plt.plot(epochs, inception_scores, label='Inception Score', alpha=0.75, linestyle='--')
+    plt.xlabel('Epochs', fontsize=8)
+    plt.ylabel('Inception Score', fontsize=8)
+    plt.title('Inception Score vs Epochs', fontsize=10)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'fid_inception_scores_vs_epochs.png'))
+    plt.show()
+
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train a GAN on the MNIST dataset")
     parser.add_argument('--latent_dim', type=int, default=64, help='Latent dimension size')
@@ -120,7 +253,7 @@ def main():
     parser.add_argument('--im_path', type=str, default='data/train/images', help='Path to image data')
     parser.add_argument('--im_ext', type=str, default='png', help='Image file extension')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
-    parser.add_argument('--num_epochs', type=int, default=150, help='Number of epochs')
+    parser.add_argument('--num_epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--num_samples', type=int, default=225, help='Number of samples to generate')
     parser.add_argument('--nrows', type=int, default=15, help='Number of rows for grid of generated images')
     parser.add_argument('--output_dir', type=str, default='output', help='Directory to save outputs')
