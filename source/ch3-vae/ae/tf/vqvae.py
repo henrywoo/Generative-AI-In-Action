@@ -33,7 +33,7 @@ class VectorQuantizer(layers.Layer):
         quantized = tf.reshape(quantized, input_shape)
         commitment_loss = tf.reduce_mean((tf.stop_gradient(quantized) - x) ** 2)
         codebook_loss = tf.reduce_mean((quantized - tf.stop_gradient(x)) ** 2)
-        print("commitment_loss == codebook_loss", commitment_loss == codebook_loss)
+        #print("commitment_loss == codebook_loss", commitment_loss == codebook_loss)
         self.add_loss(self.beta * commitment_loss + codebook_loss)
         quantized = x + tf.stop_gradient(quantized - x)
         return quantized
@@ -113,9 +113,9 @@ class VQVAETrainer(keras.models.Model):
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
         self.vq_loss_tracker.update_state(sum(self.vqvae.losses))
 
-        #self.loss_history["total_loss"].append(self.total_loss_tracker.result().numpy())
-        #self.loss_history["reconstruction_loss"].append(self.reconstruction_loss_tracker.result().numpy())
-        #self.loss_history["vqvae_loss"].append(self.vq_loss_tracker.result().numpy())
+        self.loss_history["total_loss"].append(self.total_loss_tracker.result().numpy())
+        self.loss_history["reconstruction_loss"].append(self.reconstruction_loss_tracker.result().numpy())
+        self.loss_history["vqvae_loss"].append(self.vq_loss_tracker.result().numpy())
 
         return {
             "loss": self.total_loss_tracker.result(),
@@ -123,7 +123,7 @@ class VQVAETrainer(keras.models.Model):
             "vqvae_loss": self.vq_loss_tracker.result(),
         }
 
-    '''def fit(self, x, epochs=1, batch_size=32, **kwargs):
+    def fit(self, x, epochs=1, batch_size=32, **kwargs):
         # Custom fit logic
         for epoch in range(epochs):
             print(f"Epoch {epoch + 1}/{epochs}")
@@ -136,7 +136,7 @@ class VQVAETrainer(keras.models.Model):
             # Optionally, print the current loss
             print(f"Total Loss: {self.total_loss_tracker.result().numpy()}, "
                   f"Reconstruction Loss: {self.reconstruction_loss_tracker.result().numpy()}, "
-                  f"VQ-VAE Loss: {self.vq_loss_tracker.result().numpy()}")'''
+                  f"VQ-VAE Loss: {self.vq_loss_tracker.result().numpy()}")
 
 def create_vqvae_model(latent_dim=16, num_embeddings=64):
     return VQVAE(latent_dim=latent_dim, num_embeddings=num_embeddings)

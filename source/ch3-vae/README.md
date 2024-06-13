@@ -252,8 +252,7 @@ quantized_output = ste(input_tensor)
 
 VQVAE's method of using a codebook to manage **discrete latent codes** lays the groundwork for later models like DALLE and VQGAN.
 
-
-
+![Figure for VQVAE-FashionMNIST training](vqvae_encode_and_dynamic_kmeans.png)
 
 ## PixelCNN
 
@@ -695,7 +694,7 @@ In these models, a codebook is a set of vectors used to represent the latent spa
 
 Imagine you are training a VQ-VAE to generate images of handwritten digits (0-9). You use a codebook with 128 vectors, each representing a different visual feature of the digits (like curves, lines, angles, etc.).
 
-In an ideal scenario, each vector in the codebook would be used to represent a different feature, and the model would be able to generate a diverse set of digits. However, due to codebook collapse, the model might only learn to use a small subset of vectors, say 20. This means that even though you have a codebook of 128 vectors, only 20 of them are actually used to represent the data.
+In an ideal scenario, each vector in the codebook would be used to represent a different feature, and the model would be able to generate a diverse set of digits. However, **due to codebook collapse, the model might only learn to use a small subset of vectors**, say 20. This means that even though you have a codebook of 128 vectors, only 20 of them are actually used to represent the data.
 
 **Consequences:**
 
