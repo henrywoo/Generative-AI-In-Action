@@ -136,7 +136,10 @@ While common in supervised learning, using a separate validation set in GANs is 
 
 ![](vanilla/output/epoch_150/combined_losses_vs_epochs.png)
 
+![](vanilla/output/epoch_150/generator_discriminator_losses_vs_epochs.png)
+
 ![](vanilla/output/epoch_150/fid_inception_scores_vs_epochs.png)
+
 
 ![](vanilla/output/epoch_150/image.png)
 
