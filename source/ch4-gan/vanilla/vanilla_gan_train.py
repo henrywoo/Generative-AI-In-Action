@@ -9,46 +9,26 @@ from torch.optim import Adam
 from dataset_mnist import MnistDataset
 from torch.utils.data import DataLoader
 from hiq.vis import print_model
+from hiq import set_seed
+import cv2  # Import OpenCV
+import argparse
 
+set_seed(has_torch=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Configurations used for creating
-# and training GAN
-LATENT_DIM = 64
-# For colored mnist change below to 3
-IM_CHANNELS = 1
-IM_PATH = 'data/train/images'
-IM_EXT = 'png'
-IM_SIZE = (28, 28)
-BATCH_SIZE = 128
-NUM_EPOCHS = 150
-NUM_SAMPLES = 225
-NROWS = 15
-video_writer = None
-##################
 
-import cv2  # Import OpenCV
-
-def init_video_writer(frame_size): #
+def init_video_writer(frame_size, output_file='gan_training.mp4', fps=2.0):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec
-    video_writer = cv2.VideoWriter('gan_training.mp4', fourcc, 2.0, frame_size)  # 10 FPS
+    video_writer = cv2.VideoWriter(output_file, fourcc, fps, frame_size)
     return video_writer
 
-class Generator(nn.Module):
-    r"""
-    Generator for this gan is list of layers where each layer has the following:
-    1. Linear Layer
-    2. BatchNorm
-    3. Activation(Tanh for last layer else LeakyRELU)
-    The linear layers progressively increase dimension
-    from LATENT_DIM to IMG_H*IMG_W*IMG_CHANNELS
-    """
 
-    def __init__(self):
+class Generator(nn.Module):
+    def __init__(self, latent_dim, img_size, channels):
         super().__init__()
-        self.latent_dim = LATENT_DIM
-        self.img_size = IM_SIZE
-        self.channels = IM_CHANNELS
+        self.latent_dim = latent_dim
+        self.img_size = img_size
+        self.channels = channels
         activation = nn.LeakyReLU()
         layers_dim = [self.latent_dim, 128, 256, 512, self.img_size[0] * self.img_size[1] * self.channels]
         self.layers = nn.ModuleList([
@@ -70,18 +50,10 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    r"""
-    Discriminator mimicks the design of generator
-    only reduces dimensions progressive rather than increasing.
-    From IMG_H*IMG_W*IMG_CHANNELS it reduces all the way to 1 where
-    the last value is the probability discriminator thinks that
-    given image is real(closer to 1 if real else closer to 0)
-    """
-
-    def __init__(self):
+    def __init__(self, img_size, channels):
         super().__init__()
-        self.img_size = IM_SIZE
-        self.channels = IM_CHANNELS
+        self.img_size = img_size
+        self.channels = channels
         activation = nn.LeakyReLU()
         layers_dim = [self.img_size[0] * self.img_size[1] * self.channels, 512, 256, 128, 1]
         self.layers = nn.ModuleList([
@@ -100,41 +72,38 @@ class Discriminator(nn.Module):
         return out
 
 
-def train():
-    # Create the dataset
-    mnist = MnistDataset('train', im_path=IM_PATH, im_ext=IM_EXT)
-    mnist_loader = DataLoader(mnist, batch_size=BATCH_SIZE, shuffle=True)
+def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epochs, num_samples, nrows, output_dir):
+    mnist = MnistDataset('train', im_path=im_path, im_ext=im_ext)
+    mnist_loader = DataLoader(mnist, batch_size=batch_size, shuffle=True)
 
-    # Instantiate the model
-    generator = Generator().to(device)
-    discriminator = Discriminator().to(device)
+    generator = Generator(latent_dim, img_size, channels).to(device)
+    discriminator = Discriminator(img_size, channels).to(device)
     generator.train()
     discriminator.train()
     print_model(generator)
     print_model(discriminator)
 
-    # Specify training parameters
     optimizer_generator = Adam(generator.parameters(), lr=1E-4, betas=(0.5, 0.999))
     optimizer_discriminator = Adam(discriminator.parameters(), lr=1E-4, betas=(0.5, 0.999))
 
-    # Criterion is bcewithlogits hence no sigmoid in discriminator
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    # Run training
     steps = 0
     generated_sample_count = 0
-    for epoch_idx in range(NUM_EPOCHS):
+    video_writer = None
+
+    for epoch_idx in tqdm(range(num_epochs)):
         generator_losses = []
         discriminator_losses = []
         mean_real_dis_preds = []
         mean_fake_dis_preds = []
-        for im in tqdm(mnist_loader):
+
+        for im in mnist_loader:
             real_ims = im.float().to(device)
             batch_size = real_ims.shape[0]
 
-            # Train Discriminator
             optimizer_discriminator.zero_grad()
-            fake_im_noise = torch.randn((batch_size, LATENT_DIM), device=device)
+            fake_im_noise = torch.randn((batch_size, latent_dim), device=device)
             fake_ims = generator(fake_im_noise)
             real_label = torch.ones((batch_size, 1), device=device)
             fake_label = torch.zeros((batch_size, 1), device=device)
@@ -149,58 +118,40 @@ def train():
             disc_loss = (disc_real_loss + disc_fake_loss) / 2
             disc_loss.backward()
             optimizer_discriminator.step()
-            ########################
 
-            # Train Generator
             optimizer_generator.zero_grad()
-            fake_im_noise = torch.randn((batch_size, LATENT_DIM), device=device)
+            fake_im_noise = torch.randn((batch_size, latent_dim), device=device)
             fake_ims = generator(fake_im_noise)
             disc_fake_pred = discriminator(fake_ims)
             gen_fake_loss = criterion(disc_fake_pred.reshape(-1), real_label.reshape(-1))
             gen_fake_loss.backward()
             optimizer_generator.step()
-            ########################
 
             generator_losses.append(gen_fake_loss.item())
             discriminator_losses.append(disc_loss.item())
 
-            # Save samples
             if steps % 50 == 0:
                 with torch.no_grad():
                     generator.eval()
-                    infer(generated_sample_count, generator)
+                    infer(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir)
                     generated_sample_count += 1
                     generator.train()
-            #############
             steps += 1
-        """print('Finished epoch:{} | Generator Loss : {:.4f} | Discriminator Loss : {:.4f} | '
-              'Discriminator real pred : {:.4f} | Discriminator fake pred : {:.4f}'.format(
-            epoch_idx + 1,
-            np.mean(generator_losses),
-            np.mean(discriminator_losses),
-            np.mean(mean_real_dis_preds),
-            np.mean(mean_fake_dis_preds),
-        ))"""
-        torch.save(generator.state_dict(), 'generator_ckpt.pth')
-        torch.save(discriminator.state_dict(), 'discriminator_ckpt.pth')
+
+        torch.save(generator.state_dict(), os.path.join(output_dir, 'generator_ckpt.pth'))
+        torch.save(discriminator.state_dict(), os.path.join(output_dir, 'discriminator_ckpt.pth'))
 
     print('Done Training ...')
-    video_writer.release()  # Finalize the video writer
+    if video_writer:
+        video_writer.release()
 
 
-def infer(generated_sample_count, generator):
-    r"""
-    Method to save the generated samples
-    :param generated_sample_count: Filename to save the output with
-    :param generator: Generator model with trained parameters
-    :return:
-    """
-    global video_writer
-    fake_im_noise = torch.randn((NUM_SAMPLES, LATENT_DIM), device=device)
+def infer(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir):
+    fake_im_noise = torch.randn((num_samples, latent_dim), device=device)
     fake_ims = generator(fake_im_noise)
     ims = torch.clamp(fake_ims, -1., 1.).detach().cpu()
     ims = (ims + 1) / 2
-    grid = make_grid(ims, nrow=NROWS)
+    grid = make_grid(ims, nrow=nrows)
     if video_writer is None:
         tensor_shape = grid.shape
         video_writer = init_video_writer((tensor_shape[1], tensor_shape[2]))
@@ -208,7 +159,41 @@ def infer(generated_sample_count, generator):
     img = np.array(img)  # Convert PIL Image to numpy array
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR
     video_writer.write(img)
+    img_output_path = os.path.join(output_dir, f'generated_sample_{generated_sample_count}.png')
+    torchvision.utils.save_image(grid, img_output_path)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Train a GAN on the MNIST dataset")
+    parser.add_argument('--latent_dim', type=int, default=64, help='Latent dimension size')
+    parser.add_argument('--img_size', type=int, nargs=2, default=(28, 28), help='Image size (height, width)')
+    parser.add_argument('--channels', type=int, default=1, help='Number of image channels')
+    parser.add_argument('--im_path', type=str, default='data/train/images', help='Path to image data')
+    parser.add_argument('--im_ext', type=str, default='png', help='Image file extension')
+    parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
+    parser.add_argument('--num_epochs', type=int, default=150, help='Number of epochs')
+    parser.add_argument('--num_samples', type=int, default=225, help='Number of samples to generate')
+    parser.add_argument('--nrows', type=int, default=15, help='Number of rows for grid of generated images')
+    parser.add_argument('--output_dir', type=str, default='output', help='Directory to save outputs')
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
+    train(
+        latent_dim=args.latent_dim,
+        img_size=args.img_size,
+        channels=args.channels,
+        im_path=args.im_path,
+        im_ext=args.im_ext,
+        batch_size=args.batch_size,
+        num_epochs=args.num_epochs,
+        num_samples=args.num_samples,
+        nrows=args.nrows,
+        output_dir=args.output_dir
+    )
 
 
 if __name__ == '__main__':
-    train()
+    main()
