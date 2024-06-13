@@ -1,6 +1,5 @@
 import torch
 import os
-import torch.nn as nn
 import numpy as np
 import torchvision
 from torchvision.utils import make_grid
@@ -12,65 +11,14 @@ from hiq.vis import print_model
 from hiq import set_seed
 import cv2  # Import OpenCV
 import argparse
+from models import Generator, Discriminator
 
-set_seed(has_torch=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 def init_video_writer(frame_size, output_file='gan_training.mp4', fps=2.0):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec
     video_writer = cv2.VideoWriter(output_file, fourcc, fps, frame_size)
     return video_writer
-
-
-class Generator(nn.Module):
-    def __init__(self, latent_dim, img_size, channels):
-        super().__init__()
-        self.latent_dim = latent_dim
-        self.img_size = img_size
-        self.channels = channels
-        activation = nn.LeakyReLU()
-        layers_dim = [self.latent_dim, 128, 256, 512, self.img_size[0] * self.img_size[1] * self.channels]
-        self.layers = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(layers_dim[i], layers_dim[i + 1]),
-                nn.BatchNorm1d(layers_dim[i + 1]) if i != len(layers_dim) - 2 else nn.Identity(),
-                activation if i != len(layers_dim) - 2 else nn.Tanh()
-            )
-            for i in range(len(layers_dim) - 1)
-        ])
-
-    def forward(self, z):
-        batch_size = z.shape[0]
-        out = z.reshape(-1, self.latent_dim)
-        for layer in self.layers:
-            out = layer(out)
-        out = out.reshape(batch_size, self.channels, self.img_size[0], self.img_size[1])
-        return out
-
-
-class Discriminator(nn.Module):
-    def __init__(self, img_size, channels):
-        super().__init__()
-        self.img_size = img_size
-        self.channels = channels
-        activation = nn.LeakyReLU()
-        layers_dim = [self.img_size[0] * self.img_size[1] * self.channels, 512, 256, 128, 1]
-        self.layers = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(layers_dim[i], layers_dim[i + 1]),
-                nn.LayerNorm(layers_dim[i + 1]) if i != len(layers_dim) - 2 else nn.Identity(),
-                activation if i != len(layers_dim) - 2 else nn.Identity()
-            )
-            for i in range(len(layers_dim) - 1)
-        ])
-
-    def forward(self, x):
-        out = x.reshape(-1, self.img_size[0] * self.img_size[1] * self.channels)
-        for layer in self.layers:
-            out = layer(out)
-        return out
-
 
 def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epochs, num_samples, nrows, output_dir):
     mnist = MnistDataset('train', im_path=im_path, im_ext=im_ext)
@@ -133,7 +81,7 @@ def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epoch
             if steps % 50 == 0:
                 with torch.no_grad():
                     generator.eval()
-                    infer(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir)
+                    infer_for_video(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir)
                     generated_sample_count += 1
                     generator.train()
             steps += 1
@@ -146,7 +94,7 @@ def train(latent_dim, img_size, channels, im_path, im_ext, batch_size, num_epoch
         video_writer.release()
 
 
-def infer(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir):
+def infer_for_video(generated_sample_count, generator, latent_dim, num_samples, nrows, video_writer, output_dir, save_img=False):
     fake_im_noise = torch.randn((num_samples, latent_dim), device=device)
     fake_ims = generator(fake_im_noise)
     ims = torch.clamp(fake_ims, -1., 1.).detach().cpu()
@@ -159,8 +107,9 @@ def infer(generated_sample_count, generator, latent_dim, num_samples, nrows, vid
     img = np.array(img)  # Convert PIL Image to numpy array
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR
     video_writer.write(img)
-    img_output_path = os.path.join(output_dir, f'generated_sample_{generated_sample_count}.png')
-    torchvision.utils.save_image(grid, img_output_path)
+    if save_img:
+        img_output_path = os.path.join(output_dir, f'generated_sample_{generated_sample_count}.png')
+        torchvision.utils.save_image(grid, img_output_path)
 
 
 def main():
@@ -196,4 +145,5 @@ def main():
 
 
 if __name__ == '__main__':
+    set_seed(has_torch=True)
     main()
