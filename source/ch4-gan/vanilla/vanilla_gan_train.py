@@ -185,18 +185,18 @@ def infer_for_video(generated_sample_count, generator, latent_dim, num_samples, 
 def plot_separate_losses(generator_losses, discriminator_losses, output_dir):
     epochs = range(len(generator_losses))
     plt.style.use('ggplot')
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(6, 3.6))
     plt.subplot(2, 1, 1)
     plt.plot(epochs, generator_losses, label='Generator Loss', alpha=0.75, linestyle='-.')
     plt.xlabel('Epochs', fontsize=8)
     plt.ylabel('Loss', fontsize=8)
-    plt.title('Generator Loss vs Epochs', fontsize=10)
+    plt.title('Generator Loss vs Epochs', fontsize=8)
     plt.legend()
     plt.subplot(2, 1, 2)
     plt.plot(epochs, discriminator_losses, label='Discriminator Loss', alpha=0.75, linestyle='--')
     plt.xlabel('Epochs', fontsize=8)
     plt.ylabel('Loss', fontsize=8)
-    plt.title('Discriminator Loss vs Epochs', fontsize=10)
+    plt.title('Discriminator Loss vs Epochs', fontsize=8)
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'generator_discriminator_losses_vs_epochs.png'))
@@ -206,7 +206,7 @@ def plot_separate_losses(generator_losses, discriminator_losses, output_dir):
 def plot_combined_losses(generator_losses, discriminator_losses, total_minimax_losses, output_dir):
     epochs = range(len(generator_losses))
     plt.style.use('ggplot')
-    plt.figure(figsize=(8, 3.6))
+    plt.figure(figsize=(6, 3.6))
     plt.plot(epochs, generator_losses, label='Generator Loss', alpha=0.75, linestyle='-.')
     plt.plot(epochs, discriminator_losses, label='Discriminator Loss', alpha=0.75, linestyle='--')
     plt.plot(epochs, total_minimax_losses, label='Total Minimax Loss')
@@ -221,7 +221,7 @@ def plot_combined_losses(generator_losses, discriminator_losses, total_minimax_l
 def plot_metrics(fid_scores, inception_scores, output_dir):
     epochs = range(len(fid_scores))
     plt.style.use('ggplot')
-    plt.figure(figsize=(6, 4.8))  # Adjusted figure size for better visualization
+    plt.figure(figsize=(5.6, 3.6))  # Adjusted figure size for better visualization
 
     # FID Score subplot
     plt.subplot(2, 1, 1)
@@ -253,7 +253,7 @@ def main():
     parser.add_argument('--im_path', type=str, default='data/train/images', help='Path to image data')
     parser.add_argument('--im_ext', type=str, default='png', help='Image file extension')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
-    parser.add_argument('--num_epochs', type=int, default=100, help='Number of epochs')
+    parser.add_argument('--num_epochs', type=int, default=500, help='Number of epochs')
     parser.add_argument('--num_samples', type=int, default=225, help='Number of samples to generate')
     parser.add_argument('--nrows', type=int, default=15, help='Number of rows for grid of generated images')
     parser.add_argument('--output_dir', type=str, default='output', help='Directory to save outputs')
