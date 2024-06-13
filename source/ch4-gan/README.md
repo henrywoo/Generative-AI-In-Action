@@ -130,7 +130,9 @@ While common in supervised learning, using a separate validation set in GANs is 
 * Consider human evaluation for complex domains.
 * Validation sets can be used to monitor the discriminator's performance.
 
+## VQGAN
 
+![](vqgan.gif)
 
 ## StyleGAN Series (Chinese)
 
