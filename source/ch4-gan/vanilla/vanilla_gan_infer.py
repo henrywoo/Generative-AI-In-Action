@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 generator = Generator().to(device)
 
 # Load the weights from the checkpoint
-generator.load_state_dict(torch.load('output/generator_ckpt.pth', map_location=device))
+generator.load_state_dict(torch.load('output/epoch_500/generator_ckpt.pth', map_location=device))
 generator.eval()  # Set the model to inference mode
 
 
@@ -35,10 +35,10 @@ def generate_images(generator, num_images=64, latent_dim=64):
 
 def show_images(images, nrow=8):
     grid = make_grid(images, nrow=nrow)
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(3, 3))
     plt.imshow(np.transpose(grid.cpu().numpy(), (1, 2, 0)), interpolation='nearest')
     plt.axis('off')
-    plt.savefig('output/image.png')
+    plt.savefig('output/image_500.png')
     plt.show()
 
 
