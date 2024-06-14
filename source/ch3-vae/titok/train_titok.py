@@ -69,16 +69,6 @@ def warmup_training(
         if rank == 0:
             print(f'Epoch [{epoch+1}/{args.num_epochs_warmup}], Loss: {avg_loss:.4f}, LR: {lr:.6f}')
 
-            if os.path.exists(metrics_file):
-                metrics_df = pd.read_csv(metrics_file)
-            else:
-                metrics_df = pd.DataFrame(columns=['epoch', 'avg_loss', 'learning_rate'])
-
-            metrics_df = metrics_df.append(
-                {'epoch': epoch + 1, 'avg_loss': avg_loss, 'learning_rate': lr}, ignore_index=True
-            )
-            metrics_df.to_csv(metrics_file, index=False)
-
             # Save checkpoint
             checkpoint_path = args.resume
             save_checkpoint(
@@ -90,6 +80,14 @@ def warmup_training(
                 },
                 filename=checkpoint_path,
             )
+            if os.path.exists(metrics_file):
+                metrics_df = pd.read_csv(metrics_file)
+            else:
+                metrics_df = pd.DataFrame(columns=['epoch', 'avg_loss', 'learning_rate'])
+
+            new_row_df = pd.DataFrame({'epoch': [epoch + 1], 'avg_loss': [avg_loss], 'learning_rate': [lr]})
+            metrics_df = pd.concat([metrics_df, new_row_df], ignore_index=True)
+            metrics_df.to_csv(metrics_file, index=False)
 
             if (epoch + 1) % 1 == 0:
                 plot_metrics(metrics_file)
@@ -136,7 +134,7 @@ def plot_metrics(csv_file):
     axs[1].set_ylabel('Learning Rate')
     axs[1].legend()
 
-    # plt.tight_layout()
+    fig.tight_layout()
     plt.savefig(f"{here}/titok_curves.png")
     plt.show()
 
