@@ -720,8 +720,9 @@ def load_vqgan_model(config_path, checkpoint_path):
 
 def get_proxy_codes(images, vqgan_model):
     with torch.no_grad():
-        z, _, [_, _, indices] = vqgan_model.encode(images)
-    return indices
+        quant, emb_loss, [_, _, indices]= vqgan_model.encode(images)
+    return indices.view(images.size(0), -1)
+    #return indices
 
 if __name__ == '__main__':
     pass

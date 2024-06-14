@@ -65,9 +65,9 @@ class TiTok(nn.Module):
             emb_dropout=0.1
         )
 
-    def forward(self, x):
+    def forward(self, z):
         # Encoding
-        x = self.encoder_patch_embedding(x)
+        x = self.encoder_patch_embedding(z)
         tokens = self.encoder.transformer(x)
 
         # Quantization
@@ -76,6 +76,7 @@ class TiTok(nn.Module):
         tokens = tokens.reshape(-1, tokens.size(-1))
         distances = torch.cdist(tokens, self.codebook.weight)
         indices = distances.argmin(dim=-1)
+        logits = distances.view(x.size(0), -1, self.num_codes)
         quantized_tokens = self.codebook(indices)
         quantized_tokens = quantized_tokens.view(x.size(0), -1, quantized_tokens.size(-1))
 
@@ -85,7 +86,7 @@ class TiTok(nn.Module):
         dec_input = self.decoder_patch_embedding(dec_input)
         reconstructed = self.decoder.transformer(dec_input)
 
-        return reconstructed, indices
+        return logits, indices
 
 
 def load_image(image_path):

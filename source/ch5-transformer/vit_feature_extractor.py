@@ -34,7 +34,7 @@ from transformers import ViTFeatureExtractor, ViTModel
 from PIL import Image
 from hiq.vis import print_model
 
-image = Image.open("cat.png")
+image = Image.open("img/cats.jpg")
 feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-huge-patch14-224-in21k')
 model = ViTModel.from_pretrained('google/vit-huge-patch14-224-in21k')
 print_model(model)
@@ -42,4 +42,13 @@ print_model(model)
 inputs = feature_extractor(images=image, return_tensors="pt")
 outputs = model(**inputs)
 last_hidden_states = outputs.last_hidden_state
+# torch.Size([1, 257, 1280])
+"""
+You are processing a single image (batch size = 1).
+The image is divided into 256 patches of size 14x14 (after resizing), plus one classification token.
+The ViT model adds a special classification token (CLS) at the beginning of the sequence. This is used to represent the
+overall image for classification tasks. This extra token accounts for the 257th patch.
+Each patch is represented by a feature vector of 1280 dimensions.
+"""
+print(last_hidden_states.shape)
 print(last_hidden_states)
