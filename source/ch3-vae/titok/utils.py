@@ -2,7 +2,7 @@ from scipy.linalg import sqrtm
 import numpy as np
 import torch.nn.functional as F
 import torch
-from torchvision import transforms
+from torchvision import transforms, datasets
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3
@@ -45,7 +45,7 @@ def get_dataset(name, image_size, batch_size, data_dir):
         [
             transforms.Resize((image_size, image_size)),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5)),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
     )
 
@@ -56,13 +56,13 @@ def get_dataset(name, image_size, batch_size, data_dir):
                     transforms.Resize((image_size, image_size)),
                     transforms.CenterCrop(image_size),
                     transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5)),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                 ]
             )
             train_dataset = ImageFolder(root=f'{data_dir}/train', transform=transform)
             test_dataset = ImageFolder(root=f'{data_dir}/val', transform=transform)
         else:
-            dataset_class = eval(f"datasets.{name.capitalize()}")
+            dataset_class = eval(f"datasets.{name.upper()}")
             if name == 'svhn':
                 train_dataset = dataset_class(root=data_dir, split='train', download=True, transform=transform)
                 test_dataset = dataset_class(root=data_dir, split='test', download=True, transform=transform)
