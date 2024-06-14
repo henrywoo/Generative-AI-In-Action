@@ -129,7 +129,7 @@ def main(rank, args):
     ).to(device)
 
     # Wrap the model with DDP for multi-GPU training
-    model = DDP(model, device_ids=[rank], output_device=rank)
+    model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
 
     print_model(model)
 
