@@ -1,0 +1,10 @@
+pip install tensorboard torch torchvision
+pip install tqdm hiq-python
+pip install vit-python
+pip install python-vit
+pip install vit-pytorch
+pip install pytorch-lightning
+pip install scipy
+pip uninstall install
+pip install huggingface-hub
+

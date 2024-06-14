@@ -8,8 +8,7 @@ from accelerate import Accelerator
 from model import SoftPromptTuning
 import os
 
-
-def save_checkpoint(model, optimizer, epoch, loss, filepath='checkpoint.pth'):
+def save_checkpoint(model, optimizer, epoch, loss, filepath='best.pt'):
     state = {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
@@ -18,8 +17,7 @@ def save_checkpoint(model, optimizer, epoch, loss, filepath='checkpoint.pth'):
     }
     torch.save(state, filepath)
 
-
-def load_checkpoint(model, optimizer, filepath='checkpoint.pth'):
+def load_checkpoint(model, optimizer, filepath='best.pt'):
     if os.path.isfile(filepath):
         checkpoint = torch.load(filepath)
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -28,8 +26,7 @@ def load_checkpoint(model, optimizer, filepath='checkpoint.pth'):
     else:
         return None, None
 
-
-def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path='checkpoint.pth', patience=3):
+def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path='best.pt', patience=3):
     accelerator = Accelerator()
 
     # Ensure only the soft prompt embeddings are optimized
@@ -47,7 +44,7 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
     if start_epoch is None:
         start_epoch = 0
         best_val_loss = float('inf')
-
+    
     patience_counter = 0
 
     train_losses = []
@@ -58,12 +55,14 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
         epoch_train_loss = 0
         for batch in train_loader:
             inputs = model.tokenizer(batch['context'], return_tensors='pt', padding=True, truncation=True)
-            labels = model.tokenizer(batch['answers']['text'][0], return_tensors='pt', padding=True,
-                                     truncation=True).input_ids
+            labels = model.tokenizer(batch['answers']['text'][0], return_tensors='pt', padding=True, truncation=True).input_ids
+
+            inputs = {k: v.to(accelerator.device) for k, v in inputs.items()}
+            labels = labels.to(accelerator.device)
 
             optimizer.zero_grad()
             with accelerator.autocast():
-                outputs = model(inputs.input_ids, attention_mask=inputs.attention_mask)
+                outputs = model(inputs['input_ids'], attention_mask=inputs['attention_mask'])
                 logits = outputs.logits[:, model.soft_prompt_len:-1, :].contiguous()
 
                 logits = logits.view(-1, logits.size(-1))
@@ -90,10 +89,12 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
         with torch.no_grad():
             for batch in val_loader:
                 inputs = model.tokenizer(batch['context'], return_tensors='pt', padding=True, truncation=True)
-                labels = model.tokenizer(batch['answers']['text'][0], return_tensors='pt', padding=True,
-                                         truncation=True).input_ids
+                labels = model.tokenizer(batch['answers']['text'][0], return_tensors='pt', padding=True, truncation=True).input_ids
 
-                outputs = model(inputs.input_ids, attention_mask=inputs.attention_mask)
+                inputs = {k: v.to(accelerator.device) for k, v in inputs.items()}
+                labels = labels.to(accelerator.device)
+
+                outputs = model(inputs['input_ids'], attention_mask=inputs['attention_mask'])
                 logits = outputs.logits[:, model.soft_prompt_len:-1, :].contiguous()
 
                 logits = logits.view(-1, logits.size(-1))
@@ -134,10 +135,9 @@ def train(model, train_dataset, val_dataset, epochs=3, lr=5e-5, checkpoint_path=
     plt.legend()
     plt.show()
 
-
 def main():
     model = SoftPromptTuning()
-
+    
     model.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     model.model.resize_token_embeddings(len(model.tokenizer))
 
@@ -146,7 +146,6 @@ def main():
     val_data = squad['validation']
 
     train(model, train_data, val_data)
-
 
 if __name__ == "__main__":
     main()
