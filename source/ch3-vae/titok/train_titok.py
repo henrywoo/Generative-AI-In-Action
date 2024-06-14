@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-from encodec.distrib import rank
 from torchvision.models import inception_v3
 from models import TiTok
 from proxy import load_vqgan_model
