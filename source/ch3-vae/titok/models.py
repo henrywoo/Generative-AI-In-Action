@@ -72,7 +72,8 @@ class TiTok(nn.Module):
 
         # Quantization
         tokens = tokens[:, 1:, :]  # Remove cls token
-        tokens = tokens.view(-1, tokens.size(-1))  # Flatten tokens
+        #tokens = tokens.view(-1, tokens.size(-1))  # Flatten tokens
+        tokens = tokens.reshape(-1, tokens.size(-1))
         distances = torch.cdist(tokens, self.codebook.weight)
         indices = distances.argmin(dim=-1)
         quantized_tokens = self.codebook(indices)
@@ -84,7 +85,7 @@ class TiTok(nn.Module):
         dec_input = self.decoder_patch_embedding(dec_input)
         reconstructed = self.decoder.transformer(dec_input)
 
-        return reconstructed
+        return reconstructed, indices
 
 
 def load_image(image_path):
@@ -106,5 +107,6 @@ if __name__ == '__main__':
     model = TiTok()
 
     # Perform inference
+    print(input_image.shape)
     output = model(input_image)
     print(output.shape)
