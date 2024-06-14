@@ -16,6 +16,8 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from utils import get_dataset, check_pt, get_inception_score, here, load_checkpoint, save_checkpoint
 import matplotlib.pyplot as plt
+import signal
+import sys
 
 
 def calculate_fid(real_features, fake_features):
@@ -29,7 +31,9 @@ def calculate_fid(real_features, fake_features):
     return fid
 
 
-def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=0, eval_size=10):
+def warmup_training(
+    model, dataloader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=0, eval_size=10
+):
     model.train()
     mse_loss = nn.MSELoss()
     metrics_file = os.path.join(args.log_dir, 'metrics.csv')
@@ -70,17 +74,22 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
             else:
                 metrics_df = pd.DataFrame(columns=['epoch', 'avg_loss', 'learning_rate'])
 
-            metrics_df = metrics_df.append({'epoch': epoch + 1, 'avg_loss': avg_loss, 'learning_rate': lr}, ignore_index=True)
+            metrics_df = metrics_df.append(
+                {'epoch': epoch + 1, 'avg_loss': avg_loss, 'learning_rate': lr}, ignore_index=True
+            )
             metrics_df.to_csv(metrics_file, index=False)
 
             # Save checkpoint
             checkpoint_path = args.resume
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'codebook': model.module.codebook.weight if hasattr(model, 'module') else model.codebook.weight
-            }, filename=checkpoint_path)
+            save_checkpoint(
+                {
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'codebook': model.module.codebook.weight if hasattr(model, 'module') else model.codebook.weight,
+                },
+                filename=checkpoint_path,
+            )
 
             if (epoch + 1) % 1 == 0:
                 plot_metrics(metrics_file)
@@ -110,7 +119,6 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
                 print(f"FID: {fid}, IS: {is_mean} ± {is_std}")
 
 
-
 def plot_metrics(csv_file):
     plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
@@ -128,12 +136,19 @@ def plot_metrics(csv_file):
     axs[1].set_ylabel('Learning Rate')
     axs[1].legend()
 
-    #plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(f"{here}/titok_curves.png")
     plt.show()
 
 
 def main(rank, args):
+    def signal_handler(sig, frame):
+        print('You pressed Ctrl+C! Shutting down gracefully...')
+        dist.destroy_process_group()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 
@@ -141,7 +156,9 @@ def main(rank, args):
     torch.cuda.set_device(rank)
     device = torch.device(f'cuda:{rank}')
 
-    train_loader, test_loader = get_dataset(args.dataset, args.image_size, args.batch_size, args.data_dir, rank, args.world_size)
+    train_loader, test_loader = get_dataset(
+        args.dataset, args.image_size, args.batch_size, args.data_dir, rank, args.world_size
+    )
     vqgan_model = load_vqgan_model(args.vqgan_config, args.vqgan_checkpoint).to(device)
 
     if args.image_size == 256:
@@ -210,14 +227,14 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', type=str, default="data", help='Directory containing the dataset')
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
     parser.add_argument('--world_size', type=int, default=torch.cuda.device_count(), help='Number of GPUs to use')
-    parser.add_argument('--resume', type=str, default=f'{here}/checkpoint.pth.tar', help='Path to the latest checkpoint')
+    parser.add_argument(
+        '--resume', type=str, default=f'{here}/checkpoint.pth.tar', help='Path to the latest checkpoint'
+    )
 
     args = parser.parse_args()
     check_pt()
 
-    if torch.cuda.device_count()>1:
+    if torch.cuda.device_count() > 1:
         torch.multiprocessing.spawn(main, args=(args,), nprocs=args.world_size, join=True)
     else:
         main(0, args)
-
-
