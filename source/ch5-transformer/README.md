@@ -457,6 +457,15 @@ In the resulting image, the red areas in the attention map over the cat's head i
 
 In this specific case, the model focuses heavily on the cat's head in the later layers (Layer 12), suggesting that it has learned to recognize the importance of this region for the image's overall interpretation. This is a common behavior in vision models, where certain key features (like faces or heads) are given more importance during the attention process.
 
+## MaskGIT
+
+[MaskGIT (Masked Generative Image Transformer)](https://arxiv.org/abs/2202.04200) generates images in parallel by predicting and refining masked tokens iteratively, utilizing a bidirectional non-autoregressive transformer trained with masked visual token modeling(MVTM) task. It represents another type of generative methods known as **Masked Generative models (MGM)**.
+
+![](maskgit.png)
+
+- Masked Auto-Encoders https://arxiv.org/pdf/2111.06377
+- Language model beats diffusion – tokenizer is key to visual generation https://arxiv.org/abs/2310.05737
+
 
 ## 📌 Reference
 
