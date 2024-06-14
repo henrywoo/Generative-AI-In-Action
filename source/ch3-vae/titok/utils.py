@@ -81,11 +81,11 @@ def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=No
     if rank is not None and world_size is not None:
         train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
         test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, sampler=test_sampler)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, num_workers=8)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, sampler=test_sampler, num_workers=8)
     else:
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
     return train_loader, test_loader
 
