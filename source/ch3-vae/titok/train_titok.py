@@ -13,7 +13,7 @@ import numpy as np
 from scipy.linalg import sqrtm
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from utils import get_dataset, check_pt, get_inception_score, here
+from utils import get_dataset, check_pt, get_inception_score, here, load_checkpoint, save_checkpoint
 import matplotlib.pyplot as plt
 
 
@@ -28,7 +28,7 @@ def calculate_fid(real_features, fake_features):
     return fid
 
 
-def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_loader, rank, eval_size=10):
+def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=0, eval_size=10):
     model.train()
     mse_loss = nn.MSELoss()
     metrics_file = os.path.join(args.log_dir, 'metrics.csv')
@@ -48,7 +48,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
             count += images.size(0)
         real_features = torch.cat(real_features, dim=0).cpu().numpy()
 
-    for epoch in range(args.num_epochs_warmup):
+    for epoch in range(start_epoch, args.num_epochs_warmup):
         total_loss = 0
         for images, _ in tqdm(dataloader):
             images = images.to(device)
@@ -71,6 +71,15 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
 
             metrics_df = metrics_df.append({'epoch': epoch + 1, 'avg_loss': avg_loss, 'learning_rate': lr}, ignore_index=True)
             metrics_df.to_csv(metrics_file, index=False)
+
+            # Save checkpoint
+            checkpoint_path = os.path.join(args.log_dir, 'checkpoint.pth.tar')
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'codebook': model.module.codebook.weight if hasattr(model, 'module') else model.codebook.weight
+            }, filename=checkpoint_path)
 
             if (epoch + 1) % 5 == 0:
                 plot_metrics(metrics_file)
@@ -98,6 +107,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
                 fid = calculate_fid(real_features, fake_features)
                 is_mean, is_std = get_inception_score(fake_images, inception_model)
                 print(f"FID: {fid}, IS: {is_mean} ± {is_std}")
+
 
 
 def plot_metrics(csv_file):
@@ -156,7 +166,12 @@ def main(rank, args):
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epochs_warmup)
 
-    warmup_training(model, train_loader, optimizer, scheduler, args, device, test_loader, rank)
+    # Load checkpoint if exists
+    start_epoch = 0
+    if args.resume and os.path.isfile(args.resume):
+        model, optimizer, start_epoch, _ = load_checkpoint(args.resume, model, optimizer)
+
+    warmup_training(model, train_loader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=start_epoch)
 
     dist.destroy_process_group()
 
@@ -192,8 +207,10 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', type=str, default="data", help='Directory containing the dataset')
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
     parser.add_argument('--world_size', type=int, default=torch.cuda.device_count(), help='Number of GPUs to use')
+    parser.add_argument('--resume', type=str, default='', help='Path to the latest checkpoint (default: none)')
 
     args = parser.parse_args()
     check_pt()
 
     torch.multiprocessing.spawn(main, args=(args,), nprocs=args.world_size, join=True)
+

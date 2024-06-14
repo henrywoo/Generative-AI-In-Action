@@ -157,7 +157,23 @@ def demo_get_inception_score():
     print(f'Inception Score: {mean} ± {std}')
 
 
-# Run the test function
+def save_checkpoint(state, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+
+def load_checkpoint(filename, model, optimizer):
+    if os.path.isfile(filename):
+        print(f"Loading checkpoint '{filename}'")
+        checkpoint = torch.load(filename)
+        start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        codebook = checkpoint['codebook']
+        print(f"Loaded checkpoint '{filename}' (epoch {start_epoch})")
+        return model, optimizer, start_epoch, codebook
+    else:
+        print(f"No checkpoint found at '{filename}'")
+        return model, optimizer, 0, None
+
 
 if __name__ == '__main__':
     demo_get_inception_score()
