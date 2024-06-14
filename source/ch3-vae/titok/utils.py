@@ -28,7 +28,9 @@ def calculate_fid(real_features, fake_features):
 
 
 def get_inception_score(images, inception_model, splits=10):
-    images = torch.cat(images, 0)
+    if isinstance(images, list):
+        images = torch.cat(images, dim=0)
+    images = images.to(inception_model.device)
     images = F.interpolate(images, size=(299, 299), mode='bilinear', align_corners=False)
     with torch.no_grad():
         preds = inception_model(images).softmax(dim=1).cpu().numpy()

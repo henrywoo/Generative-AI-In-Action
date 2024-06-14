@@ -44,10 +44,10 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
             break
         images = images.to(device)
         with torch.no_grad():
-            features = inception_model(images).cpu().numpy()
+            features = inception_model(images)
         real_features.append(features)
         count += images.size(0)
-    real_features = np.concatenate(real_features, axis=0)
+    real_features = torch.cat(real_features, dim=0).cpu().numpy()
 
     for epoch in range(args.num_epochs_warmup):
         total_loss = 0
@@ -62,8 +62,9 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
         scheduler.step()
         avg_loss = total_loss / len(dataloader)
         print(f'Epoch [{epoch+1}/{args.num_epochs_warmup}], Loss: {avg_loss:.4f}')
-        writer.add_scalar("Loss/train", avg_loss, epoch)
-        writer.add_scalar("Learning Rate", scheduler.get_last_lr()[0], epoch)
+        if writer:
+            writer.add_scalar("Loss/train", avg_loss, epoch)
+            writer.add_scalar("Learning Rate", scheduler.get_last_lr()[0], epoch)
 
         if epoch % 5 == 0:
             model.eval()
@@ -75,22 +76,25 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
                         break
                     images = images.to(device)
                     reconstructed, _ = model(images)
-                    fake_images.append(reconstructed.cpu())
+                    fake_images.append(reconstructed)
                     count += images.size(0)
-            fake_images = torch.cat(fake_images, 0).to(device)
+            fake_images = torch.cat(fake_images, dim=0)
             fake_features = []
             for i in range(0, len(fake_images), args.batch_size):
                 batch = fake_images[i : i + args.batch_size].to(device)
                 with torch.no_grad():
-                    features = inception_model(batch).cpu().numpy()
+                    features = inception_model(batch)
                 fake_features.append(features)
-            fake_features = np.concatenate(fake_features, axis=0)
+            fake_features = torch.cat(fake_features, dim=0).cpu().numpy()
             fid = calculate_fid(real_features, fake_features)
             is_mean, is_std = get_inception_score(fake_images, inception_model)
             print(f"FID: {fid}, IS: {is_mean} ± {is_std}")
-            writer.add_scalar("FID", fid, epoch)
-            writer.add_scalar("IS", is_mean, epoch)
+            if writer:
+                writer.add_scalar("FID", fid, epoch)
+                writer.add_scalar("IS", is_mean, epoch)
             model.train()
+
+
 
 def main(rank, args):
     # Set environment variables
@@ -150,6 +154,8 @@ def main(rank, args):
 
 
 if __name__ == "__main__":
+    torch.backends.cudnn.benchmark = True
+
     parser = argparse.ArgumentParser(description="Train TiTok Model")
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Initial learning rate')
