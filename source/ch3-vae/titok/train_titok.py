@@ -128,7 +128,7 @@ def plot_metrics(csv_file):
     axs[1].set_ylabel('Learning Rate')
     axs[1].legend()
 
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(f"{here}/titok_curves.png")
     plt.show()
 
