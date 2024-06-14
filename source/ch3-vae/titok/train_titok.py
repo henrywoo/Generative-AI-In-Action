@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
+from encodec.distrib import rank
 from torchvision.models import inception_v3
 from models import TiTok
 from proxy import load_vqgan_model
@@ -73,7 +74,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
             metrics_df.to_csv(metrics_file, index=False)
 
             # Save checkpoint
-            checkpoint_path = os.path.join(args.log_dir, 'checkpoint.pth.tar')
+            checkpoint_path = args.resume
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
@@ -81,7 +82,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
                 'codebook': model.module.codebook.weight if hasattr(model, 'module') else model.codebook.weight
             }, filename=checkpoint_path)
 
-            if (epoch + 1) % 5 == 0:
+            if (epoch + 1) % 1 == 0:
                 plot_metrics(metrics_file)
 
             if check_fid:
@@ -113,7 +114,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
 def plot_metrics(csv_file):
     plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
-    fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+    fig, axs = plt.subplots(2, 1, figsize=(6.4, 4.8))
 
     axs[0].plot(df['epoch'], df['avg_loss'], label='Average Loss', marker='o')
     axs[0].set_title('Average Loss over Epochs')
@@ -121,14 +122,14 @@ def plot_metrics(csv_file):
     axs[0].set_ylabel('Average Loss')
     axs[0].legend()
 
-    axs[1].plot(df['epoch'], df['learning_rate'], label='Learning Rate', color='orange', marker='o')
+    axs[1].plot(df['epoch'], df['learning_rate'], label='Learning Rate', color='orange', marker='x')
     axs[1].set_title('Learning Rate over Epochs')
     axs[1].set_xlabel('Epoch')
     axs[1].set_ylabel('Learning Rate')
     axs[1].legend()
 
     plt.tight_layout()
-    plt.savefig(f"{here}/titok_loss.png")
+    plt.savefig(f"{here}/titok_curves.png")
     plt.show()
 
 
@@ -214,5 +215,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     check_pt()
 
-    torch.multiprocessing.spawn(main, args=(args,), nprocs=args.world_size, join=True)
+    if torch.cuda.device_count()>1:
+        torch.multiprocessing.spawn(main, args=(args,), nprocs=args.world_size, join=True)
+    else:
+        main(0, args)
+
 
