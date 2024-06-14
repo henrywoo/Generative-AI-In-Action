@@ -11,7 +11,7 @@ from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
 import torch.nn.functional as F
-from utils import get_dataset, check_pt, get_inception_score
+from utils import get_dataset, check_pt, get_inception_score, here
 
 
 def calculate_fid(real_features, fake_features):
@@ -58,7 +58,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
         writer.add_scalar("Loss/train", avg_loss, epoch)
         writer.add_scalar("Learning Rate", scheduler.get_last_lr()[0], epoch)
 
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
             model.eval()
             fake_images = []
             with torch.no_grad():
@@ -66,7 +66,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
                     images = images.to(device)
                     reconstructed, _ = model(images)
                     fake_images.append(reconstructed.cpu())
-            fake_images = torch.cat(fake_images, 0)
+            fake_images = torch.cat(fake_images, 0).to(device)
             fake_features = []
             for i in range(0, len(fake_images), args.batch_size):
                 batch = fake_images[i : i + args.batch_size].to(device)
@@ -139,8 +139,8 @@ if __name__ == "__main__":
     parser.add_argument('--heads', type=int, default=16, help='Number of heads in multi-head attention')
     parser.add_argument('--mlp_dim', type=int, default=2048, help='Dimensionality of the MLP in the transformer')
     parser.add_argument('--K', type=int, default=32, help='Number of latent tokens')
-    parser.add_argument('--vqgan_config', type=str, default='pretrained_maskgit/VQGAN/model.yaml', help='Path to VQGAN config file')
-    parser.add_argument('--vqgan_checkpoint', type=str, default='pretrained_maskgit/VQGAN/last.ckpt', help='Path to VQGAN checkpoint file')
+    parser.add_argument('--vqgan_config', type=str, default=f'{here}/pretrained_maskgit/VQGAN/model.yaml', help='Path to VQGAN config file')
+    parser.add_argument('--vqgan_checkpoint', type=str, default=f'{here}/pretrained_maskgit/VQGAN/last.ckpt', help='Path to VQGAN checkpoint file')
     parser.add_argument('--log_dir', type=str, default='./logs', help='Directory for TensorBoard logs')
     parser.add_argument('--data_dir', type=str, default="data", help='Directory containing the dataset')
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')

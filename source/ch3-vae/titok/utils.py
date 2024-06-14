@@ -1,3 +1,4 @@
+import os
 from scipy.linalg import sqrtm
 import numpy as np
 import torch.nn.functional as F
@@ -7,6 +8,7 @@ from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3
 
+here = os.path.abspath(os.path.dirname(__file__))
 
 def calculate_fid(real_features, fake_features):
     # Calculate mean and covariance statistics
@@ -89,11 +91,11 @@ def available_datasets():
 def check_pt():
     import os
 
-    if not os.path.exists("pretrained_maskgit/VQGAN/last.ckpt"):
+    if not os.path.exists(f"{here}/pretrained_maskgit/VQGAN/last.ckpt"):
         from huggingface_hub import hf_hub_download
 
-        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt", local_dir=".")
-        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/model.yaml", local_dir=".")
+        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt", local_dir=here)
+        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/model.yaml", local_dir=here)
 
 def get_inception_score(images, inception_model, splits=10):
     # Ensure the input images are in a single batch
