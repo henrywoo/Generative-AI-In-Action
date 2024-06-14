@@ -11,7 +11,7 @@ from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
 import torch.nn.functional as F
-from utils import get_dataset, check_pt
+from utils import get_dataset, check_pt, get_inception_score
 
 
 def calculate_fid(real_features, fake_features):
@@ -28,22 +28,6 @@ def calculate_fid(real_features, fake_features):
     # Calculate score
     fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
     return fid
-
-
-def get_inception_score(images, inception_model, splits=10):
-    images = torch.cat(images, 0)
-    images = F.interpolate(images, size=(299, 299), mode='bilinear', align_corners=False)
-    with torch.no_grad():
-        preds = inception_model(images).softmax(dim=1).cpu().numpy()
-
-    scores = []
-    for i in range(splits):
-        part = preds[(i * preds.shape[0] // splits) : ((i + 1) * preds.shape[0] // splits), :]
-        kl_div = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
-        kl_div = np.mean(np.sum(kl_div, 1))
-        scores.append(np.exp(kl_div))
-
-    return np.mean(scores), np.std(scores)
 
 
 def warmup_training(model, dataloader, optimizer, scheduler, args, device, writer, test_loader):

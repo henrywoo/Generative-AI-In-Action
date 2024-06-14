@@ -94,3 +94,59 @@ def check_pt():
 
         hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt", local_dir=".")
         hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/model.yaml", local_dir=".")
+
+def get_inception_score(images, inception_model, splits=10):
+    # Ensure the input images are in a single batch
+    if isinstance(images, list):
+        images = torch.stack(images, dim=0)
+
+    # Resize images to the required input size of Inception model
+    images = F.interpolate(images, size=(299, 299), mode='bilinear', align_corners=False)
+
+    # Ensure the images are in the correct shape (B, C, H, W)
+    if images.dim() == 3:
+        images = images.unsqueeze(0)
+
+    with torch.no_grad():
+        preds = inception_model(images).softmax(dim=1).cpu().numpy()
+
+    scores = []
+    for i in range(splits):
+        part = preds[(i * preds.shape[0] // splits): ((i + 1) * preds.shape[0] // splits), :]
+        kl_div = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
+        kl_div = np.mean(np.sum(kl_div, 1))
+        scores.append(np.exp(kl_div))
+
+    return np.mean(scores), np.std(scores)
+
+
+import torch
+from torchvision.models import inception_v3
+import torch.nn.functional as F
+
+
+def demo_get_inception_score():
+    # Create a batch of dummy images (batch_size, channels, height, width)
+    batch_size = 16
+    channels = 3
+    height = 256
+    width = 256
+    dummy_images = torch.randn(batch_size, channels, height, width)
+
+    # Load pretrained Inception v3 model
+    inception_model = inception_v3(pretrained=True, transform_input=False).eval()
+
+    # Move model and images to GPU if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    dummy_images = dummy_images.to(device)
+    inception_model = inception_model.to(device)
+
+    # Calculate Inception Score
+    mean, std = get_inception_score(dummy_images, inception_model)
+    print(f'Inception Score: {mean} ± {std}')
+
+
+# Run the test function
+
+if __name__ == '__main__':
+    demo_get_inception_score()
