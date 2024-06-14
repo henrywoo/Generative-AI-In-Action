@@ -92,5 +92,5 @@ def check_pt():
     if not os.path.exists("VQGAN/last.ckpt"):
         from huggingface_hub import hf_hub_download
 
-        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="VQGAN/last.ckpt", local_dir=".")
-        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="VQGAN/model.yaml", local_dir=".")
+        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt", local_dir="VQGAN")
+        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/model.yaml", local_dir="VQGAN")
