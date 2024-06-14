@@ -725,4 +725,28 @@ def get_proxy_codes(images, vqgan_model):
     #return indices
 
 if __name__ == '__main__':
-    pass
+    from torchvision import transforms, datasets
+    from torch.utils.data import DataLoader
+    batch_size = 64
+    learning_rate = 1e-4
+    num_epochs_warmup = 10
+    num_epochs_finetune = 10
+    latent_dim = 16
+    image_size = 256
+    patch_size = 32
+
+    # Set device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    transform = transforms.Compose(
+        [
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+    )
+    train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    vqgan_model = load_vqgan_model('VQGAN/model.yaml', 'VQGAN/last.ckpt').to(device)
+    for images, _ in train_loader:
+        images = images.to(device)
+        r = get_proxy_codes(images, vqgan_model)
