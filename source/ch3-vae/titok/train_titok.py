@@ -92,16 +92,18 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
             writer.add_scalar("IS", is_mean, epoch)
             model.train()
 
-
-def main(args):
+def main(rank, args):
+    # Set environment variables
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    
     # Initialize the process group for distributed training
-    dist.init_process_group(backend='nccl')
-    local_rank = int(os.environ['LOCAL_RANK'])
-    torch.cuda.set_device(local_rank)
-    device = torch.device(f'cuda:{local_rank}')
+    dist.init_process_group(backend='nccl', init_method='env://', world_size=args.world_size, rank=rank)
+    torch.cuda.set_device(rank)
+    device = torch.device(f'cuda:{rank}')
 
     # Load dataset
-    train_loader, test_loader = get_dataset(args.dataset, args.image_size, args.batch_size, args.data_dir, local_rank, args.world_size)
+    train_loader, test_loader = get_dataset(args.dataset, args.image_size, args.batch_size, args.data_dir, rank, args.world_size)
 
     # Load VQGAN model
     vqgan_model = load_vqgan_model(args.vqgan_config, args.vqgan_checkpoint).to(device)
@@ -127,7 +129,7 @@ def main(args):
     ).to(device)
 
     # Wrap the model with DDP for multi-GPU training
-    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+    model = DDP(model, device_ids=[rank], output_device=rank)
 
     print_model(model)
 
@@ -136,7 +138,7 @@ def main(args):
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epochs_warmup)
 
     # Initialize TensorBoard writer
-    writer = SummaryWriter(log_dir=args.log_dir) if local_rank == 0 else None
+    writer = SummaryWriter(log_dir=args.log_dir) if rank == 0 else None
 
     # Start warmup training
     warmup_training(model, train_loader, optimizer, scheduler, args, device, writer, test_loader)
@@ -179,5 +181,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     check_pt()
+
     # Launch distributed processes
     torch.multiprocessing.spawn(main, args=(args,), nprocs=args.world_size, join=True)
