@@ -111,22 +111,24 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, test_
 
 
 def plot_metrics(csv_file):
+    plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
-    axs[0].plot(df['epoch'], df['avg_loss'], label='Average Loss')
+    axs[0].plot(df['epoch'], df['avg_loss'], label='Average Loss', marker='o')
     axs[0].set_title('Average Loss over Epochs')
     axs[0].set_xlabel('Epoch')
     axs[0].set_ylabel('Average Loss')
     axs[0].legend()
 
-    axs[1].plot(df['epoch'], df['learning_rate'], label='Learning Rate', color='orange')
+    axs[1].plot(df['epoch'], df['learning_rate'], label='Learning Rate', color='orange', marker='o')
     axs[1].set_title('Learning Rate over Epochs')
     axs[1].set_xlabel('Epoch')
     axs[1].set_ylabel('Learning Rate')
     axs[1].legend()
 
     plt.tight_layout()
+    plt.savefig(f"{here}/titok_loss.png")
     plt.show()
 
 
@@ -203,11 +205,11 @@ if __name__ == "__main__":
         default=f'{here}/pretrained_maskgit/VQGAN/last.ckpt',
         help='Path to VQGAN checkpoint file',
     )
-    parser.add_argument('--log_dir', type=str, default='./logs', help='Directory for logs')
+    parser.add_argument('--log_dir', type=str, default=f'{here}/logs', help='Directory for logs')
     parser.add_argument('--data_dir', type=str, default="data", help='Directory containing the dataset')
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
     parser.add_argument('--world_size', type=int, default=torch.cuda.device_count(), help='Number of GPUs to use')
-    parser.add_argument('--resume', type=str, default='', help='Path to the latest checkpoint (default: none)')
+    parser.add_argument('--resume', type=str, default=f'{here}/checkpoint.pth.tar', help='Path to the latest checkpoint')
 
     args = parser.parse_args()
     check_pt()

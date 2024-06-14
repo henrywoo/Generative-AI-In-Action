@@ -157,7 +157,7 @@ def demo_get_inception_score():
     print(f'Inception Score: {mean} ± {std}')
 
 
-def save_checkpoint(state, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, filename=f'{here}/checkpoint.pth.tar'):
     torch.save(state, filename)
 
 def load_checkpoint(filename, model, optimizer):
