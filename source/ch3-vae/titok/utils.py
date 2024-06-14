@@ -89,7 +89,7 @@ def available_datasets():
 def check_pt():
     import os
 
-    if not os.path.exists("VQGAN/last.ckpt"):
+    if not os.path.exists("pretrained_maskgit/VQGAN/last.ckpt"):
         from huggingface_hub import hf_hub_download
 
         hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt", local_dir=".")
