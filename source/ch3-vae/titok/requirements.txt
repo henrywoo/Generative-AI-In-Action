@@ -7,3 +7,6 @@ pytorch-lightning
 scipy
 huggingface-hub
 omegaconf
+pandas
+matplotlib
+
