@@ -30,7 +30,7 @@ def calculate_fid(real_features, fake_features):
     return fid
 
 
-def warmup_training(model, dataloader, optimizer, scheduler, args, device, writer, test_loader):
+def warmup_training(model, dataloader, optimizer, scheduler, args, device, writer, test_loader, eval_size=10):
     model.train()
     mse_loss = nn.MSELoss()
     inception_model = inception_v3(pretrained=True, transform_input=False).eval().to(device)
@@ -58,18 +58,22 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
         writer.add_scalar("Loss/train", avg_loss, epoch)
         writer.add_scalar("Learning Rate", scheduler.get_last_lr()[0], epoch)
 
-        if epoch % 1 == 0:
+        if epoch % 5 == 0:
             model.eval()
             fake_images = []
+            count = 0
             with torch.no_grad():
                 for images, _ in test_loader:
+                    if count >= eval_size:
+                        break
                     images = images.to(device)
                     reconstructed, _ = model(images)
                     fake_images.append(reconstructed.cpu())
+                    count += images.size(0)
             fake_images = torch.cat(fake_images, 0).to(device)
             fake_features = []
             for i in range(0, len(fake_images), args.batch_size):
-                batch = fake_images[i : i + args.batch_size].to(device)
+                batch = fake_images[i: i + args.batch_size].to(device)
                 with torch.no_grad():
                     features = inception_model(batch).cpu().numpy()
                 fake_features.append(features)
