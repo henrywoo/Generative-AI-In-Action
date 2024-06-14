@@ -7,6 +7,7 @@ from torchvision import transforms, datasets
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3
+from torch.utils.data.distributed import DistributedSampler
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -42,7 +43,7 @@ def get_inception_score(images, inception_model, splits=10):
     return np.mean(scores), np.std(scores)
 
 
-def get_dataset(name, image_size, batch_size, data_dir):
+def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=None):
     transform = transforms.Compose(
         [
             transforms.Resize((image_size, image_size)),
@@ -75,8 +76,14 @@ def get_dataset(name, image_size, batch_size, data_dir):
     except AttributeError:
         raise ValueError(f"Dataset {name} not supported.")
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    if rank is not None and world_size is not None:
+        train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
+        test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, sampler=test_sampler)
+    else:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, test_loader
 

@@ -1,3 +1,4 @@
+import os
 import argparse
 import torch
 import torch.nn as nn
@@ -10,7 +11,8 @@ from hiq.vis import print_model
 from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
-from torch.nn import DataParallel
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from utils import get_dataset, check_pt, get_inception_score, here
 
 
@@ -78,7 +80,7 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
             fake_images = torch.cat(fake_images, 0).to(device)
             fake_features = []
             for i in range(0, len(fake_images), args.batch_size):
-                batch = fake_images[i: i + args.batch_size].to(device)
+                batch = fake_images[i : i + args.batch_size].to(device)
                 with torch.no_grad():
                     features = inception_model(batch).cpu().numpy()
                 fake_features.append(features)
@@ -92,10 +94,14 @@ def warmup_training(model, dataloader, optimizer, scheduler, args, device, write
 
 
 def main(args):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Initialize the process group for distributed training
+    dist.init_process_group(backend='nccl')
+    local_rank = int(os.environ['LOCAL_RANK'])
+    torch.cuda.set_device(local_rank)
+    device = torch.device(f'cuda:{local_rank}')
 
     # Load dataset
-    train_loader, test_loader = get_dataset(args.dataset, args.image_size, args.batch_size, args.data_dir)
+    train_loader, test_loader = get_dataset(args.dataset, args.image_size, args.batch_size, args.data_dir, local_rank, args.world_size)
 
     # Load VQGAN model
     vqgan_model = load_vqgan_model(args.vqgan_config, args.vqgan_checkpoint).to(device)
@@ -119,9 +125,10 @@ def main(args):
         K=args.K,
         codebook=vqgan_model.quantize.embedding.weight,
     ).to(device)
-    # Wrap the model with DataParallel for multi-GPU training
-    if torch.cuda.device_count() > 1:
-        model = DataParallel(model)
+
+    # Wrap the model with DDP for multi-GPU training
+    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+
     print_model(model)
 
     # Initialize optimizer and scheduler
@@ -129,12 +136,15 @@ def main(args):
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epochs_warmup)
 
     # Initialize TensorBoard writer
-    writer = SummaryWriter(log_dir=args.log_dir)
+    writer = SummaryWriter(log_dir=args.log_dir) if local_rank == 0 else None
 
     # Start warmup training
     warmup_training(model, train_loader, optimizer, scheduler, args, device, writer, test_loader)
 
-    writer.close()
+    if writer:
+        writer.close()
+
+    dist.destroy_process_group()
 
 
 if __name__ == "__main__":
@@ -165,7 +175,9 @@ if __name__ == "__main__":
     parser.add_argument('--log_dir', type=str, default='./logs', help='Directory for TensorBoard logs')
     parser.add_argument('--data_dir', type=str, default="data", help='Directory containing the dataset')
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
+    parser.add_argument('--world_size', type=int, default=torch.cuda.device_count(), help='Number of GPUs to use')
 
     args = parser.parse_args()
     check_pt()
-    main(args)
+    # Launch distributed processes
+    torch.multiprocessing.spawn(main, args=(args,), nprocs=args.world_size, join=True)
