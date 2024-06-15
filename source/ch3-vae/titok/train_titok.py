@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import signal
 import sys
 
-
 def calculate_fid(real_features, fake_features):
     mu1, sigma1 = np.mean(real_features, axis=0), np.cov(real_features, rowvar=False)
     mu2, sigma2 = np.mean(fake_features, axis=0), np.cov(fake_features, rowvar=False)
@@ -29,12 +28,37 @@ def calculate_fid(real_features, fake_features):
     fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
     return fid
 
-def plot_image(image_tensor, i):
+def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
+    plt.style.use('ggplot')
+    df = pd.read_csv(csv_file)
+    fig, axs = plt.subplots(2, 2, figsize=(12, 8))
+
+    # Metrics Plot
+    axs[0, 0].plot(df['epoch'], df['avg_loss'], label='Average Loss', marker='o')
+    axs[0, 0].set_title('Average Loss over Epochs')
+    axs[0, 0].set_xlabel('Epoch')
+    axs[0, 0].set_ylabel('Average Loss')
+    axs[0, 0].legend()
+    axs[0, 1].plot(df['epoch'], df['learning_rate'], label='Learning Rate', color='orange', marker='x')
+    axs[0, 1].set_title('Learning Rate over Epochs')
+    axs[0, 1].set_xlabel('Epoch')
+    axs[0, 1].set_ylabel('Learning Rate')
+    axs[0, 1].legend()
+
+    # Original Image Plot
     image = image_tensor.permute(1, 2, 0).cpu().detach().numpy()
-    plt.imshow(image)
-    plt.title(f"Reconstructed Image at Epoch {i}")
-    plt.axis('off')
-    plt.savefig(f"{here}/reconstruction_{i}.png")
+    axs[1, 0].imshow(image)
+    axs[1, 0].set_title(f"Original Image at Epoch {i}")
+    axs[1, 0].axis('off')
+
+    # Reconstructed Image Plot
+    recon_image = recon_tensor.permute(1, 2, 0).cpu().detach().numpy()
+    axs[1, 1].imshow(recon_image)
+    axs[1, 1].set_title(f"Reconstructed Image at Epoch {i}")
+    axs[1, 1].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(f"{here}/{task}_{i}.png")
     plt.show()
 
 def warmup_training(
@@ -96,8 +120,7 @@ def warmup_training(
             metrics_df.to_csv(metrics_file, index=False)
 
             if (epoch + 1) % 1 == 0:
-                plot_metrics(metrics_file)
-                plot_image(reconstructed[0], epoch+1)
+                plot_combined(images[0], reconstructed[0], metrics_file, epoch + 1)
 
             if check_fid:
                 model.eval()
@@ -122,29 +145,6 @@ def warmup_training(
                 fid = calculate_fid(real_features, fake_features)
                 is_mean, is_std = get_inception_score(fake_images, inception_model)
                 print(f"FID: {fid}, IS: {is_mean} ± {is_std}")
-
-
-def plot_metrics(csv_file):
-    plt.style.use('ggplot')
-    df = pd.read_csv(csv_file)
-    fig, axs = plt.subplots(2, 1, figsize=(12, 8))
-
-    axs[0].plot(df['epoch'], df['avg_loss'], label='Average Loss', marker='o')
-    axs[0].set_title('Average Loss over Epochs')
-    axs[0].set_xlabel('Epoch')
-    axs[0].set_ylabel('Average Loss')
-    axs[0].legend()
-
-    axs[1].plot(df['epoch'], df['learning_rate'], label='Learning Rate', color='orange', marker='x')
-    axs[1].set_title('Learning Rate over Epochs')
-    axs[1].set_xlabel('Epoch')
-    axs[1].set_ylabel('Learning Rate')
-    axs[1].legend()
-
-    fig.tight_layout()
-    plt.savefig(f"{here}/titok_curves.png")
-    plt.show()
-
 
 def main(rank, args):
     def signal_handler(sig, frame):
@@ -199,7 +199,6 @@ def main(rank, args):
     warmup_training(model, train_loader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=start_epoch)
 
     dist.destroy_process_group()
-
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
