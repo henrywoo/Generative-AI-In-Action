@@ -15,12 +15,13 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from utils import get_dataset, check_pt, get_inception_score, here, load_checkpoint, save_checkpoint
 import matplotlib.pyplot as plt
+import torch.nn.functional as F
 import signal
 import sys
 
 
 def commitment_loss(encoder_outputs, quantized_vectors, beta=0.25):
-    return beta * torch.mean((encoder_outputs - quantized_vectors.detach()) ** 2)
+    return beta * F.mse_loss(quantized_vectors.detach(), encoder_outputs)
 
 
 def calculate_fid(real_features, fake_features):
@@ -116,7 +117,7 @@ def warmup_training(
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
             recon_loss = mse_loss(reconstructed, images)
-            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=1.0)
+            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=10.0)
             loss = recon_loss + commit_loss
             loss.backward()
             optimizer.step()
