@@ -89,6 +89,10 @@ class TiTok(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
+    def straight_through_estimator(self, x, indices):
+        quantized = self.codebook(indices)
+        return x + (quantized - x).detach()
+
     def forward(self, x):
         B = x.size(0)
         C = x.size(1)
@@ -108,7 +112,8 @@ class TiTok(nn.Module):
         # Quantize
         distances = torch.cdist(latent_representation, self.codebook.weight)
         indices = distances.argmin(dim=-1)
-        quantized_tokens = self.codebook(indices)
+        #quantized_tokens = self.codebook(indices)
+        quantized_tokens = self.straight_through_estimator(latent_representation, indices)
 
         # Create mask tokens
         num_patches = (self.image_size // self.patch_size) ** 2
