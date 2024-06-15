@@ -119,7 +119,7 @@ def warmup_training(
 def plot_metrics(csv_file):
     plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
-    fig, axs = plt.subplots(2, 1, figsize=(6.4, 4.8))
+    fig, axs = plt.subplots(2, 1, figsize=(12, 8))
 
     axs[0].plot(df['epoch'], df['avg_loss'], label='Average Loss', marker='o')
     axs[0].set_title('Average Loss over Epochs')

@@ -773,6 +773,45 @@ Both the codebook loss and commitment loss work together to optimize the VQ-VAE 
 > The paper further justifies the stop-gradient in the 2 paragraphs before equation (3), by emphasizing that the stop-gradient in different terms of the loss will cause the loss to effect learning (optimizing) in different subsystems of the overall system.
 > - https://stats.stackexchange.com/questions/592742/vq-vae-why-do-we-need-to-separate-the-codebook-alignment-loss-and-the-commitme
 
+## Masked Autoencoder (MAE)
+
+Masked Autoencoders (MAE) are designed for vision tasks, such as image reconstruction, using a transformer-based architecture.
+
+<p align="left">
+  <img src="https://user-images.githubusercontent.com/11435359/146857310-f258c86c-fde6-48e8-9cee-badd2b21bd2c.png" width="480">
+</p>
+
+```angular2html
+🌳 MaskedAutoencoderViT<trainable_params:329239296,all_params:329541888,percentage:99.90818%>
+├── PatchEmbed(patch_embed)
+│   └── Conv2d(proj)|weight[1024,3,16,16]🇸 -(16, 16)|bias[1024]🇸 -(16, 16)
+├── ModuleList(blocks)
+│   └── 💠 Block(0-23)<🦜:12596224x24>
+│       ┣━━ 💠 LayerNorm(norm1,norm2)<🦜:2048x2>|weight[1024]|bias[1024]
+│       ┣━━ Attention(attn)
+│       ┃   ┣━━ Linear(qkv)|weight[3072,1024]|bias[3072]
+│       ┃   ┗━━ Linear(proj)|weight[1024,1024]|bias[1024]
+│       ┗━━ Mlp(mlp)
+│           ┣━━ Linear(fc1)|weight[4096,1024]|bias[4096]
+│           ┗━━ Linear(fc2)|weight[1024,4096]|bias[1024]
+├── LayerNorm(norm)|weight[1024]|bias[1024]
+├── Linear(decoder_embed)|weight[512,1024]|bias[512]
+├── ModuleList(decoder_blocks)
+│   └── 💠 Block(0-7)<🦜:3152384x8>
+│       ┣━━ 💠 LayerNorm(norm1,norm2)<🦜:1024x2>|weight[512]|bias[512]
+│       ┣━━ Attention(attn)
+│       ┃   ┣━━ Linear(qkv)|weight[1536,512]|bias[1536]
+│       ┃   ┗━━ Linear(proj)|weight[512,512]|bias[512]
+│       ┗━━ Mlp(mlp)
+│           ┣━━ Linear(fc1)|weight[2048,512]|bias[2048]
+│           ┗━━ Linear(fc2)|weight[512,2048]|bias[512]
+├── LayerNorm(decoder_norm)|weight[512]|bias[512]
+└── Linear(decoder_pred)|weight[768,512]|bias[768]
+```
+
+![](mae/MAE.png)
+
+
 ## Reference
 
 - [漫谈VAE和VQVAE，从连续分布到离散分布](https://zhuanlan.zhihu.com/p/388299884) 
