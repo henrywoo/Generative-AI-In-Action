@@ -809,8 +809,15 @@ Masked Autoencoders (MAE) are designed for vision tasks, such as image reconstru
 └── Linear(decoder_pred)|weight[768,512]|bias[768]
 ```
 
+I feel the following image is better than the paper one. The encoder is deeper but shorter, compared with decoder.
+
+![](mae/mae.png)
+
+The running result from [demo script](mae/demo_mae.py).
+
 ![](mae/MAE.png)
 
+- https://youtu.be/Dp6iICL2dVI?si=_0LGQk-kSvy_iQnE&t=507
 
 ## Reference
 
