@@ -45,38 +45,66 @@ def get_inception_score(images, inception_model, splits=10):
     return np.mean(scores), np.std(scores)
 
 
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader, DistributedSampler
+import torchvision.datasets as datasets
+from datasets import load_dataset
+from PIL import Image
+
+class CustomDataset:
+    def __init__(self, dataset, transform=None):
+        self.dataset = dataset
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        sample = self.dataset[idx]
+        image = sample['image']
+
+        # Ensure the image is in RGB format
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+
+        if self.transform:
+            image = self.transform(image)
+        return image, sample['label']
+
 def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=None):
-    transform = transforms.Compose(
-        [
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ]
-    )
+    if name == 'imagenet-1k':
+        transform = transforms.Compose(
+            [
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            ]
+        )
+    else:
+        transform = transforms.Compose(
+            [
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
 
     try:
-        if name in ['imagenet']:
-            transform = transforms.Compose(
-                [
-                    transforms.Resize((image_size, image_size)),
-                    transforms.CenterCrop(image_size),
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                ]
-            )
-            train_dataset = ImageFolder(root=f'{data_dir}/train', transform=transform)
-            test_dataset = ImageFolder(root=f'{data_dir}/val', transform=transform)
+        if name == 'imagenet-1k':
+            ds = load_dataset("imagenet-1k", trust_remote_code=True)
+            train_dataset = CustomDataset(ds["train"], transform=transform)
+            test_dataset = CustomDataset(ds["validation"], transform=transform)
+        elif name == 'svhn':
+            train_dataset = datasets.SVHN(root=data_dir, split='train', download=True, transform=transform)
+            test_dataset = datasets.SVHN(root=data_dir, split='test', download=True, transform=transform)
         else:
-            dataset_class = eval(f"datasets.{name.upper()}")
-            if name == 'svhn':
-                train_dataset = dataset_class(root=data_dir, split='train', download=True, transform=transform)
-                test_dataset = dataset_class(root=data_dir, split='test', download=True, transform=transform)
-            else:
-                train_dataset = dataset_class(root=data_dir, train=True, download=True, transform=transform)
-                test_dataset = dataset_class(root=data_dir, train=False, download=True, transform=transform)
-
+            DatasetClass = getattr(datasets, name.upper())
+            train_dataset = DatasetClass(root=data_dir, train=True, download=True, transform=transform)
+            test_dataset = DatasetClass(root=data_dir, train=False, download=True, transform=transform)
     except AttributeError:
         raise ValueError(f"Dataset {name} not supported.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred while loading the dataset: {e}")
 
     if rank is not None and world_size is not None:
         train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
@@ -88,6 +116,8 @@ def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=No
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
 
     return train_loader, test_loader
+
+
 
 
 def available_datasets():

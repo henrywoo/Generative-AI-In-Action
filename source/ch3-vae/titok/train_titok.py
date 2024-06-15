@@ -216,7 +216,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
 
     parser = argparse.ArgumentParser(description="Train TiTok Model")
-    parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Initial learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
     parser.add_argument('--num_epochs_warmup', type=int, default=100, help='Number of warmup epochs')
