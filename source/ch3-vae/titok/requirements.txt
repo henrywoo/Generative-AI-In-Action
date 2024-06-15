@@ -1,7 +1,8 @@
-tensorboard torch torchvision
-tqdm hiq-python
-vit-python
-python-vit
+tensorboard
+torch
+torchvision
+tqdm
+hiq-python
 vit-pytorch
 pytorch-lightning
 scipy
@@ -9,4 +10,5 @@ huggingface-hub
 omegaconf
 pandas
 matplotlib
+datasets
 

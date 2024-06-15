@@ -116,7 +116,7 @@ def warmup_training(
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
             recon_loss = mse_loss(reconstructed, images)
-            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=1.0)
+            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=10.0)
             loss = recon_loss + commit_loss
             loss.backward()
             optimizer.step()
