@@ -274,7 +274,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.resume == '':
-        args.resume = f'{here}/mbin/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar',
+        args.resume = f'{here}/mbin/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
     check_pt()
 
     if torch.cuda.device_count() > 1:
