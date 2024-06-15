@@ -1,15 +1,17 @@
 import os
 from scipy.linalg import sqrtm
 import numpy as np
-import torch.nn.functional as F
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+from datasets import load_dataset
 import torch
-from torchvision import transforms, datasets
-from torchvision.datasets import ImageFolder
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3
 from torch.utils.data.distributed import DistributedSampler
 
 here = os.path.abspath(os.path.dirname(__file__))
+
 
 def calculate_fid(real_features, fake_features):
     # Calculate mean and covariance statistics
@@ -37,7 +39,7 @@ def get_inception_score(images, inception_model, splits=10):
 
     scores = []
     for i in range(splits):
-        part = preds[(i * preds.shape[0] // splits) : ((i + 1) * preds.shape[0] // splits), :]
+        part = preds[(i * preds.shape[0] // splits): ((i + 1) * preds.shape[0] // splits), :]
         kl_div = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
         kl_div = np.mean(np.sum(kl_div, 1))
         scores.append(np.exp(kl_div))
@@ -45,13 +47,7 @@ def get_inception_score(images, inception_model, splits=10):
     return np.mean(scores), np.std(scores)
 
 
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, DistributedSampler
-import torchvision.datasets as datasets
-from datasets import load_dataset
-from PIL import Image
-
-class CustomDataset:
+class ImageNet1KDataSet:
     def __init__(self, dataset, transform=None):
         self.dataset = dataset
         self.transform = transform
@@ -71,11 +67,13 @@ class CustomDataset:
             image = self.transform(image)
         return image, sample['label']
 
+
 def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=None):
     if name == 'imagenet-1k':
         transform = transforms.Compose(
             [
-                transforms.Resize((image_size, image_size)),
+                transforms.RandomResizedCrop(image_size),
+                transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ]
@@ -92,8 +90,8 @@ def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=No
     try:
         if name == 'imagenet-1k':
             ds = load_dataset("imagenet-1k", trust_remote_code=True)
-            train_dataset = CustomDataset(ds["train"], transform=transform)
-            test_dataset = CustomDataset(ds["validation"], transform=transform)
+            train_dataset = ImageNet1KDataSet(ds["train"], transform=transform)
+            test_dataset = ImageNet1KDataSet(ds["validation"], transform=transform)
         elif name == 'svhn':
             train_dataset = datasets.SVHN(root=data_dir, split='train', download=True, transform=transform)
             test_dataset = datasets.SVHN(root=data_dir, split='test', download=True, transform=transform)
@@ -118,8 +116,6 @@ def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=No
     return train_loader, test_loader
 
 
-
-
 def available_datasets():
     from datasets import list_datasets
 
@@ -133,8 +129,11 @@ def check_pt():
     if not os.path.exists(f"{here}/pretrained_maskgit/VQGAN/last.ckpt"):
         from huggingface_hub import hf_hub_download
 
-        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt", local_dir=here)
-        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/model.yaml", local_dir=here)
+        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/last.ckpt",
+                        local_dir=here)
+        hf_hub_download(repo_id="llvictorll/Maskgit-pytorch", filename="pretrained_maskgit/VQGAN/model.yaml",
+                        local_dir=here)
+
 
 def get_inception_score(images, inception_model, splits=10):
     # Ensure the input images are in a single batch
@@ -161,11 +160,6 @@ def get_inception_score(images, inception_model, splits=10):
     return np.mean(scores), np.std(scores)
 
 
-import torch
-from torchvision.models import inception_v3
-import torch.nn.functional as F
-
-
 def demo_get_inception_score():
     # Create a batch of dummy images (batch_size, channels, height, width)
     batch_size = 16
@@ -189,6 +183,7 @@ def demo_get_inception_score():
 
 def save_checkpoint(state, filename=f'{here}/checkpoint.pth.tar'):
     torch.save(state, filename)
+
 
 def load_checkpoint(filename, model, optimizer):
     if os.path.isfile(filename):
