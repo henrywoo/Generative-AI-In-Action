@@ -130,4 +130,4 @@ class TiTok(nn.Module):
 
         # Combine patches into image
         reconstructed = decoded_patches.contiguous().view(B, self.in_chans, H0, W0)
-        return reconstructed, quantized_tokens
+        return reconstructed, quantized_tokens, latent_representation
