@@ -810,10 +810,14 @@ Masked Autoencoders (MAE) are designed for vision tasks, such as image reconstru
 ```
 
 I feel the following image is better than the paper one. The encoder is deeper but shorter, compared with decoder.
-
 ![](mae/mae.png)
 
-The running result from [demo script](mae/demo_mae.py).
+> **Question**:
+> In Masked Autoencoders (MAE) for vision tasks, the encoder starts with patch embedding via a Conv2d to patchify image input. However, the decoder uses a linear layer instead of a transposed convolutional layer for the reconstruction of the image patches. We know transposed convolution (ConvTranspose2d) is an inverse operation to the Conv2d. Why not use ConvTranspose2d as the last layer?
+> 
+> **ChatGPT Answer**: The decision to use a linear layer in the decoder of Masked Autoencoders (MAE) instead of a transposed convolutional layer stems from a few key considerations specific to the architecture and design philosophy of transformers. While transposed convolutions (ConvTranspose2d) could be used as an inverse operation to Conv2d, the use of linear layers in the MAE decoder is driven by the need for architectural consistency, simplicity, and empirical effectiveness within the transformer framework. Linear layers provide a **direct and efficient mapping from token embeddings to pixel values**, aligning with the design principles of transformers and ensuring efficient and effective image reconstruction.
+
+The running result from [the demo script](mae/demo_mae.py).
 
 ![](mae/MAE.png)
 
