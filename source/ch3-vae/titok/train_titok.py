@@ -29,6 +29,13 @@ def calculate_fid(real_features, fake_features):
     fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
     return fid
 
+def plot_image(image_tensor, i):
+    image = image_tensor.permute(1, 2, 0).cpu().detach().numpy()
+    plt.imshow(image)
+    plt.title(f"Reconstructed Image at Epoch {i}")
+    plt.axis('off')
+    plt.savefig(f"{here}/reconstruction_{i}.png")
+    plt.show()
 
 def warmup_training(
     model, dataloader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=0, eval_size=10
@@ -90,6 +97,7 @@ def warmup_training(
 
             if (epoch + 1) % 1 == 0:
                 plot_metrics(metrics_file)
+                plot_image(reconstructed[0], epoch+1)
 
             if check_fid:
                 model.eval()
