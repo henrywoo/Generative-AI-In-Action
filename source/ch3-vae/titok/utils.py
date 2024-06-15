@@ -110,8 +110,8 @@ def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=No
         train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler, num_workers=8)
         test_loader = DataLoader(test_dataset, batch_size=batch_size, sampler=test_sampler, num_workers=8)
     else:
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, test_loader
 

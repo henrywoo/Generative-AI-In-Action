@@ -89,7 +89,8 @@ def warmup_training(
 ):
     model.train()
     mse_loss = nn.MSELoss()
-    metrics_file = os.path.join(args.log_dir, 'metrics.csv')
+    csv_name = f'{here}/mbin/metrics_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.csv'
+    metrics_file = os.path.join(args.log_dir, csv_name)
 
     check_fid = False
     if check_fid and rank == 0:
@@ -115,7 +116,7 @@ def warmup_training(
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
             recon_loss = mse_loss(reconstructed, images)
-            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=0.25)
+            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=1.0)
             loss = recon_loss + commit_loss
             loss.backward()
             optimizer.step()
