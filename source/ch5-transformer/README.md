@@ -440,6 +440,22 @@ Span-masked language modeling is a key component of T5's pre-training. It's one 
 └── Linear(cls_linear)|weight[10,16]|bias[10]
 ```
 
+This table provides a summary of the key setup parameters for different Vision Transformer (ViT) models.
+Sure! Here is the updated table with the number of parameters included as the last column:
+
+| Model     | Heads | Depth | Hidden Size  | MLP Size | Patch Size  | Number of Parameters |
+|-----------|-------|-------|--------------|----------|-------------|----------------------|
+| ViT-Tiny  | 3     | 12    | 192          | 768      | 16x16       | 5.7M                 |
+| ViT-Small | 6     | 12    | 384          | 1536     | 16x16       | 22M                  |
+| ViT-Base  | 12    | 12    | 768          | 3072     | 16x16       | 86M                  |
+| ViT-Large | 16    | 24    | 1024         | 4096     | 16x16       | 307M                 |
+| ViT-Huge  | 16    | 32    | 1280         | 5120     | 14x14       | 632M                 |
+
+- Depth: Number of Layers
+- Hidden Size: Dimensionality of the Embeddings
+- MLP Size: Feed-Forward Network Size
+
+
 ![](img/attention_map_dino_0.png)
 
 In the resulting image, the red areas in the attention map over the cat's head indicate that these patches are receiving a high amount of attention. This means that the model is focusing heavily on these areas when processing the image. Specifically:
