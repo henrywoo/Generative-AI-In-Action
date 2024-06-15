@@ -20,7 +20,7 @@ import sys
 
 
 def commitment_loss(encoder_outputs, quantized_vectors, beta=0.25):
-    return beta * torch.mean((encoder_outputs.detach() - quantized_vectors) ** 2)
+    return beta * torch.mean((encoder_outputs - quantized_vectors.detach()) ** 2)
 
 
 def calculate_fid(real_features, fake_features):
@@ -115,7 +115,7 @@ def warmup_training(
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
             recon_loss = mse_loss(reconstructed, images)
-            commit_loss = commitment_loss(encoder_outputs, quantized_tokens)
+            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=0.25)
             loss = recon_loss + commit_loss
             loss.backward()
             optimizer.step()

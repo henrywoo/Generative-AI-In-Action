@@ -216,32 +216,30 @@ During backpropagation, the gradient for the detach() part is 0, and the gradien
 This effectively copies _quantize_ to input. A detailed pyton code is as follows:
 
 ```python
-import torch
-from torch.autograd import Function
-
-class StraightThroughEstimator(Function):
-    @staticmethod
-    def forward(ctx, input):
-        # During the forward pass, perform quantization (e.g., binarization)
-        return torch.sign(input)
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        # During the backward pass, bypass the quantization step (act as identity)
-        return grad_output
-
-# Create a module to encapsulate the STE functionality
-class STEFunction(torch.nn.Module):
-    def __init__(self):
-        super(STEFunction, self).__init__()
+class VectorQuantizer(nn.Module):
+    def __init__(self, num_embeddings, embedding_dim, beta=0.25):
+        super().__init__()
+        self.embedding_dim = embedding_dim
+        self.num_embeddings = num_embeddings
+        self.beta = beta
+        self.embeddings = nn.Embedding(num_embeddings, embedding_dim)
+        self.embeddings.weight.data.uniform_(-1 / num_embeddings, 1 / num_embeddings)
 
     def forward(self, x):
-        return StraightThroughEstimator.apply(x)
-
-# Example Usage:
-ste = STEFunction()
-input_tensor = torch.randn(5)  # Sample input
-quantized_output = ste(input_tensor)
+        flat_inputs = x.view(-1, self.embedding_dim)
+        distances = (
+                torch.sum(flat_inputs ** 2, dim=1, keepdim=True)
+                + torch.sum(self.embeddings.weight ** 2, dim=1)
+                - 2 * torch.matmul(flat_inputs, self.embeddings.weight.t())
+        )
+        encoding_indices = torch.argmin(distances, dim=1)
+        encodings = F.one_hot(encoding_indices, self.num_embeddings).type(flat_inputs.dtype)
+        quantized = torch.matmul(encodings, self.embeddings.weight).view_as(x)
+        commitment_loss = F.mse_loss(quantized.detach(), x)
+        codebook_loss = F.mse_loss(quantized, x.detach())
+        loss = commitment_loss * self.beta + codebook_loss
+        quantized = x + (quantized - x).detach()
+        return quantized, loss, encoding_indices
 ```
 
 **Key Differences Between VQVAE and VAE:**

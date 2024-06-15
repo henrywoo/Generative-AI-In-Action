@@ -58,8 +58,8 @@ class VQVAE(nn.Module):
         )
 
     def forward(self, x):
-        encoded = self.encoder(x)
-        quantized, vq_loss, _ = self.quantizer(encoded)
+        latent_representation = self.encoder(x)
+        quantized, vq_loss, _ = self.quantizer(latent_representation)
         reconstructions = self.decoder(quantized)
         return reconstructions, vq_loss
 
