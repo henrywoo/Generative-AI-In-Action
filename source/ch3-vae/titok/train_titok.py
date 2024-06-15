@@ -28,6 +28,16 @@ def calculate_fid(real_features, fake_features):
     fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
     return fid
 
+def normalize_image(image_tensor):
+    """
+    Normalize the image tensor to [0, 1] range.
+    """
+    if image_tensor.dtype == torch.float32 or image_tensor.dtype == torch.float64:
+        image_tensor = torch.clamp(image_tensor, 0, 1)
+    elif image_tensor.dtype == torch.uint8:
+        image_tensor = torch.clamp(image_tensor, 0, 255)
+    return image_tensor
+
 def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
     plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
@@ -45,14 +55,16 @@ def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
     axs[0, 1].set_ylabel('Learning Rate')
     axs[0, 1].legend()
 
+    # Normalize and Clamp Image Tensors
+    image = normalize_image(image_tensor).permute(1, 2, 0).cpu().detach().numpy()
+    recon_image = normalize_image(recon_tensor).permute(1, 2, 0).cpu().detach().numpy()
+
     # Original Image Plot
-    image = image_tensor.permute(1, 2, 0).cpu().detach().numpy()
     axs[1, 0].imshow(image)
     axs[1, 0].set_title(f"Original Image at Epoch {i}")
     axs[1, 0].axis('off')
 
     # Reconstructed Image Plot
-    recon_image = recon_tensor.permute(1, 2, 0).cpu().detach().numpy()
     axs[1, 1].imshow(recon_image)
     axs[1, 1].set_title(f"Reconstructed Image at Epoch {i}")
     axs[1, 1].axis('off')
@@ -204,7 +216,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
 
     parser = argparse.ArgumentParser(description="Train TiTok Model")
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
+    parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Initial learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
     parser.add_argument('--num_epochs_warmup', type=int, default=100, help='Number of warmup epochs')
