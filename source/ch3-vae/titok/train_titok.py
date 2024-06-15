@@ -269,10 +269,12 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
     parser.add_argument('--world_size', type=int, default=torch.cuda.device_count(), help='Number of GPUs to use')
     parser.add_argument(
-        '--resume', type=str, default=f'{here}/checkpoint.pth.tar', help='Path to the latest checkpoint'
+        '--resume', type=str, default='', help='Path to the latest checkpoint'
     )
 
     args = parser.parse_args()
+    if args.resume == '':
+        args.resume = f'{here}/mbin/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar',
     check_pt()
 
     if torch.cuda.device_count() > 1:
