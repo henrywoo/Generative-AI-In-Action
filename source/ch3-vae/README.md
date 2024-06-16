@@ -838,7 +838,8 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, decoder_embed_dim), requires_grad=False)
-        self.decoder_blocks = nn.ModuleList([Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer) for i in range(decoder_depth)])
+        self.decoder_blocks = nn.ModuleList([Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer)
+                                             for i in range(decoder_depth)])
         self.decoder_norm = norm_layer(decoder_embed_dim)
         self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True)
         self.norm_pix_loss = norm_pix_loss
@@ -847,7 +848,8 @@ class MaskedAutoencoderViT(nn.Module):
     def initialize_weights(self):
         pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
-        decoder_pos_embed = get_2d_sincos_pos_embed(self.decoder_pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
+        decoder_pos_embed = get_2d_sincos_pos_embed(self.decoder_pos_embed.shape[-1], int(self.patch_embed.num_patches**.5),
+                                                    cls_token=True)
         self.decoder_pos_embed.data.copy_(torch.from_numpy(decoder_pos_embed).float().unsqueeze(0))
         torch.nn.init.xavier_uniform_(self.patch_embed.proj.weight.data.view([self.patch_embed.proj.weight.data.shape[0], -1]))
         torch.nn.init.normal_(self.cls_token, std=.02)
