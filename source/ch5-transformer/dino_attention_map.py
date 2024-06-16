@@ -6,7 +6,7 @@ import numpy as np
 
 
 def load_model_and_feature_extractor(model_name):
-    feature_extractor = ViTFeatureExtractor.from_pretrained(model_name)
+    feature_extractor = ViTFeatureExtractor.from_pretrained(model_name, output_attentions=True)
     model = ViTModel.from_pretrained(model_name, output_attentions=True)
     return feature_extractor, model
 

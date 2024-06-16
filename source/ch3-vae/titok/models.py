@@ -49,6 +49,7 @@ class TiTok(nn.Module):
 
         self.num_patches = (self.image_size // self.patch_size) ** 2
 
+        # TODO: I don't need the entire VIT. I just need the transformer part!
         self.decoder = ViT(
             image_size=image_size,
             patch_size=patch_size,

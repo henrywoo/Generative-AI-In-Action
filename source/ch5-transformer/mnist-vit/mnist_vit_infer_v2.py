@@ -31,7 +31,7 @@ def preprocess_image(image_path, plot=False):
 
     return image_tensor
 
-def main(image_path = '5.png'):
+def main(image_path = '4.png'):
     model = ViT().to(DEVICE)
     model.load_state_dict(torch.load('model_best.pth'))
     model.eval()

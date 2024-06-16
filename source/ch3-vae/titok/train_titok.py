@@ -85,6 +85,23 @@ def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
     plt.show()
 
 
+def plot_attention(image, attn):
+    image_np = image.permute(1, 2, 0).cpu().numpy()
+    image_np = (image_np - image_np.min()) / (image_np.max() - image_np.min())  # Normalize to [0, 1]
+    pad = ((0, 32), (0, 32), (0, 0))  # Pad bottom, right, and no padding for channels
+    expanded_image_np = np.pad(image_np, pad_width=pad, mode='constant', constant_values=0)
+    attn_resized = attn.cpu().detach().numpy()
+    #attn_resized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min())
+    plt.figure(figsize=(4, 4))
+    plt.imshow(expanded_image_np)
+    plt.imshow(attn_resized, cmap='Reds', alpha=0.3)  # alpha controls the transparency of the overlay
+    plt.colorbar(shrink=0.3, aspect=10)
+    plt.title('Attention Map Overlay', fontsize=8)
+    plt.tight_layout()
+    plt.axis('off')
+    plt.show()
+
+
 def warmup_training(
         model, dataloader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=0, eval_size=10
 ):
@@ -113,10 +130,16 @@ def warmup_training(
         total_loss = 0
         total_recon_loss = 0
         total_commit_loss = 0
+        showed_attention = False
         for images, labels in tqdm(dataloader):
             images = images.to(device)
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
+            if os.getenv('DEBUG', 'False').lower() in ('true', '1', 't') and not showed_attention:
+                attn_weights = model.module.encoder.transformer.layers[-1][0].attn_weights
+                print(attn_weights.shape) # torch.Size([128, 3, 288, 288])
+                plot_attention(images[0], attn_weights[0, 0])
+                showed_attention = True
             recon_loss = mse_loss(reconstructed, images)
             commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta)
             loss = recon_loss + commit_loss
