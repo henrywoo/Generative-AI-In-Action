@@ -114,7 +114,6 @@ class TiTok(nn.Module):
 
         # Convert back to image pixels
         z = decoded[:, self.K:, :]
-        patch_dim = self.patch_size * self.patch_size * self.in_chans
         decoded_patches = z.view(B, self.num_patches, self.dim)
         decoded_patches = self.deprojection(decoded_patches)
         decoded_patches = decoded_patches.view(B, self.num_patches, self.in_chans, self.patch_size, self.patch_size)
