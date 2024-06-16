@@ -487,8 +487,7 @@ class ViT(nn.Module):
         super().__init__()
         self.patch_size = patch_size
         self.patch_count = (img_size // self.patch_size) ** 2
-        self.conv = nn.Conv2d(in_channels=in_chans, out_channels=patch_size ** 2, kernel_size=patch_size, padding=0,
-                              stride=patch_size)
+        self.conv = nn.Conv2d(in_channels=in_chans, out_channels=patch_size ** 2, kernel_size=patch_size, stride=patch_size)
         self.patch_emb = nn.Linear(in_features=patch_size ** 2, out_features=emb_size)
         self.cls_token = nn.Parameter(torch.rand(1, 1, emb_size))
         self.pos_emb = nn.Parameter(torch.rand(1, self.patch_count + 1, emb_size))
@@ -521,6 +520,8 @@ if __name__ == '__main__':
     y = vit(x)
     assert y.shape == torch.Size([5, 10])
 ```
+To be improved:
+- initialization; positional embedding
 
 ### Variants
 
