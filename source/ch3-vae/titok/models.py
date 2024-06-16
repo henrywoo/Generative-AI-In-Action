@@ -4,9 +4,9 @@ from vit_pytorch import ViT
 
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, image_size, patch_size, dim):
+    def __init__(self, image_size, patch_size, dim, in_chans=3):
         super(PatchEmbedding, self).__init__()
-        self.projection = nn.Conv2d(3, dim, kernel_size=patch_size, stride=patch_size)
+        self.projection = nn.Conv2d(in_chans, dim, kernel_size=patch_size, stride=patch_size)
         self.num_patches = (image_size // patch_size) ** 2
         self.pos_embedding = nn.Parameter(torch.randn(self.num_patches + 1, dim))
 
@@ -29,7 +29,7 @@ class TiTok(nn.Module):
         self.codebook_dim = codebook.shape[1] if codebook is not None else dim
         self.num_codes = codebook.shape[0] if codebook is not None else 1024
 
-        self.patch_embedding = PatchEmbedding(image_size, patch_size, dim)
+        self.patch_embedding = PatchEmbedding(image_size, patch_size, dim, in_chans)
 
         self.encoder = ViT(
             image_size=image_size,
@@ -43,12 +43,11 @@ class TiTok(nn.Module):
             emb_dropout=0.1,
         )
 
-        self.codebook = nn.Embedding(self.num_codes, self.codebook_dim)
-        if codebook is not None:
-            self.codebook.weight.data.copy_(codebook)  # Use the pre-trained codebook
+        self.codebook = codebook
+        assert codebook is not None and codebook.shape[0] == self.num_codes and codebook.shape[1] == self.codebook_dim
+        self.codebook.requires_grad = False
 
-        self.latent_tokens = nn.Parameter(torch.randn(K, dim))
-        self.mask_token = nn.Parameter(torch.randn(1, dim))
+        self.num_patches = (self.image_size // self.patch_size) ** 2
 
         self.decoder = ViT(
             image_size=image_size,
@@ -61,23 +60,13 @@ class TiTok(nn.Module):
             dropout=0.1,
             emb_dropout=0.1,
         )
-        # self.deprojection = nn.ConvTranspose2d(dim, 3, kernel_size=patch_size, stride=patch_size)
-        # Linear layer for deprojection
         self.deprojection = nn.Linear(dim, patch_size * patch_size * self.in_chans)
-
         self.initialize_weights()
 
     def initialize_weights(self):
-        # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
         w = self.patch_embedding.projection.weight.data
         torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
-
-        # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
         torch.nn.init.normal_(self.patch_embedding.pos_embedding, std=0.02)
-        torch.nn.init.normal_(self.latent_tokens, std=0.02)
-        torch.nn.init.normal_(self.mask_token, std=0.02)
-
-        # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -90,7 +79,7 @@ class TiTok(nn.Module):
             nn.init.constant_(m.weight, 1.0)
 
     def straight_through_estimator(self, x, indices):
-        quantized = self.codebook(indices)
+        quantized = self.codebook[indices]
         return x + (quantized - x).detach()
 
     def forward(self, x):
@@ -102,7 +91,10 @@ class TiTok(nn.Module):
 
         # Patch Embedding
         patch_embeddings = self.patch_embedding(x)
-        latent_tokens = self.latent_tokens.unsqueeze(0).expand(B, -1, -1)
+        latent_tokens = torch.zeros(B, self.K, self.dim, device=patch_embeddings.device)
+        mask_tokens = torch.zeros(B, self.num_patches, self.dim, device=patch_embeddings.device)
+        self.codebook = self.codebook.to(patch_embeddings.device)
+
         combined_input = torch.cat((patch_embeddings, latent_tokens), dim=1)
 
         # Encoder
@@ -110,14 +102,9 @@ class TiTok(nn.Module):
         latent_representation = encoded[:, -self.K:, :]
 
         # Quantize
-        distances = torch.cdist(latent_representation, self.codebook.weight)
+        distances = torch.cdist(latent_representation, self.codebook)
         indices = distances.argmin(dim=-1)
-        #quantized_tokens = self.codebook(indices)
         quantized_tokens = self.straight_through_estimator(latent_representation, indices)
-
-        # Create mask tokens
-        num_patches = (self.image_size // self.patch_size) ** 2
-        mask_tokens = self.mask_token.expand(num_patches, B, -1).transpose(0, 1)
 
         # Concatenate quantized tokens with mask tokens
         dec_input = torch.cat((quantized_tokens, mask_tokens), dim=1)
@@ -128,11 +115,9 @@ class TiTok(nn.Module):
         # Convert back to image pixels
         z = decoded[:, self.K:, :]
         patch_dim = self.patch_size * self.patch_size * self.in_chans
-        decoded_patches = z.view(B, num_patches, self.dim)
-        decoded_patches = self.deprojection(decoded_patches)  # [B, num_patches, patch_dim]
-        decoded_patches = decoded_patches.view(B, num_patches, self.in_chans, self.patch_size, self.patch_size)
-        decoded_patches = decoded_patches.permute(0, 2, 1, 3, 4)  # [B, 3, num_patches, patch_size, patch_size]
-
-        # Combine patches into image
+        decoded_patches = z.view(B, self.num_patches, self.dim)
+        decoded_patches = self.deprojection(decoded_patches)
+        decoded_patches = decoded_patches.view(B, self.num_patches, self.in_chans, self.patch_size, self.patch_size)
+        decoded_patches = decoded_patches.permute(0, 2, 1, 3, 4)
         reconstructed = decoded_patches.contiguous().view(B, self.in_chans, H0, W0)
         return reconstructed, quantized_tokens, latent_representation

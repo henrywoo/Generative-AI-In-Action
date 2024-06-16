@@ -90,6 +90,37 @@ These steps should help in stabilizing the validation loss and improving the mod
 
 ## LR Scheduler
 
+## Common DataSet
+
+### Computer Vision
+
+Here's a table listing some of the most popular image datasets for computer vision.
+
+| Dataset Name            | Primary Usage                   | Size (GB) | License                                      | Image Size (CxHxW) | Number of Images  |
+|-------------------------|---------------------------------|-----------|----------------------------------------------|--------------------|-------------------|
+| ImageNet                | Object classification           | 150       | Custom (research/academic)                   | 3x224x224          | 14 million        |
+| COCO                    | Object detection/segmentation   | 25        | Creative Commons Attribution 4.0 (CC BY 4.0) | 3x640x480          | 330,000           |
+| CIFAR-10                | Object classification           | 0.17      | MIT License                                  | 3x32x32            | 60,000            |
+| CIFAR-100               | Object classification           | 0.17      | MIT License                                  | 3x32x32            | 60,000            |
+| MNIST                   | Handwritten digit classification| 0.01      | Public Domain (CC0)                          | 1x28x28            | 70,000            |
+| Fashion-MNIST           | Clothing item classification    | 0.03      | MIT License                                  | 1x28x28            | 70,000            |
+| Pascal VOC              | Object detection/segmentation   | 2.0       | Custom (research/academic)                   | 3x500x375          | 11,530            |
+| Cityscapes              | Urban scene segmentation        | 80        | Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0) | 3x2048x1024        | 25,000            |
+| Open Images Dataset     | Object detection                | 500       | Creative Commons Attribution 4.0 (CC BY 4.0) | 3x1024x768         | 9 million         |
+| LFW (Labeled Faces in the Wild) | Face recognition             | 0.6       | Public Domain                                 | 3x250x250          | 13,000            |
+| Stanford Dogs Dataset   | Dog breed classification        | 1.3       | Custom (research/academic)                   | 3x500x500          | 20,580            |
+| Caltech 101             | Object classification           | 1.5       | Custom (research/academic)                   | 3x300x200          | 9,146             |
+| Caltech 256             | Object classification           | 1.2       | Custom (research/academic)                   | 3x300x200          | 30,607            |
+| Oxford Flowers 102      | Flower classification           | 3.6       | Creative Commons Attribution 4.0 (CC BY 4.0) | 3x500x500          | 8,189             |
+| Oxford-IIIT Pet Dataset | Pet classification              | 0.8       | Creative Commons Attribution 4.0 (CC BY 4.0) | 3x224x224          | 7,349             |
+| SUN397                  | Scene recognition               | 37        | Custom (research/academic)                   | 3x500x375          | 108,634           |
+| CelebA                  | Facial attributes recognition   | 1.3       | Custom (research/academic)                   | 3x218x178          | 202,599           |
+| ADE20K                  | Scene parsing                   | 2.1       | MIT License                                  | 3x500x375          | 25,000            |
+| Places365               | Scene recognition               | 24        | Custom (research/academic)                   | 3x256x256          | 1.8 million       |
+| Kitti                   | Autonomous driving              | 180       | Custom (research/academic)                   | 3x1242x375         | 93,000            |
+
+Note: The image sizes listed are typical sizes, but actual sizes can vary. The number of images is also an approximation and can vary based on the version and split of the dataset.
+
 
 
 

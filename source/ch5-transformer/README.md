@@ -1,6 +1,10 @@
 # Transformer
 
+![](img/transformer.webp)
+
 ## Why use `Softmax` in Scaled Dot Product Formula in Transformer?
+
+![](q_k.gif)
 
 When you set `output_attentions=True` in the Hugging Face `transformers` library for BERT, the output includes attention matrices. These matrices are the result of applying the softmax function to the scaled dot-product of the query (Q) and key (K) matrices:
 
@@ -223,7 +227,6 @@ https://docs.google.com/presentation/d/1OwRtQscMeIl3Zex8iJEAUeHM6QCM3sMxlg4Iy15H
 ![](lm_inaction.png)
 + VIT in Action
 
-![](img/transformer.webp)
 
 
 ![](img/transformer_ar.webp)

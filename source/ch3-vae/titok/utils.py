@@ -1,4 +1,6 @@
 import os
+import sys
+
 from scipy.linalg import sqrtm
 import numpy as np
 import torchvision.transforms as transforms
@@ -9,6 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3
 from torch.utils.data.distributed import DistributedSampler
+from stanford_dogs import StanfordDogsDataset
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -95,6 +98,19 @@ def get_dataset(name, image_size, batch_size, data_dir, rank=None, world_size=No
         elif name == 'svhn':
             train_dataset = datasets.SVHN(root=data_dir, split='train', download=True, transform=transform)
             test_dataset = datasets.SVHN(root=data_dir, split='test', download=True, transform=transform)
+        elif name == 'stanford_dogs':
+            data_dir = os.getenv('DEVROOT2') + "/data/stanford_dogs"
+            if not os.path.exists(data_dir):
+                print("NO stanford_dogs data found")
+                sys.exit(0)
+            images_dir = os.path.join(data_dir, 'images/Images')
+            annotations_dir = os.path.join(data_dir, 'annotations/Annotation')
+            train_dataset = StanfordDogsDataset(images_dir=images_dir,
+                                                annotations_dir=annotations_dir,
+                                                transform=transform)
+            test_dataset = StanfordDogsDataset(images_dir=images_dir,
+                                               annotations_dir=annotations_dir,
+                                               transform=transform)
         else:
             DatasetClass = getattr(datasets, name.upper())
             train_dataset = DatasetClass(root=data_dir, train=True, download=True, transform=transform)
@@ -192,9 +208,8 @@ def load_checkpoint(filename, model, optimizer):
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        codebook = checkpoint['codebook']
         print(f"Loaded checkpoint '{filename}' (epoch {start_epoch})")
-        return model, optimizer, start_epoch, codebook
+        return model, optimizer, start_epoch
     else:
         print(f"No checkpoint found at '{filename}'")
         return model, optimizer, 0, None

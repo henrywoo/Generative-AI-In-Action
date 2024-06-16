@@ -52,16 +52,16 @@ def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
     fig, axs = plt.subplots(2, 2, figsize=(18, 8))
 
     # Average Total Loss Plot
-    axs[0, 0].plot(df['epoch'], df['avg_total_loss'], label='Average Total Loss', marker='o')
-    axs[0, 0].set_title('Average Total Loss over Epochs')
+    axs[0, 0].plot(df['epoch'], df['avg_total_loss'], label='Average Total Loss', marker='o', alpha=0.5)
+    axs[0, 0].plot(df['epoch'], df['recon_loss'], label='Reconstruction Loss', marker='v', alpha=0.5)
+    axs[0, 0].set_title('Average Total & Reconstruction Loss over Epochs', fontsize=10)
     axs[0, 0].set_xlabel('Epoch')
     axs[0, 0].set_ylabel('Average Total Loss')
     axs[0, 0].legend()
 
     # Reconstruction and Commitment Loss Plot
-    axs[0, 1].plot(df['epoch'], df['recon_loss'], label='Reconstruction Loss', marker='v')
     axs[0, 1].plot(df['epoch'], df['commit_loss'], label='Commitment Loss', marker='x')
-    axs[0, 1].set_title('Reconstruction and Commitment Loss over Epochs')
+    axs[0, 1].set_title('Commitment Loss over Epochs')
     axs[0, 1].set_xlabel('Epoch')
     axs[0, 1].set_ylabel('Loss')
     axs[0, 1].legend()
@@ -108,16 +108,17 @@ def warmup_training(
             count += images.size(0)
         real_features = torch.cat(real_features, dim=0).cpu().numpy()
 
+    beta = 0.25
     for epoch in range(start_epoch, args.num_epochs_warmup):
         total_loss = 0
         total_recon_loss = 0
         total_commit_loss = 0
-        for images, _ in tqdm(dataloader):
+        for images, labels in tqdm(dataloader):
             images = images.to(device)
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
             recon_loss = mse_loss(reconstructed, images)
-            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta=10.0)
+            commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta)
             loss = recon_loss + commit_loss
             loss.backward()
             optimizer.step()
@@ -140,7 +141,6 @@ def warmup_training(
                     'epoch': epoch + 1,
                     'state_dict': model.state_dict(),
                     'optimizer': optimizer.state_dict(),
-                    'codebook': model.module.codebook.weight if hasattr(model, 'module') else model.codebook.weight,
                 },
                 filename=checkpoint_path,
             )
@@ -157,6 +157,7 @@ def warmup_training(
             metrics_df.to_csv(metrics_file, index=False)
 
             if (epoch + 1) % 1 == 0:
+                #print("labels[0]:", labels[0].item())
                 plot_combined(images[0], reconstructed[0], metrics_file, epoch + 1)
 
             if check_fid:
@@ -232,7 +233,7 @@ def main(rank, args):
     # Load checkpoint if exists
     start_epoch = 0
     if args.resume and os.path.isfile(args.resume):
-        model, optimizer, start_epoch, _ = load_checkpoint(args.resume, model, optimizer)
+        model, optimizer, start_epoch = load_checkpoint(args.resume, model, optimizer)
 
     warmup_training(model, train_loader, optimizer, scheduler, args, device, test_loader, rank, start_epoch=start_epoch)
 
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Initial learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
-    parser.add_argument('--num_epochs_warmup', type=int, default=100, help='Number of warmup epochs')
+    parser.add_argument('--num_epochs_warmup', type=int, default=101, help='Number of warmup epochs')
     parser.add_argument('--latent_dim', type=int, default=256, help='Dimensionality of the latent space')
     parser.add_argument('--image_size', type=int, default=256, help='Size of the input images')
     parser.add_argument('--patch_size', type=int, default=32, help='Size of each image patch')
