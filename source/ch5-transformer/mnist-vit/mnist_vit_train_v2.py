@@ -4,8 +4,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import matplotlib.pyplot as plt
 import logging
-from dataset import MNIST  # Assuming this is a custom module
-from vit import ViT  # Assuming this is a custom module
+from dataset import MNIST
+from vit import ViT
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from copy import deepcopy
 from hiq import set_seed

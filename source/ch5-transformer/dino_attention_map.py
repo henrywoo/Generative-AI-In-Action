@@ -3,11 +3,35 @@ from PIL import Image
 from transformers import ViTFeatureExtractor, ViTModel
 import matplotlib.pyplot as plt
 import numpy as np
+from hiq import print_model
 
+"""
+🌳 ViTModel<all params:21818112>
+├── ViTEmbeddings(embeddings)|cls_token[1,1,384]|position_embeddings[1,785,384]
+│   └── ViTPatchEmbeddings(patch_embeddings)
+│       └── Conv2d(projection)|weight[384,3,8,8]🇸 -(8, 8)|bias[384]🇸 -(8, 8)
+├── ViTEncoder(encoder)
+│   └── ModuleList(layer)
+│       └── 💠 ViTLayer(0-11)<🦜:1774464x12>
+│           ┣━━ ViTSdpaAttention(attention)
+│           ┃   ┣━━ ViTSdpaSelfAttention(attention)
+│           ┃   ┃   ┗━━ 💠 Linear(query,key,value)<🦜:147840x3>|weight[384,384]|bias[384]
+│           ┃   ┗━━ ViTSelfOutput(output)
+│           ┃       ┗━━ Linear(dense)|weight[384,384]|bias[384]
+│           ┣━━ ViTIntermediate(intermediate)
+│           ┃   ┗━━ Linear(dense)|weight[1536,384]|bias[1536]
+│           ┣━━ ViTOutput(output)
+│           ┃   ┗━━ Linear(dense)|weight[384,1536]|bias[384]
+│           ┗━━ 💠 LayerNorm(layernorm_before,layernorm_after)<🦜:768x2>|weight[384]|bias[384]
+├── LayerNorm(layernorm)|weight[384]|bias[384]
+└── ViTPooler(pooler)
+    └── Linear(dense)|weight[384,384]|bias[384]
+"""
 
 def load_model_and_feature_extractor(model_name):
     feature_extractor = ViTFeatureExtractor.from_pretrained(model_name, output_attentions=True)
     model = ViTModel.from_pretrained(model_name, output_attentions=True)
+    print_model(model)
     return feature_extractor, model
 
 

@@ -1,19 +1,38 @@
 from transformers import AutoImageProcessor, AutoModel
-from PIL import Image
 import requests
 import torch
 from PIL import Image
-from transformers import ViTFeatureExtractor, ViTModel
 import matplotlib.pyplot as plt
 import numpy as np
+from hiq import print_model
 
+"""
+🌳 Dinov2Model<all params:86580480>
+├── Dinov2Embeddings(embeddings)|cls_token[1,1,768]|mask_token[1,768]|position_embeddings[1,1370,768]
+│   └── Dinov2PatchEmbeddings(patch_embeddings)
+│       └── Conv2d(projection)|weight[768,3,14,14]🇸 -(14, 14)|bias[768]🇸 -(14, 14)
+├── Dinov2Encoder(encoder)
+│   └── ModuleList(layer)
+│       └── 💠 Dinov2Layer(0-11)<🦜:7089408x12>
+│           ┣━━ 💠 LayerNorm(norm1,norm2)<🦜:1536x2>|weight[768]|bias[768]
+│           ┣━━ Dinov2Attention(attention)
+│           ┃   ┣━━ Dinov2SelfAttention(attention)
+│           ┃   ┃   ┗━━ 💠 Linear(query,key,value)<🦜:590592x3>|weight[768,768]|bias[768]
+│           ┃   ┗━━ Dinov2SelfOutput(output)
+│           ┃       ┗━━ Linear(dense)|weight[768,768]|bias[768]
+│           ┣━━ 💠 Dinov2LayerScale(layer_scale1,layer_scale2)<🦜:768x2>|lambda1[768]
+│           ┗━━ Dinov2MLP(mlp)
+│               ┣━━ Linear(fc1)|weight[3072,768]|bias[3072]
+│               ┗━━ Linear(fc2)|weight[768,3072]|bias[768]
+└── LayerNorm(layernorm)|weight[768]|bias[768]
+"""
 
 url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
 image = Image.open(requests.get(url, stream=True).raw)
 
 processor = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
 model = AutoModel.from_pretrained('facebook/dinov2-base', output_attentions=True, output_hidden_states=True)
-
+print_model(model)
 inputs = processor(images=image, return_tensors="pt")
 outputs = model(**inputs)
 last_hidden_states = outputs.last_hidden_state

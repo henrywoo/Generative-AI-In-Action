@@ -1,5 +1,20 @@
 from torch import nn
 import torch
+
+"""
+🌳 ViT<all params:207786>
+├── Conv2d(conv)|weight[16,1,4,4]🇸 -(4, 4)|bias[16]🇸 -(4, 4)
+├── Linear(patch_emb)|weight[16,16]|bias[16]
+├── TransformerEncoder(tranformer_enc)
+│   └── ModuleList(layers)
+│       └── 💠 TransformerEncoderLayer(0-2)<🦜:68752x3>
+│           ┣━━ MultiheadAttention(self_attn)|in_proj_weight[48,16]|in_proj_bias[48]
+│           ┃   ┗━━ NonDynamicallyQuantizableLinear(out_proj)|weight[16,16]|bias[16]
+│           ┣━━ Linear(linear1)|weight[2048,16]|bias[2048]
+│           ┣━━ Linear(linear2)|weight[16,2048]|bias[16]
+│           ┗━━ 💠 LayerNorm(norm1,norm2)<🦜:32x2>|weight[16]|bias[16]
+└── Linear(cls_linear)|weight[10,16]|bias[10]
+"""
 class ViT(nn.Module):
     def __init__(self, img_size=28, emb_size=16, patch_size=4, in_chans=1, depth=3, heads=2, classify_features=None):
         super().__init__()
@@ -37,7 +52,7 @@ class ViT(nn.Module):
 if __name__ == '__main__':
     vit = ViT(classify_features=10)
     x = torch.rand(5, 1, 28, 28)
-    from hiq.vis import print_model
+    from hiq import print_model
     print_model(vit)
     y = vit(x)
     assert y.shape == torch.Size([5, 10])
