@@ -33,7 +33,7 @@ class TiTok(nn.Module):
 
         # Latent and mask tokens
         self.latent_tokens = nn.Parameter(torch.randn(B, K, dim))
-        self.mask_tokens = nn.Parameter(torch.randn(B, self.P, dim))
+        self.mask_token = nn.Parameter(torch.randn(1, 1, dim))
 
         self.codebook = codebook
         assert codebook is not None and codebook.shape[0] == self.num_codes and codebook.shape[1] == self.codebook_dim
@@ -68,6 +68,7 @@ class TiTok(nn.Module):
             return None, None, None
         # Patch Embedding
         patch_embeddings = self.projection(x).flatten(2).transpose(1, 2)
+        mask_tokens = self.mask_token.repeat(B, self.P, 1)
         patch_embeddings = torch.cat((patch_embeddings, self.latent_tokens), dim=1)
         combined_input = patch_embeddings + self.encoder_pos_embedding
         # Encoder
@@ -79,7 +80,7 @@ class TiTok(nn.Module):
         indices = distances.argmin(dim=-1)
         quantized_tokens = self.straight_through_estimator(latent_representation, indices)
         # Concatenate quantized tokens with mask tokens
-        dec_input = torch.cat((quantized_tokens, self.mask_tokens), dim=1)
+        dec_input = torch.cat((quantized_tokens, mask_tokens), dim=1)
         dec_input = dec_input + self.decoder_pos_embedding
         # Decoder
         decoded = self.decoder(dec_input)
