@@ -1,7 +1,27 @@
-
+import math
 import torch
 import torch.nn as nn
+import numpy as np
 
+def get_1d_sincos_pos_embed(embed_dim, seq_len, cls_token=False):
+    position = np.arange(seq_len, dtype=np.float32)
+    div_term = np.exp(np.arange(0, embed_dim, 2, dtype=np.float32) * -(math.log(10000.0) / embed_dim))
+    pos_embed = np.zeros((seq_len, embed_dim), dtype=np.float32)
+    pos_embed[:, 0::2] = np.sin(position[:, None] * div_term)
+    pos_embed[:, 1::2] = np.cos(position[:, None] * div_term)
+    if cls_token:
+        pos_embed = np.concatenate([np.zeros([1, embed_dim], dtype=np.float32), pos_embed], axis=0)
+    return pos_embed
+
+class PositionalEncoding1D(nn.Module):
+    def __init__(self, dim, seq_len, cls_token=False):
+        super(PositionalEncoding1D, self).__init__()
+        self.pos_embed = nn.Parameter(torch.zeros(1, seq_len, dim), requires_grad=False)
+        pos_embed = get_1d_sincos_pos_embed(dim, seq_len, cls_token)
+        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+
+    def forward(self, x):
+        return x + self.pos_embed
 
 class TiTok(nn.Module):
     def __init__(self, image_size=256, patch_size=32, in_chans=3, dim=1024, depth=6, heads=16, mlp_dim=2048, K=32, B=64,
@@ -17,10 +37,13 @@ class TiTok(nn.Module):
         self.codebook_dim = codebook.shape[1] if codebook is not None else dim
         self.num_codes = codebook.shape[0] if codebook is not None else 1024
 
+        seq_len = self.P + K
+
         # Patch embedding
         self.projection = nn.Conv2d(in_chans, dim, kernel_size=patch_size, stride=patch_size)
-        self.encoder_pos_embedding = nn.Parameter(torch.randn(self.P + K, dim))
-        self.decoder_pos_embedding = nn.Parameter(torch.randn(self.P + K, dim))
+
+        # Positional encoding
+        self.positional_encoding = PositionalEncoding1D(dim, seq_len)
 
         # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(d_model=dim, nhead=heads, dim_feedforward=mlp_dim)
@@ -45,8 +68,6 @@ class TiTok(nn.Module):
     def initialize_weights(self):
         w = self.projection.weight.data
         torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
-        torch.nn.init.normal_(self.encoder_pos_embedding, std=0.02)
-        torch.nn.init.normal_(self.decoder_pos_embedding, std=0.02)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -67,23 +88,33 @@ class TiTok(nn.Module):
         assert C == self.in_chans
         if B < self.B:
             return None, None, None
+
         # Patch Embedding
-        patch_embeddings = self.projection(x).flatten(2).transpose(1, 2)
+        patch_embeddings = self.projection(x).flatten(2).transpose(1, 2).contiguous()
         patch_embeddings = torch.cat((patch_embeddings, self.latent_tokens), dim=1)
-        combined_input = patch_embeddings + self.encoder_pos_embedding
+
+        # Apply positional encoding
+        patch_embeddings = self.positional_encoding(patch_embeddings)
+
         # Encoder
-        encoded = self.encoder(combined_input)
+        encoded = self.encoder(patch_embeddings)
         latent_representation = encoded[:, -self.K:, :]
+
         # Quantize
         self.codebook = self.codebook.to(patch_embeddings.device)
         distances = torch.cdist(latent_representation, self.codebook)
         indices = distances.argmin(dim=-1)
         quantized_tokens = self.straight_through_estimator(latent_representation, indices)
+
         # Concatenate quantized tokens with mask tokens
         dec_input = torch.cat((quantized_tokens, self.mask_tokens), dim=1)
-        dec_input = dec_input + self.decoder_pos_embedding
+
+        # Apply positional encoding to the decoder input
+        dec_input = self.positional_encoding(dec_input)
+
         # Decoder
         decoded = self.decoder(dec_input)
+
         # Convert back to image pixels
         z = decoded[:, self.K:, :]
         decoded_patches = z.view(B, -1, self.dim)

@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 from torchvision.models import inception_v3
-from models import TiTok
 from proxy import load_vqgan_model
 from hiq.vis import print_model
 from hiq import ensure_folder
@@ -47,7 +46,7 @@ def normalize_image(image_tensor):
     return image_tensor
 
 
-def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
+def plot_combined(image_tensor, recon_tensor, csv_file, i, args, task="recon"):
     plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
     fig, axs = plt.subplots(2, 2, figsize=(18, 8))
@@ -82,7 +81,7 @@ def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
     axs[1, 1].axis('off')
 
     plt.tight_layout()
-    fname = f"{here}/mbin/img/{task}_{i}.png"
+    fname = f"{here}/mbin/{args.model_type}/img/{task}_{i}.png"
     ensure_folder(fname)
     plt.savefig(fname)
     plt.show()
@@ -110,7 +109,8 @@ def warmup_training(
 ):
     model.train()
     mse_loss = nn.MSELoss()
-    csv_name = f'{here}/mbin/metrics_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.csv'
+    csv_name = f'{here}/mbin/{args.model_type}/metrics_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.csv'
+    ensure_folder(csv_name)
     metrics_file = os.path.join(args.log_dir, csv_name)
 
     check_fid = False
@@ -186,7 +186,7 @@ def warmup_training(
 
             if (epoch + 1) % 1 == 0:
                 #print("labels[0]:", labels[0].item())
-                plot_combined(images[0], reconstructed[0], metrics_file, epoch + 1)
+                plot_combined(images[0], reconstructed[0], metrics_file, epoch + 1, args)
 
             if check_fid:
                 model.eval()
@@ -239,6 +239,17 @@ def main(rank, args):
         args.patch_size = 32
     else:
         raise ValueError("Unsupported image size. Supported sizes are 256 and 512.")
+
+    if args.model_type == 'base':
+        from models import TiTok
+    elif args.model_type == 'sinusoidal':
+        from models_sincos_pos import TiTok
+    elif args.model_type == 'repeat_mask':
+        from models_repeat_mask import TiTok
+    elif args.model_type == 'sinusoidal_repeat_mask':
+        from models_sincos_pos_repeat_mask import TiTok
+    else:
+        sys.exit("Unsupported model type.")
 
     model = TiTok(
         image_size=args.image_size,
@@ -300,13 +311,15 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', type=str, default="data", help='Directory containing the dataset')
     parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
     parser.add_argument('--world_size', type=int, default=torch.cuda.device_count(), help='Number of GPUs to use')
+    parser.add_argument('--model_type', type=str, default="base", help='first version')
     parser.add_argument(
         '--resume', type=str, default='', help='Path to the latest checkpoint'
     )
 
     args = parser.parse_args()
     if args.resume == '':
-        args.resume = f'{here}/mbin/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
+        args.resume = f'{here}/mbin/{args.model_type}/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
+        ensure_folder(args.resume)
     check_pt()
 
     if torch.cuda.device_count() > 1:
