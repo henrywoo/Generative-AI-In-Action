@@ -8,6 +8,7 @@ from torchvision.models import inception_v3
 from models import TiTok
 from proxy import load_vqgan_model
 from hiq.vis import print_model
+from hiq import ensure_folder
 from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
@@ -81,7 +82,9 @@ def plot_combined(image_tensor, recon_tensor, csv_file, i, task="recon"):
     axs[1, 1].axis('off')
 
     plt.tight_layout()
-    plt.savefig(f"{here}/{task}_{i}.png")
+    fname = f"{here}/mbin/img/{task}_{i}.png"
+    ensure_folder(fname)
+    plt.savefig(fname)
     plt.show()
 
 
