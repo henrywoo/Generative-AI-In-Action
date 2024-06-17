@@ -131,7 +131,9 @@ def warmup_training(
         total_recon_loss = 0
         total_commit_loss = 0
         showed_attention = False
-        for images, labels in tqdm(dataloader):
+        for i, (images, labels) in enumerate(tqdm(dataloader)):
+            if i == len(dataloader) - 1:
+                break
             images = images.to(device)
             optimizer.zero_grad()
             reconstructed, quantized_tokens, encoder_outputs = model(images)
@@ -243,6 +245,7 @@ def main(rank, args):
         heads=args.heads,
         mlp_dim=args.mlp_dim,
         K=args.K,
+        B=args.batch_size,
         codebook=vqgan_model.quantize.embedding.weight,
     ).to(device)
 
@@ -275,7 +278,7 @@ if __name__ == "__main__":
     parser.add_argument('--image_size', type=int, default=256, help='Size of the input images')
     parser.add_argument('--patch_size', type=int, default=32, help='Size of each image patch')
     parser.add_argument('--depth', type=int, default=12, help='Depth of the transformer')
-    parser.add_argument('--heads', type=int, default=6, help='Number of heads in multi-head attention')
+    parser.add_argument('--heads', type=int, default=8, help='Number of heads in multi-head attention')
     parser.add_argument('--mlp_dim', type=int, default=2048, help='Dimensionality of the MLP in the transformer')
     parser.add_argument('--K', type=int, default=32, help='Number of latent tokens')
     parser.add_argument(
