@@ -1,5 +1,7 @@
 from config import *
 
+
+
 # extra code – loads, scales, and splits the fashion MNIST dataset
 fashion_mnist = tf.keras.datasets.fashion_mnist.load_data()
 (X_train_full, y_train_full), (X_test, y_test) = fashion_mnist
@@ -20,9 +22,6 @@ stacked_decoder = tf.keras.Sequential([
 ])
 stacked_ae = tf.keras.Sequential([stacked_encoder, stacked_decoder])
 
-stacked_ae.compile(loss="mse", optimizer="nadam")
-history = stacked_ae.fit(X_train, X_train, epochs=20,
-                         validation_data=(X_valid, X_valid))
 
 def plot_reconstructions(model, images=X_valid, n_images=5):
     reconstructions = np.clip(model.predict(images[:n_images]), 0, 1)
@@ -35,13 +34,20 @@ def plot_reconstructions(model, images=X_valid, n_images=5):
         plt.imshow(reconstructions[image_index], cmap="binary")
         plt.axis("off")
 
-plot_reconstructions(stacked_ae)
-save_fig("reconstruction_plot")  # extra code – saves the high res figure
-plt.show()
+if __name__ == "__main__":
+    stacked_ae.compile(loss="mse", optimizer="nadam")
+    history = stacked_ae.fit(X_train, X_train, epochs=20,
+                             validation_data=(X_valid, X_valid))
 
 
-# Save the stacked encoder
-encoder_path = Path("saved_models/stacked_encoder")
-encoder_path.mkdir(parents=True, exist_ok=True)
-stacked_encoder.save(encoder_path / "stacked_encoder")
+
+    plot_reconstructions(stacked_ae)
+    save_fig("reconstruction_plot")  # extra code – saves the high res figure
+    plt.show()
+
+
+    # Save the stacked encoder
+    encoder_path = Path("saved_models/stacked_encoder")
+    encoder_path.mkdir(parents=True, exist_ok=True)
+    stacked_encoder.save(encoder_path / "stacked_encoder")
 

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 import torch.nn.functional as F
-from data import load_data, generate_sparsity_plot, plot_reconstructions
+from data import load_data, generate_sparsity_plot#, plot_reconstructions
 
 
 class KLDivergenceRegularizer:
@@ -84,6 +84,29 @@ def train(model, criterion, optimizer, train_loader, val_loader, num_epochs, che
 
     return train_losses, valid_losses
 
+
+def plot_reconstructions(model, test_loader, n_images=5):
+    model.eval()
+    with torch.no_grad():
+        # Get a batch of images from the test_loader
+        images, _ = next(iter(test_loader))
+        images = images[:n_images]
+
+        # Get the reconstructions
+        reconstructions = model(images)
+
+        # Clip the reconstructions to the range [0, 1]
+        reconstructions = torch.clamp(reconstructions, 0, 1)
+
+        fig = plt.figure(figsize=(n_images * 1.5, 3))
+        for image_index in range(n_images):
+            plt.subplot(2, n_images, 1 + image_index)
+            plt.imshow(images[image_index].cpu().numpy().reshape(28, 28))
+            plt.axis("off")
+            plt.subplot(2, n_images, 1 + n_images + image_index)
+            plt.imshow(reconstructions[image_index].cpu().numpy().reshape(28, 28))
+            plt.axis("off")
+        plt.show()
 
 def main(args):
     # Load datasets

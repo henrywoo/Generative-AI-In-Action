@@ -4,9 +4,20 @@ import torch.optim as optim
 import argparse
 import os
 from data import load_data, generate_sparsity_plot, plot_reconstructions
+from hiq import print_model
+
 
 
 class SparseL1Autoencoder(nn.Module):
+    """
+    🌳 SparseL1Autoencoder<all params:218084>
+    ├── Sequential(encoder)
+    │   ├── Linear(1)|weight[100,784]|bias[100]
+    │   └── Linear(3)|weight[300,100]|bias[300]
+    └── Sequential(decoder)
+        ├── Linear(0)|weight[100,300]|bias[100]
+        └── Linear(2)|weight[784,100]|bias[784]
+    """
     def __init__(self):
         super(SparseL1Autoencoder, self).__init__()
         self.encoder = nn.Sequential(
@@ -77,6 +88,7 @@ def main(args):
 
     # Instantiate the model
     model = SparseL1Autoencoder()
+    print_model(model)
 
     # Load checkpoint if available
     checkpoint_path = f"{args.dataset}_sparse_l1.pth"
