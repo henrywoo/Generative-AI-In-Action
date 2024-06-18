@@ -54,18 +54,21 @@ class DiT(nn.Module):
         x = self.conv(x)  # (batch,new_channel,patch_count,patch_count)
         x = x.permute(0, 2, 3, 1)  # (batch,patch_count,patch_count,new_channel)
         x = x.view(x.size(0), self.patch_count * self.patch_count, x.size(3))  # (batch,patch_count**2,new_channel)
-
+        # patch_emb increase x from 10,49,16 to 10,49,64
         x = self.patch_emb(x)  # (batch,patch_count**2,emb_size)
         x = x + self.patch_pos_emb  # (batch,patch_count**2,emb_size)
+        z0 = x
 
         # dit blocks
         for dit in self.dits:
             x = dit(x, cond)
 
         # # layer norm
+        z1 = x
         x = self.ln(x)  # (batch,patch_count**2,emb_size)
 
-        # # linear back to patch
+        # linear back to patch
+        # patch_emb decrease x from 10,49,64 to 10,49,16
         x = self.linear(x)  # (batch,patch_count**2,channel*patch_size*patch_size)
 
         # reshape

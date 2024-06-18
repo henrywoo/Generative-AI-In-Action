@@ -721,8 +721,8 @@ def load_vqgan_model(config_path, checkpoint_path):
 def get_proxy_codes(images, vqgan_model):
     with torch.no_grad():
         quant, emb_loss, [_, _, indices]= vqgan_model.encode(images)
-    return indices.view(images.size(0), -1)
-    #return indices
+    #return indices.view(images.size(0), -1)
+    return quant
 
 if __name__ == '__main__':
     from torchvision import transforms, datasets
@@ -746,7 +746,9 @@ if __name__ == '__main__':
     )
     train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-    vqgan_model = load_vqgan_model('VQGAN/model.yaml', 'VQGAN/last.ckpt').to(device)
+    vqgan_model = load_vqgan_model('pretrained_maskgit/VQGAN/model.yaml', 'pretrained_maskgit/VQGAN/last.ckpt').to(device)
     for images, _ in train_loader:
         images = images.to(device)
         r = get_proxy_codes(images, vqgan_model)
+        print(r.shape)
+        break

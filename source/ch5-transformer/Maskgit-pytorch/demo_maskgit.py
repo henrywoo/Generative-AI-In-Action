@@ -106,7 +106,7 @@ if __name__ == '__main__':
     labels = torch.LongTensor(labels).to(args.device)
 
     # Generate sample
-    if 0:
+    if 1:
         gen_sample, gen_code, l_mask = maskgit.sample(
             nb_sample=labels.size(0),
             labels=labels,
