@@ -19,11 +19,13 @@ class TiTok(nn.Module):
         self.encoder_pos_embedding = nn.Parameter(torch.randn(self.P + K, dim))
         self.decoder_pos_embedding = nn.Parameter(torch.randn(self.P + K, dim))
 
-        self.e1 = nn.Linear(256, 100) # 256 is SeqLen
-        self.e2 = nn.Linear(100, K)  # 256 is SeqLen
+        self.e1 = nn.Linear(256, 128) # 256 is SeqLen
+        self.e2 = nn.Linear(128, 64)  # 256 is SeqLen
+        self.e3 = nn.Linear(64, K)  # 256 is SeqLen
 
-        self.d2 = nn.Linear(K, 100)  # 256 is SeqLen
-        self.d1 = nn.Linear(100, patch_size * patch_size* in_chans)  # 256 is SeqLen
+        self.d3 = nn.Linear(K, 64)  # 256 is SeqLen
+        self.d2 = nn.Linear(64, 128)  # 256 is SeqLen
+        self.d1 = nn.Linear(128, patch_size * patch_size * in_chans)  # 256 is SeqLen
         self.latent_tokens = None
 
     def forward(self, x):
@@ -37,9 +39,11 @@ class TiTok(nn.Module):
         # Encoder
         z = F.relu(self.e1(z))
         z = F.relu(self.e2(z))
+        z = F.relu(self.e3(z))
 
         latent_representation = z
-        d = F.relu(self.d2(z))
+        d = F.relu(self.d3(z))
+        d = F.relu(self.d2(d))
         d = self.d1(d)
         d = d.reshape(B, C, H0, W0)
         return d, latent_representation

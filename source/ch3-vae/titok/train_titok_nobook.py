@@ -4,29 +4,30 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-from proxy import load_vqgan_model, get_proxy_codes
-from hiq import print_model, ensure_folder, deterministic
+from proxy import load_vqgan_model
+from hiq import ensure_folder
 from tqdm import tqdm
 import numpy as np
-from scipy.linalg import sqrtm
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from utils import get_dataset, check_pt, here, load_checkpoint, save_checkpoint
+from utils import get_dataset, check_pt, here, save_checkpoint
 import matplotlib.pyplot as plt
 import signal
 import sys
 
-
-def normalize_image(image_tensor):
-    """
-    Normalize the image tensor to [0, 1] range.
-    """
-    if image_tensor.dtype == torch.float32 or image_tensor.dtype == torch.float64:
-        image_tensor = torch.clamp(image_tensor, 0, 1)
-    elif image_tensor.dtype == torch.uint8:
-        image_tensor = torch.clamp(image_tensor, 0, 255)
-    return image_tensor
-
+def load_checkpoint(filename, model, optimizer):
+    if os.path.isfile(filename):
+        print(f"Loading checkpoint '{filename}'")
+        checkpoint = torch.load(filename)
+        start_epoch = checkpoint['epoch']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        losses = checkpoint.get('losses', [])
+        print(f"Loaded checkpoint '{filename}' (epoch {start_epoch})")
+        return model, optimizer, start_epoch, losses
+    else:
+        print(f"No checkpoint found at '{filename}'")
+        return model, optimizer, 0, []
 
 def plot_attention(image, attn):
     image_np = image.permute(1, 2, 0).cpu().numpy()
@@ -34,7 +35,6 @@ def plot_attention(image, attn):
     pad = ((0, 32), (0, 32), (0, 0))  # Pad bottom, right, and no padding for channels
     expanded_image_np = np.pad(image_np, pad_width=pad, mode='constant', constant_values=0)
     attn_resized = attn.cpu().detach().numpy()
-    #attn_resized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min())
     plt.figure(figsize=(4, 4))
     plt.imshow(expanded_image_np)
     plt.imshow(attn_resized, cmap='Reds', alpha=0.3)  # alpha controls the transparency of the overlay
@@ -44,9 +44,36 @@ def plot_attention(image, attn):
     plt.axis('off')
     plt.show()
 
+def plot_losses(losses, output_path):
+    plt.style.use('ggplot')
+    plt.plot(losses, marker='o', alpha=0.5)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Loss')
+    plt.savefig(output_path)
+    plt.show()
+
+def plot_reconstructions(model, test_loader, device):
+    model.eval()
+    images, _ = next(iter(test_loader))
+    images = images.to(device)
+    with torch.no_grad():
+        reconstructions, _ = model(images)
+
+    fig, axes = plt.subplots(2, 4, figsize=(10, 5))
+    for i in range(4):
+        axes[0, i].imshow(images[i].permute(1, 2, 0).cpu().numpy())
+        axes[0, i].axis('off')
+        axes[0, i].set_title('Original')
+        axes[1, i].imshow(reconstructions[i].permute(1, 2, 0).cpu().numpy())
+        axes[1, i].axis('off')
+        axes[1, i].set_title('Reconstructed')
+    plt.tight_layout()
+    plt.savefig('reconstructions_nobook.png')
+    plt.show()
 
 def warmup_training(
-        model, dataloader, optimizer, scheduler, args, device, test_loader, rank, vqgan_model, start_epoch=0, eval_size=10
+        model, dataloader, optimizer, scheduler, args, device, test_loader, rank, vqgan_model, start_epoch=0, eval_size=10, losses=[]
 ):
     model.train()
     mse_loss = nn.MSELoss()
@@ -74,6 +101,7 @@ def warmup_training(
             total_loss += loss.item()
         scheduler.step()
         avg_total_loss = total_loss / len(dataloader)
+        losses.append(avg_total_loss)
         lr = scheduler.get_last_lr()[0]
         if rank == 0:
             print(f'Epoch [{epoch + 1}/{args.epochs}], Total Loss: {avg_total_loss:.4f}, LR: {lr:.6f}')
@@ -84,6 +112,7 @@ def warmup_training(
                     'epoch': epoch + 1,
                     'state_dict': model.state_dict(),
                     'optimizer': optimizer.state_dict(),
+                    'losses': losses
                 },
                 filename=checkpoint_path,
             )
@@ -139,21 +168,22 @@ def main(rank, args):
     ).to(device)
 
     model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
-
-    print_model(model)
-
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # Load checkpoint if exists
     start_epoch = 0
+    losses = []
     if args.resume and os.path.isfile(args.resume):
-        model, optimizer, start_epoch = load_checkpoint(args.resume, model, optimizer)
+        model, optimizer, start_epoch, losses = load_checkpoint(args.resume, model, optimizer)
 
-    warmup_training(model, train_loader, optimizer, scheduler, args, device, test_loader, rank, vqgan_model=vqgan_model, start_epoch=start_epoch)
+    warmup_training(model, train_loader, optimizer, scheduler, args, device, test_loader, rank, vqgan_model=vqgan_model, start_epoch=start_epoch, losses=losses)
+
+    if rank == 0:
+        plot_losses(losses, os.path.join(args.log_dir, 'training_losses.png'))
+        plot_reconstructions(model, test_loader, device)
 
     dist.destroy_process_group()
-
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
@@ -162,7 +192,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Initial learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
-    parser.add_argument('--epochs', type=int, default=101, help='Number of warmup epochs')
+    parser.add_argument('--epochs', type=int, default=60, help='Number of epochs')
     parser.add_argument('--latent_dim', type=int, default=256, help='Dimensionality of the latent space')
     parser.add_argument('--image_size', type=int, default=256, help='Size of the input images')
     parser.add_argument('--patch_size', type=int, default=32, help='Size of each image patch')
@@ -193,7 +223,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.resume == '':
-        args.resume = f'{here}/mbin-warmup/{args.model_type}/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
+        args.resume = f'{here}/mbin-nobook/{args.model_type}/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
         ensure_folder(args.resume)
     check_pt()
 
