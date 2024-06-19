@@ -6,8 +6,6 @@ import os
 from data import load_data, generate_sparsity_plot, plot_reconstructions
 from hiq import print_model
 
-
-
 class SparseL1Autoencoder(nn.Module):
     """
     🌳 SparseL1Autoencoder<all params:218084>
@@ -33,17 +31,17 @@ class SparseL1Autoencoder(nn.Module):
             nn.Linear(100, 28 * 28),
             nn.Unflatten(1, (28, 28))
         )
+        self.sigmoid_output = None
 
     def forward(self, x):
         x = self.encoder(x)
+        self.sigmoid_output = x
         x = self.decoder(x)
         return x
 
-
-def l1_regularization(model, l1_lambda):
-    l1_norm = sum(p.abs().sum() for p in model.parameters())
+def l1_regularization(output, l1_lambda):
+    l1_norm = output.abs().sum()
     return l1_lambda * l1_norm
-
 
 def train(model, criterion, optimizer, train_loader, val_loader, num_epochs, l1_lambda, checkpoint_path):
     train_losses = []
@@ -55,7 +53,14 @@ def train(model, criterion, optimizer, train_loader, val_loader, num_epochs, l1_
         for X_batch, _ in train_loader:
             optimizer.zero_grad()
             outputs = model(X_batch)
-            loss = criterion(outputs, X_batch) + l1_regularization(model, l1_lambda)
+            if epoch==-1:
+                z = outputs[0].view(1, 28, 28)
+                import matplotlib.pyplot as plt
+                plt.imshow(z.permute(1, 2, 0).detach().cpu().numpy())
+                plt.show()
+            #l1_loss = l1_regularization(model.sigmoid_output, l1_lambda)
+            recon_loss = criterion(outputs, X_batch)
+            loss = recon_loss# + l1_loss
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -77,10 +82,10 @@ def train(model, criterion, optimizer, train_loader, val_loader, num_epochs, l1_
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}')
 
         # Save checkpoint
-        torch.save(model.state_dict(), checkpoint_path)
+        if epoch == num_epochs-1:
+            torch.save(model.state_dict(), checkpoint_path)
 
     return train_losses, valid_losses
-
 
 def main(args):
     # Load datasets
@@ -110,12 +115,11 @@ def main(args):
     # Save sparsity plot
     generate_sparsity_plot()
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a sparse L1 autoencoder.")
     parser.add_argument('--dataset', type=str, default="fashion_mnist", choices=['fashion_mnist', 'celeba'],
                         help="Dataset to use ('fashion_mnist' or 'celeba').")
-    parser.add_argument('--batch_size', type=int, default=64, help="Batch size for training.")
+    parser.add_argument('--batch_size', type=int, default=256, help="Batch size for training.")
     parser.add_argument('--epochs', type=int, default=10, help="Number of epochs to train the model.")
     parser.add_argument('--l1_lambda', type=float, default=1e-4, help="Weight for the L1 regularization.")
     args = parser.parse_args()

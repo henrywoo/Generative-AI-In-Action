@@ -38,14 +38,9 @@ if __name__ == "__main__":
     stacked_ae.compile(loss="mse", optimizer="nadam")
     history = stacked_ae.fit(X_train, X_train, epochs=20,
                              validation_data=(X_valid, X_valid))
-
-
-
     plot_reconstructions(stacked_ae)
     save_fig("reconstruction_plot")  # extra code – saves the high res figure
     plt.show()
-
-
     # Save the stacked encoder
     encoder_path = Path("saved_models/stacked_encoder")
     encoder_path.mkdir(parents=True, exist_ok=True)

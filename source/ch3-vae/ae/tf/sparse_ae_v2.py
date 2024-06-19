@@ -11,15 +11,20 @@ _________________________________________________________________
  Layer (type)                Output Shape              Param #   
 =================================================================
  sequential_3 (Sequential)   (None, 300)               108800    
-                                                                 
+
  sequential_4 (Sequential)   (None, 28, 28)            109284    
-                                                                 
+
 =================================================================
 Total params: 218,084
 Trainable params: 218,084
 Non-trainable params: 0
 _________________________________________________________________
+By default, the weights in Keras layers are initialized using the "Glorot Uniform" initializer, also 
+known as Xavier uniform initializer. If you want to specify a different initializer, you can do so 
+by adding the kernel_initializer parameter to your Dense layers.
 """
+
+
 def create_sparse_l1_autoencoder():
     encoder = tf.keras.Sequential([
         tf.keras.layers.Flatten(),
@@ -35,6 +40,7 @@ def create_sparse_l1_autoencoder():
     autoencoder = tf.keras.Sequential([encoder, decoder])
     return autoencoder
 
+
 def train_autoencoder(autoencoder, X_train, X_valid, checkpoint_path, epochs=10):
     autoencoder.compile(loss="mse", optimizer="nadam")
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -46,8 +52,10 @@ def train_autoencoder(autoencoder, X_train, X_valid, checkpoint_path, epochs=10)
     )
     history = autoencoder.fit(X_train, X_train, epochs=epochs,
                               validation_data=(X_valid, X_valid),
+                              batch_size=64,
                               callbacks=[checkpoint_callback])
     return history
+
 
 def plot_sparsity_loss():
     p = 0.1
@@ -68,6 +76,19 @@ def plot_sparsity_loss():
     save_fig("sparsity_loss_plot")
     plt.show()
 
+
+def plot_loss_history(history):
+    plt.style.use("ggplot")
+    plt.plot(history.history['loss'], label='Training Loss', marker='o')
+    plt.plot(history.history['val_loss'], label='Validation Loss', marker='x')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+    save_fig("sparse_ae_loss_vs_epoch_plot")
+    plt.show()
+
+
 def main(checkpoint_path, epochs):
     sparse_l1_ae = create_sparse_l1_autoencoder()
     sparse_l1_ae.compile(loss="mse", optimizer="nadam")
@@ -80,7 +101,8 @@ def main(checkpoint_path, epochs):
         print("Loading model from checkpoint...")
         sparse_l1_ae.load_weights(checkpoint_path)
     else:
-        train_autoencoder(sparse_l1_ae, X_train, X_valid, checkpoint_path, epochs)
+        history = train_autoencoder(sparse_l1_ae, X_train, X_valid, checkpoint_path, epochs)
+        plot_loss_history(history)
 
     plot_reconstructions(sparse_l1_ae)
     save_fig("sparse_ae")
@@ -88,10 +110,14 @@ def main(checkpoint_path, epochs):
 
     plot_sparsity_loss()
 
+
 if __name__ == "__main__":
+    from hiq import set_seed
+    set_seed(has_tf=True)
     parser = argparse.ArgumentParser(description="Train and evaluate a sparse L1 autoencoder.")
-    parser.add_argument("--checkpoint_path", type=str, default="sparse_l1_ae_checkpoint.h5", help="Path to save/load the model checkpoint")
-    parser.add_argument("--epochs", type=int, default=20, help="Number of epochs to train the model")
+    parser.add_argument("--checkpoint_path", type=str, default="sparse_l1_ae_mnist_fashion.h5",
+                        help="Path to save/load the model checkpoint")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs to train the model")
     args = parser.parse_args()
 
     try:

@@ -3,11 +3,12 @@ from config import *
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-
+from hiq import set_seed
 import matplotlib.pyplot as plt
+
+set_seed(has_torch=True)
 
 # Load and preprocess the Fashion MNIST dataset
 transform = transforms.Compose([transforms.ToTensor()])
@@ -25,9 +26,9 @@ valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 # Define the stacked autoencoder
-class StackedAutoencoder(nn.Module):
+class StackedAutoencoderBAD(nn.Module):
     def __init__(self):
-        super(StackedAutoencoder, self).__init__()
+        super().__init__()
         self.encoder = nn.Sequential(
             nn.Flatten(),
             nn.Linear(28 * 28, 100),
@@ -39,13 +40,29 @@ class StackedAutoencoder(nn.Module):
             nn.Linear(30, 100),
             nn.ReLU(),
             nn.Linear(100, 28 * 28),
-            nn.Sigmoid(),  # Use Sigmoid to ensure the output is between 0 and 1
             nn.Unflatten(1, (28, 28))
         )
-
     def forward(self, x):
         x = self.encoder(x)
         x = self.decoder(x)
+        return x
+
+class StackedAutoencoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # encoder
+        self.e1 = nn.Linear(784, 100)
+        self.e2 = nn.Linear(100, 30)
+        # Decoder
+        self.d1 = nn.Linear(30, 100)
+        self.d2 = nn.Linear(100, 784)
+    def forward(self, x):
+        x = x.reshape(-1, 784)
+        x = F.relu(self.e1(x))
+        x = F.relu(self.e2(x))
+        x = F.relu(self.d1(x))
+        x = self.d2(x)
+        x = x.reshape(-1, 1, 28, 28)
         return x
 
 # Instantiate the autoencoder

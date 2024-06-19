@@ -88,3 +88,7 @@ The input tensor of shape `128, 28, 28, 1` undergoes the following transformatio
 3. **Third Conv2D Layer**: `(7, 7, 64)` -> `(7, 7, 16)`
 
 Thus, the final output shape of the encoder is `128, 7, 7, 16`, with the batch size remaining the same (128), the spatial dimensions reduced due to striding, and the number of channels adjusted by the convolutional layers.
+
+
+# Activation regularization vs weight regularization
+

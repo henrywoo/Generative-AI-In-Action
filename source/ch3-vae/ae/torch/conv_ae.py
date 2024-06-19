@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from data import load_data
+from config import save_fig
 
 
 # Define the encoder
@@ -119,6 +120,8 @@ def plot_reconstructions(model, data_loader, num_images=10):
             axes[0, i].axis('off')
             axes[1, i].imshow(outputs[i].reshape(28, 28))
             axes[1, i].axis('off')
+
+        save_fig("conv_ae_reconstructions")
         plt.show()
 
 
