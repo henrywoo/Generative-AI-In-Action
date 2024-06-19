@@ -139,7 +139,7 @@ def warmup_training(
                 break
             images = images.to(device)
             optimizer.zero_grad()
-            reconstructed, quantized_tokens, encoder_outputs = model(images)
+            reconstructed, quantized_tokens, encoder_outputs = model(images, return_recon_images=True)
             if os.getenv('DEBUG', 'False').lower() in ('true', '1', 't') and not showed_attention:
                 attn_weights = model.module.encoder.transformer.layers[-1][0].attn_weights
                 print(attn_weights.shape) # torch.Size([128, 3, 288, 288])
@@ -242,6 +242,8 @@ def main(rank, args):
 
     if args.model_type == 'base':
         from models import TiTok
+    elif args.model_type == 'v2':
+        from models_v2 import TiTok
     elif args.model_type == 'sinusoidal':
         from models_sincos_pos import TiTok
     elif args.model_type == 'repeat_mask':
