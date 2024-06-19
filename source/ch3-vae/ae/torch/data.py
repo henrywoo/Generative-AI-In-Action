@@ -90,9 +90,9 @@ def plot_reconstructions(model, test_loader, n_images=5):
         fig = plt.figure(figsize=(n_images * 1.5, 3))
         for image_index in range(n_images):
             plt.subplot(2, n_images, 1 + image_index)
-            plt.imshow(images[image_index].cpu().numpy().reshape(28, 28), cmap="binary")
+            plt.imshow(images[image_index].cpu().numpy().reshape(28, 28))
             plt.axis("off")
             plt.subplot(2, n_images, 1 + n_images + image_index)
-            plt.imshow(reconstructions[image_index].cpu().numpy().reshape(28, 28), cmap="binary")
+            plt.imshow(reconstructions[image_index].cpu().numpy().reshape(28, 28))
             plt.axis("off")
         plt.show()

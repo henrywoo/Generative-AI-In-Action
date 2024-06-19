@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
+from config import save_fig
 import matplotlib.pyplot as plt
 import argparse
 import os
 import torch.nn.functional as F
-from data import load_data, generate_sparsity_plot#, plot_reconstructions
-
+from data import load_data, generate_sparsity_plot
+from hiq import print_model, deterministic
 
 class KLDivergenceRegularizer:
     def __init__(self, weight, target):
@@ -51,20 +51,32 @@ class SparseKLAutoencoder(nn.Module):
 def train(model, criterion, optimizer, train_loader, val_loader, num_epochs, checkpoint_path):
     train_losses = []
     valid_losses = []
+    train_recon_losses = []
+    train_kld_losses = []
 
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
+        running_recon_loss = 0.0
+        running_kld_loss = 0.0
         for X_batch, _ in train_loader:
             optimizer.zero_grad()
             outputs = model(X_batch)
-            loss = criterion(outputs, X_batch) + model.regularization_loss(X_batch)
+            recon_loss = criterion(outputs, X_batch)
+            kld_loss = model.regularization_loss(X_batch)
+            loss = recon_loss + kld_loss
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            running_recon_loss += recon_loss.item()
+            running_kld_loss += kld_loss.item()
 
         avg_train_loss = running_loss / len(train_loader)
+        avg_train_recon_loss = running_recon_loss / len(train_loader)
+        avg_train_kld_loss = running_kld_loss / len(train_loader)
         train_losses.append(avg_train_loss)
+        train_recon_losses.append(avg_train_recon_loss)
+        train_kld_losses.append(avg_train_kld_loss)
 
         model.eval()
         running_val_loss = 0.0
@@ -77,12 +89,35 @@ def train(model, criterion, optimizer, train_loader, val_loader, num_epochs, che
         avg_val_loss = running_val_loss / len(val_loader)
         valid_losses.append(avg_val_loss)
 
-        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_train_loss:.4f}, Validation Loss: {avg_val_loss:.4f}')
+        print(
+            f'Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_train_loss:.4f}, Recon Loss: {avg_train_recon_loss:.4f}, KLD Loss: {avg_train_kld_loss:.4f}, Validation Loss: {avg_val_loss:.4f}')
 
         # Save checkpoint
-        torch.save(model.state_dict(), checkpoint_path)
+        if epoch == num_epochs - 1:
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'train_losses': train_losses,
+                'valid_losses': valid_losses,
+                'train_recon_losses': train_recon_losses,
+                'train_kld_losses': train_kld_losses
+            }, checkpoint_path)
 
-    return train_losses, valid_losses
+    return train_losses, valid_losses, train_recon_losses, train_kld_losses
+
+
+def plot_losses(train_losses, valid_losses, train_recon_losses, train_kld_losses):
+    plt.style.use('ggplot')
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Total Train Loss', marker='o')
+    plt.plot(valid_losses, label='Validation Loss', marker='x')
+    plt.plot(train_recon_losses, label='Train Recon Loss', marker='v')
+    plt.plot(train_kld_losses, label='Train KLD Loss', marker='H')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Losses over Epochs')
+    save_fig("sparse_ae_kld_loss")
+    plt.show()
 
 
 def plot_reconstructions(model, test_loader, n_images=5):
@@ -108,6 +143,7 @@ def plot_reconstructions(model, test_loader, n_images=5):
             plt.axis("off")
         plt.show()
 
+
 def main(args):
     # Load datasets
     train_loader, val_loader, test_loader = load_data(args.dataset, args.batch_size)
@@ -115,20 +151,33 @@ def main(args):
     # Instantiate the model
     kld_reg = KLDivergenceRegularizer(weight=args.kld_weight, target=torch.tensor(args.kld_target))
     model = SparseKLAutoencoder(kld_reg)
+    print_model(model)
 
     # Load checkpoint if available
-    checkpoint_path = f"{args.dataset}_sparse_ae_kl.pth"
+    checkpoint_path = f"mbin/{args.dataset}_sparse_ae_kl.pth"
     if os.path.exists(checkpoint_path):
-        model.load_state_dict(torch.load(checkpoint_path))
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        train_losses = checkpoint['train_losses']
+        valid_losses = checkpoint['valid_losses']
+        train_recon_losses = checkpoint['train_recon_losses']
+        train_kld_losses = checkpoint['train_kld_losses']
         print(f"Loaded checkpoint from {checkpoint_path}")
+
+        # Plot losses
+        plot_losses(train_losses, valid_losses, train_recon_losses, train_kld_losses)
     else:
         # Loss function and optimizer
         criterion = nn.MSELoss()
         optimizer = optim.NAdam(model.parameters())
 
         # Train the model
-        train_losses, valid_losses = train(model, criterion, optimizer, train_loader, val_loader, args.epochs,
-                                           checkpoint_path)
+        train_losses, valid_losses, train_recon_losses, train_kld_losses = train(model, criterion, optimizer,
+                                                                                train_loader, val_loader, args.epochs,
+                                                                                checkpoint_path)
+
+        # Plot losses
+        plot_losses(train_losses, valid_losses, train_recon_losses, train_kld_losses)
 
     # Plot reconstructions
     plot_reconstructions(model, test_loader)
