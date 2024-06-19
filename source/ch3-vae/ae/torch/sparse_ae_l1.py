@@ -29,7 +29,7 @@ class SparseL1Autoencoder(nn.Module):
             nn.Linear(300, 100),
             nn.ReLU(),
             nn.Linear(100, 28 * 28),
-            nn.Unflatten(1, (28, 28))
+            nn.Unflatten(1, (1, 28, 28))
         )
         self.sigmoid_output = None
 
