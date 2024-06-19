@@ -940,4 +940,4 @@ class MaskedAutoencoderViT(nn.Module):
 - [GAN 和 VAE 的本质区别是什么？为什么两者总是同时被提起？](https://www.zhihu.com/question/317623081/answer/1994238294)
 - [DALL-E论文笔记](https://www.p-chao.com/2024-01-21/dall-e%e8%ae%ba%e6%96%87%e7%ac%94%e8%ae%b0/#dVAE)
 - [Deep Generative Modeling of Sequential Data with Dynamical Variational Autoencoders 2021](https://dynamicalvae.github.io/tuto_icassp2021/DVAE_tutorial.html#152)
-- https://www.youtube.com/watch?v=wcqLFDXaDO8&ab_channel=Outlier
+- VQ-GAN https://www.youtube.com/watch?v=wcqLFDXaDO8&ab_channel=Outlier

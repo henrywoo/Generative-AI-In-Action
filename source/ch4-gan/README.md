@@ -185,3 +185,8 @@ Repo:
 
 - https://baijiahao.baidu.com/s?id=1756421492448260680&wfr=spider&for=pc
 
+
+## Reference
+
+- VQ-GAN https://www.youtube.com/watch?v=wcqLFDXaDO8&ab_channel=Outlier
+
