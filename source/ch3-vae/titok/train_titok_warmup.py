@@ -5,28 +5,16 @@ import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 from proxy import load_vqgan_model, get_proxy_codes
-from hiq.vis import print_model
-from hiq import ensure_folder
+from hiq import print_model, ensure_folder, deterministic
 from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-from utils import get_dataset, check_pt, get_inception_score, here, load_checkpoint, save_checkpoint
+from utils import get_dataset, check_pt, here, load_checkpoint, save_checkpoint
 import matplotlib.pyplot as plt
 import signal
 import sys
-
-
-def calculate_fid(real_features, fake_features):
-    mu1, sigma1 = np.mean(real_features, axis=0), np.cov(real_features, rowvar=False)
-    mu2, sigma2 = np.mean(fake_features, axis=0), np.cov(fake_features, rowvar=False)
-    ssdiff = np.sum((mu1 - mu2) ** 2.0)
-    covmean = sqrtm(sigma1.dot(sigma2))
-    if np.iscomplexobj(covmean):
-        covmean = covmean.real
-    fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
-    return fid
 
 
 def normalize_image(image_tensor):
@@ -66,7 +54,7 @@ def warmup_training(
     ensure_folder(csv_name)
     metrics_file = os.path.join(args.log_dir, csv_name)
 
-    for epoch in range(start_epoch, args.num_epochs_warmup):
+    for epoch in range(start_epoch, args.epochs):
         total_loss = 0
         showed_attention = False
         for i, (images, labels) in enumerate(tqdm(dataloader)):
@@ -89,7 +77,7 @@ def warmup_training(
         avg_total_loss = total_loss / len(dataloader)
         lr = scheduler.get_last_lr()[0]
         if rank == 0:
-            print(f'Epoch [{epoch + 1}/{args.num_epochs_warmup}], Total Loss: {avg_total_loss:.4f}, LR: {lr:.6f}')
+            print(f'Epoch [{epoch + 1}/{args.epochs}], Total Loss: {avg_total_loss:.4f}, LR: {lr:.6f}')
             # Save checkpoint
             checkpoint_path = args.resume
             save_checkpoint(
@@ -165,7 +153,7 @@ def main(rank, args):
     print_model(model)
 
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epochs_warmup)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # Load checkpoint if exists
     start_epoch = 0
@@ -181,10 +169,10 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
 
     parser = argparse.ArgumentParser(description="Train TiTok Model")
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training')
+    parser.add_argument('--batch_size', type=int, default=256, help='Batch size for training')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Initial learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay for optimizer')
-    parser.add_argument('--num_epochs_warmup', type=int, default=101, help='Number of warmup epochs')
+    parser.add_argument('--epochs', type=int, default=101, help='Number of warmup epochs')
     parser.add_argument('--latent_dim', type=int, default=256, help='Dimensionality of the latent space')
     parser.add_argument('--image_size', type=int, default=256, help='Size of the input images')
     parser.add_argument('--patch_size', type=int, default=32, help='Size of each image patch')

@@ -2,23 +2,23 @@ import torch
 import torch.nn as nn
 
 class Detokenizer(nn.Module):
-    def __init__(self, input_dim, output_dim, grid_size):
+    def __init__(self, input_dim, grid_size, B):
         super().__init__()
-        self.linear = nn.Linear(32, 16 * 16)
-        torch.nn.init.normal_(self.linear.weight, std=0.02)
-        torch.nn.init.normal_(self.linear.bias, std=0.02)
+        self.linear = nn.Linear(input_dim, grid_size * grid_size)
+        self.grid_size = grid_size
+        self.B = B
 
     def forward(self, x):
-        rr = x.transpose(1, 2)  # Shape: (64, 256, 32)
-        ff = self.linear(rr)  # Shape: (64, 256, 256)
-        return ff.view(64, 256, 16, 16)
+        r = x.transpose(1, 2)  # Shape: (64, 256, 32)
+        f = self.linear(r)  # Shape: (64, 256, 256)
+        return f.view(self.B, -1, self.grid_size, self.grid_size) # -1 should be 256, HD
 
 
 
 class TiTok(nn.Module):
     def __init__(self, image_size=256, patch_size=32, in_chans=3, dim=1024, depth=6, heads=16, mlp_dim=2048, K=32, B=64,
                  codebook=None):
-        super(TiTok, self).__init__()
+        super().__init__()
         self.image_size = image_size
         self.patch_size = patch_size
         self.dim = dim
@@ -51,25 +51,7 @@ class TiTok(nn.Module):
         self.codebook = codebook
         assert codebook is not None and codebook.shape[0] == self.num_codes and codebook.shape[1] == self.codebook_dim
         self.codebook.requires_grad = False
-
-        self.detokenizer = Detokenizer(input_dim=K, output_dim=K, grid_size=16)
-        self.initialize_weights()
-
-    def initialize_weights(self):
-        w = self.projection.weight.data
-        torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
-        torch.nn.init.normal_(self.encoder_pos_embedding, std=0.02)
-        torch.nn.init.normal_(self.decoder_pos_embedding, std=0.02)
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            torch.nn.init.xavier_uniform_(m.weight)
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
+        self.detokenizer = Detokenizer(input_dim=K, grid_size=16, B=self.B)
 
     def straight_through_estimator(self, x, indices):
         quantized = self.codebook[indices]
