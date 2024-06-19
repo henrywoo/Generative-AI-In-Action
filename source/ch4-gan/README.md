@@ -156,26 +156,39 @@ While common in supervised learning, using a separate validation set in GANs is 
 
 VQGAN (Vector Quantized Generative Adversarial Network) is a neural network architecture designed for **high-quality image synthesis**. It combines elements of VQ-VAE (Vector Quantized Variational Autoencoder) with GANs (Generative Adversarial Networks).
 
-### Problems VQGAN Solves
-1. **Image Synthesis Quality**: VQGAN generates high-quality images that are often more detailed and realistic compared to traditional GANs.
-2. **Compression**: By using a discrete latent space, VQGAN can compress images efficiently, which is useful for tasks requiring high-quality image reconstruction from a compressed representation.
+### 🐒 Problems VQGAN Solves
+1. **Image Synthesis Quality**: VQGAN generates _high-quality images_ that are often more detailed and realistic compared to traditional GANs.
+2. **Compression**: By using a discrete latent space, VQGAN can compress images efficiently, which is useful for tasks requiring _high-quality image reconstruction_ from a compressed representation.
 3. **Training Stability**: The integration of VQ-VAE and GAN helps improve the stability of training, a common challenge in GAN-based models.
-4. **Representation Learning**: VQGAN learns a discrete representation of the image, which can be beneficial for various downstream tasks such as image editing, style transfer, and conditional image generation.
+4. **Representation Learning**: VQGAN learns a _discrete representation_ of the image, which can be beneficial for various downstream tasks such as image editing, style transfer, and conditional image generation.
 
-### Cons of VQGAN
+### 🦦 Loss Functions
+
+| **Loss Function**                  | **Description**                                                                                  |
+|------------------------------------|--------------------------------------------------------------------------------------------------|
+| **Reconstruction Loss**            | Measures the pixel-wise differences between the original and reconstructed images (MSE or L1).  |
+| **Perceptual Loss💥**              | Compares high-level features from a pre-trained neural network (like VGG) between original and reconstructed images. |
+| **Adversarial Loss💥**             | Used to train the generator and discriminator in a GAN setup, encouraging the generator to produce realistic images. |
+| **Codebook Loss**                  | Ensures encoder outputs are close to the nearest codebook vectors, includes commitment and embedding losses. |
+| **Total Variation Loss**(optional) | Reduces noise and smooths the generated images by penalizing the total variation in image intensity. |
+
+**Note:** The specific implementation details and weighting of each loss function can vary depending on the exact VQGAN architecture and training objectives.
+
+
+### 🌋 Cons of VQGAN
 1. **Complexity**: The architecture is more complex compared to traditional GANs or VAEs, which can make it harder to implement and understand.
 2. **Computationally Intensive**: Training VQGAN requires significant computational resources, including powerful GPUs and large amounts of memory. The training process can be time-consuming due to the complexity of the model and the need for extensive tuning of hyperparameters.
-3**Discrete Bottleneck**: While the discrete latent space has benefits, it can also introduce challenges in terms of gradient propagation and requires careful handling.
-4**Scalability**: Scaling VQGAN to very high resolutions or large datasets can be challenging and resource-intensive.
+3. **Discrete Bottleneck**: While the discrete latent space has benefits, it can also introduce challenges in terms of gradient propagation and requires careful handling.
+4. **Scalability**: Scaling VQGAN to very high resolutions or large datasets can be challenging and resource-intensive.
 
 Repo:
 - https://github.com/CompVis/taming-transformers
 - https://github.com/Shubhamai/pytorch-vqgan
 - https://github.com/joanrod/ocr-vqgan
 
-
-
 ![](vqgan.gif)
+
+Credit: - VQ-GAN | PyTorch Implementation https://www.youtube.com/watch?v=_Br5WRwUz_U&ab_channel=Outlier
 
 ## StyleGAN Series (Chinese)
 
