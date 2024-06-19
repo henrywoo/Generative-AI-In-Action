@@ -26,9 +26,10 @@ valid_loader = DataLoader(valid_dataset, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 # Define the stacked autoencoder
-class StackedAutoencoderBAD(nn.Module):
-    def __init__(self):
+class StackedAutoencoder(nn.Module):
+    def __init__(self, C=1):
         super().__init__()
+        self.C=C
         self.encoder = nn.Sequential(
             nn.Flatten(),
             nn.Linear(28 * 28, 100),
@@ -40,29 +41,11 @@ class StackedAutoencoderBAD(nn.Module):
             nn.Linear(30, 100),
             nn.ReLU(),
             nn.Linear(100, 28 * 28),
-            nn.Unflatten(1, (28, 28))
+            nn.Unflatten(1, (self.C, 28, 28))
         )
     def forward(self, x):
         x = self.encoder(x)
         x = self.decoder(x)
-        return x
-
-class StackedAutoencoder(nn.Module):
-    def __init__(self):
-        super().__init__()
-        # encoder
-        self.e1 = nn.Linear(784, 100)
-        self.e2 = nn.Linear(100, 30)
-        # Decoder
-        self.d1 = nn.Linear(30, 100)
-        self.d2 = nn.Linear(100, 784)
-    def forward(self, x):
-        x = x.reshape(-1, 784)
-        x = F.relu(self.e1(x))
-        x = F.relu(self.e2(x))
-        x = F.relu(self.d1(x))
-        x = self.d2(x)
-        x = x.reshape(-1, 1, 28, 28)
         return x
 
 # Instantiate the autoencoder
@@ -76,8 +59,7 @@ criterion = nn.MSELoss()
 num_epochs = 20
 for epoch in range(num_epochs):
     autoencoder.train()
-    for batch in train_loader:
-        inputs, _ = batch
+    for inputs, _ in train_loader:
         optimizer.zero_grad()
         outputs = autoencoder(inputs)
         loss = criterion(outputs, inputs)
@@ -87,8 +69,7 @@ for epoch in range(num_epochs):
     autoencoder.eval()
     valid_loss = 0
     with torch.no_grad():
-        for batch in valid_loader:
-            inputs, _ = batch
+        for inputs, _ in valid_loader:
             outputs = autoencoder(inputs)
             valid_loss += criterion(outputs, inputs).item()
     valid_loss /= len(valid_loader)
@@ -113,5 +94,5 @@ def plot_reconstructions(model, images, n_images=5):
 # Get some validation images
 valid_images, _ = next(iter(valid_loader))
 plot_reconstructions(autoencoder, valid_images, n_images=5)
-save_fig("reconstruction_plot")
+save_fig("ae_reconstruction_plot")
 plt.show()
