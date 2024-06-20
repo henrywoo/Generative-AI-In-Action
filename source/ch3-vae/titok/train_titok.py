@@ -1,3 +1,5 @@
+from hiq import ensure_folder, random_port, set_seed, print_model
+set_seed(seed=1979, has_torch=True)
 import os
 import argparse
 import torch
@@ -6,8 +8,6 @@ import torch.optim as optim
 import pandas as pd
 from torchvision.models import inception_v3
 from proxy import load_vqgan_model
-from hiq.vis import print_model
-from hiq import ensure_folder, random_port
 from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
@@ -146,8 +146,10 @@ def warmup_training(
                 print(attn_weights.shape)  # torch.Size([128, 3, 288, 288])
                 plot_attention(images[0], attn_weights[0, 0])
                 showed_attention = True
-            #recon_loss = mse_loss(reconstructed, images)
-            recon_loss = perceptual_loss(reconstructed, images)
+            if 1:
+                recon_loss = mse_loss(reconstructed, images)
+            else:
+                recon_loss = perceptual_loss(reconstructed, images)
             commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta)
             loss = recon_loss + commit_loss
             loss.backward()
@@ -268,7 +270,7 @@ def main(rank, args):
         codebook=vqgan_model.quantize.embedding.weight,
     ).to(device)
 
-    model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
+    model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=False)
 
     print_model(model)
 
@@ -323,7 +325,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.resume == '':
-        args.resume = f'{here}/mbin/{args.model_type}/checkpoint_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
+        args.resume = f'{here}/mbin/{args.model_type}/checkpoint_{args.depth}_{args.batch_size}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
         ensure_folder(args.resume)
     check_pt()
 
