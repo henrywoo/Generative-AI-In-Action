@@ -23,3 +23,21 @@ def perceptual_loss(reconstructed, original):
     # Compute the perceptual loss
     loss = F.mse_loss(features_reconstructed, features_original)
     return loss
+
+
+if __name__ == '__main__':
+    # Initialize dummy data
+    reconstructed = torch.rand(1, 3, 224, 224)
+    original = torch.rand(1, 3, 224, 224)
+
+    # Move to device (CPU or GPU)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    reconstructed = reconstructed.to(device)
+    original = original.to(device)
+
+    # Call the perceptual loss function
+    loss = perceptual_loss(reconstructed, original)
+
+    # Check the output
+    print(f"Perceptual Loss: {loss.item()}")
+

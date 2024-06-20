@@ -260,6 +260,8 @@ def main(rank, args):
         from models import TiTok
     elif args.model_type == 'v2':
         from models_v2 import TiTok
+    elif args.model_type == 'v3':
+        from models_v3 import TiTok
     elif args.model_type == 'sinusoidal':
         from models_sincos_pos import TiTok
     elif args.model_type == 'repeat_mask':
