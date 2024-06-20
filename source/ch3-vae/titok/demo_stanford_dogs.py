@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 from stanford_dogs import StanfordDogsDataset
 
 
-
-
 def show_sample_image_from_stanford_dogs():
     # Define the transformation
     transform = transforms.Compose([

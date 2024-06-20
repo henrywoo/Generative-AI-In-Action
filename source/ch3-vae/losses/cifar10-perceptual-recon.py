@@ -1,4 +1,3 @@
-# Step 1: Load the CIFAR-10 Dataset
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,6 +5,11 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 from torch.utils.data import DataLoader
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage.metrics import structural_similarity as ssim
+import os
+from hiq import print_model
 
 # Transformations for CIFAR-10
 transform = transforms.Compose([
@@ -20,8 +24,6 @@ test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, trans
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=2)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=2)
 
-
-# Step 2: Define a Simple Autoencoder
 class SimpleAutoencoder(nn.Module):
     def __init__(self):
         super(SimpleAutoencoder, self).__init__()
@@ -66,11 +68,20 @@ def perceptual_loss(reconstructed, original):
     loss = F.mse_loss(features_reconstructed, features_original)
     return loss
 
-# Step 3: Training the Models
+# Function to save a model
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
+
+# Function to load a model
+def load_model(model, path):
+    model.load_state_dict(torch.load(path))
+
 # Train the autoencoder with perceptual loss
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 autoencoder_perceptual = SimpleAutoencoder().to(device)
-optimizer = torch.optim.Adam(autoencoder_perceptual.parameters(), lr=1e-3)
+print_model(autoencoder_perceptual)
+optimizer_perceptual = torch.optim.Adam(autoencoder_perceptual.parameters(), lr=1e-3)
+perceptual_model_path = 'autoencoder_perceptual.pth'
 
 def train_perceptual(model, dataloader, optimizer, num_epochs=5):
     model.train()
@@ -83,12 +94,17 @@ def train_perceptual(model, dataloader, optimizer, num_epochs=5):
             loss.backward()
             optimizer.step()
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
+    save_model(model, perceptual_model_path)
 
-train_perceptual(autoencoder_perceptual, train_loader, optimizer)
+if not os.path.exists(perceptual_model_path):
+    train_perceptual(autoencoder_perceptual, train_loader, optimizer_perceptual)
+else:
+    load_model(autoencoder_perceptual, perceptual_model_path)
 
 # Train the autoencoder with reconstruction loss
 autoencoder_reconstruction = SimpleAutoencoder().to(device)
-optimizer = torch.optim.Adam(autoencoder_reconstruction.parameters(), lr=1e-3)
+optimizer_reconstruction = torch.optim.Adam(autoencoder_reconstruction.parameters(), lr=1e-3)
+reconstruction_model_path = 'autoencoder_reconstruction.pth'
 
 def train_reconstruction(model, dataloader, optimizer, num_epochs=5):
     model.train()
@@ -101,15 +117,17 @@ def train_reconstruction(model, dataloader, optimizer, num_epochs=5):
             loss.backward()
             optimizer.step()
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
+    save_model(model, reconstruction_model_path)
 
-train_reconstruction(autoencoder_reconstruction, train_loader, optimizer)
+if not os.path.exists(reconstruction_model_path):
+    train_reconstruction(autoencoder_reconstruction, train_loader, optimizer_reconstruction)
+else:
+    load_model(autoencoder_reconstruction, reconstruction_model_path)
 
-# Step 4: Evaluate the Models
 # Define PSNR and SSIM calculation functions
-import numpy as np
-from skimage.metrics import structural_similarity as ssim
-
 def calculate_psnr(img1, img2):
+    img1 = img1.permute(1, 2, 0).cpu().numpy()
+    img2 = img2.permute(1, 2, 0).cpu().numpy()
     mse = np.mean((img1 - img2) ** 2)
     if mse == 0:
         return 100
@@ -119,9 +137,10 @@ def calculate_psnr(img1, img2):
 def calculate_ssim(img1, img2):
     img1 = img1.permute(1, 2, 0).cpu().numpy()
     img2 = img2.permute(1, 2, 0).cpu().numpy()
-    return ssim(img1, img2, multichannel=True)
+    ssim_value, ssim_map = ssim(img1, img2, win_size=7, multichannel=True, channel_axis=-1, full=True, data_range=img1.max() - img1.min())
+    return ssim_value
 
-# Test the models and compare results
+# Run the models and compare results
 def run_models(model_perceptual, model_reconstruction, dataloader):
     model_perceptual.eval()
     model_reconstruction.eval()
@@ -144,29 +163,31 @@ def run_models(model_perceptual, model_reconstruction, dataloader):
     ssim_reconstruction /= num_images
     return psnr_perceptual, ssim_perceptual, psnr_reconstruction, ssim_reconstruction
 
-psnr_perceptual, ssim_perceptual, psnr_reconstruction, ssim_reconstruction = run_models(
-    autoencoder_perceptual, autoencoder_reconstruction, test_loader
-)
+if 0:
+    psnr_perceptual, ssim_perceptual, psnr_reconstruction, ssim_reconstruction = run_models(
+        autoencoder_perceptual, autoencoder_reconstruction, test_loader
+    )
 
-print(f"PSNR (Perceptual): {psnr_perceptual}, SSIM (Perceptual): {ssim_perceptual}")
-print(f"PSNR (Reconstruction): {psnr_reconstruction}, SSIM (Reconstruction): {ssim_reconstruction}")
-
-# Step 5: Visual Inspection
-import matplotlib.pyplot as plt
-
-def show_images(original, reconstructed_perceptual, reconstructed_reconstruction):
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    axes[0].imshow(original.permute(1, 2, 0).cpu().numpy())
-    axes[0].set_title('Original')
-    axes[1].imshow(reconstructed_perceptual.permute(1, 2, 0).cpu().numpy())
-    axes[1].set_title('Perceptual Loss')
-    axes[2].imshow(reconstructed_reconstruction.permute(1, 2, 0).cpu().numpy())
-    axes[2].set_title('Reconstruction Loss')
-    plt.show()
+    print(f"PSNR (Perceptual): {psnr_perceptual}, SSIM (Perceptual): {ssim_perceptual}")
+    print(f"PSNR (Reconstruction): {psnr_reconstruction}, SSIM (Reconstruction): {ssim_reconstruction}")
 
 # Visualize results for a batch of test images
+def show_images(original, reconstructed_perceptual, reconstructed_reconstruction):
+    fig, axes = plt.subplots(1, 3, figsize=(9, 3))
+    axes[0].imshow(original.permute(1, 2, 0).cpu().numpy())
+    axes[0].set_title('Original', fontsize=8)
+    axes[0].axis("off")
+    axes[1].imshow(reconstructed_perceptual.permute(1, 2, 0).detach().cpu().numpy())
+    axes[1].set_title('Via Perceptual Loss', fontsize=8)
+    axes[1].axis("off")
+    axes[2].imshow(reconstructed_reconstruction.permute(1, 2, 0).detach().cpu().numpy())
+    axes[2].set_title('Via Reconstruction Loss', fontsize=8)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.show()
+
 data_iter = iter(test_loader)
-images, _ = data_iter.next()
+images, _ = next(data_iter)
 images = images.to(device)
 
 outputs_perceptual = autoencoder_perceptual(images)
