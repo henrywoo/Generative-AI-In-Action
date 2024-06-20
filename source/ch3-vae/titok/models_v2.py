@@ -8,11 +8,6 @@ from torch.nn import Module, ModuleList
 from einops.layers.torch import Rearrange
 from einops import rearrange, repeat, pack, unpack
 
-from vector_quantize_pytorch import (
-    VectorQuantize as VQ,
-    LFQ
-)
-
 from x_transformers import Encoder
 
 
