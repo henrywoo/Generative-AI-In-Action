@@ -84,12 +84,12 @@ def plot_combined(image_tensors, recon_tensors, csv_file, i, args, task="recon")
 
         # Original Image Plot
         axs2[0, idx].imshow(image)
-        axs2[0, idx].set_title(f"Original Image {idx+1}")
+        axs2[0, idx].set_title(f"Original {idx+1}", fontsize=8)
         axs2[0, idx].axis('off')
 
         # Reconstructed Image Plot
         axs2[1, idx].imshow(recon_image)
-        axs2[1, idx].set_title(f"Reconstructed Image {idx+1}")
+        axs2[1, idx].set_title(f"Reconstructed {idx+1}", fontsize=8)
         axs2[1, idx].axis('off')
 
     plt.tight_layout()
