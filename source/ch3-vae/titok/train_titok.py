@@ -338,7 +338,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.resume == '':
-        args.resume = f'{here}/mbin/{args.model_type}-{args.batch_size}/checkpoint_{args.depth}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
+        args.resume = f'{here}/mbin/{args.model_type}-{args.batch_size}/{args.model_type}_{args.depth}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
         ensure_folder(args.resume)
     check_pt()
 
