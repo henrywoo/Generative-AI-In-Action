@@ -11,4 +11,4 @@ omegaconf
 pandas
 matplotlib
 datasets
-
+x_transformers

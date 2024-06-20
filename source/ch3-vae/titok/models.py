@@ -62,6 +62,13 @@ class TiTok(nn.Module):
         quantized = self.codebook[indices]
         return x + (quantized - x).detach()
 
+    def vq(self, latents):
+        self.codebook = self.codebook.to(latents.device)
+        distances = torch.cdist(latents, self.codebook)
+        indices = distances.argmin(dim=-1)
+        quantized_tokens = self.straight_through_estimator(latents, indices)
+        return quantized_tokens, indices
+
     def forward(self, x):
         B, C, H0, W0 = x.shape
         assert C == self.in_chans

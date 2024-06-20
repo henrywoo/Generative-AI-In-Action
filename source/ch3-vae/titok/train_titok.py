@@ -139,7 +139,7 @@ def warmup_training(
                 break
             images = images.to(device)
             optimizer.zero_grad()
-            reconstructed, quantized_tokens, encoder_outputs = model(images, return_recon_images=True)
+            reconstructed, quantized_tokens, encoder_outputs = model(images)
             if os.getenv('DEBUG', 'False').lower() in ('true', '1', 't') and not showed_attention:
                 attn_weights = model.module.encoder.transformer.layers[-1][0].attn_weights
                 print(attn_weights.shape) # torch.Size([128, 3, 288, 288])

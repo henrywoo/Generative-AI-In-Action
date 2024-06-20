@@ -95,12 +95,12 @@ class TiTok(Module):
             **enc_kwargs
         )
 
-        self.vq = VQ(
+        """self.vq = VQ(
             dim=dim,
             codebook_dim=dim,
             codebook_size=codebook_size,
             **vq_kwargs
-        )
+        )"""
 
         self.decoder = Encoder(
             dim=dim,
@@ -112,6 +112,12 @@ class TiTok(Module):
             nn.Linear(dim, dim_patch),
             Rearrange('b h w (c p1 p2) -> b c (h p1) (w p2)', p1=patch_size, p2=patch_size)
         )
+
+        self.codebook_dim = codebook.shape[1] if codebook is not None else dim
+        self.num_codes = codebook.shape[0] if codebook is not None else 1024
+        self.codebook = codebook
+        assert codebook is not None and codebook.shape[0] == self.num_codes and codebook.shape[1] == self.codebook_dim
+        self.codebook.requires_grad = False
 
     @torch.no_grad()
     def tokenize(self, images):
@@ -143,11 +149,21 @@ class TiTok(Module):
         recon = self.tokens_to_image(tokens)
         return recon
 
+    def straight_through_estimator(self, x, indices):
+        quantized = self.codebook[indices]
+        return x + (quantized - x).detach()
+
+    def vq(self, latents):
+        self.codebook = self.codebook.to(latents.device)
+        distances = torch.cdist(latents, self.codebook)
+        indices = distances.argmin(dim=-1)
+        quantized_tokens = self.straight_through_estimator(latents, indices)
+        return quantized_tokens, indices
+
     def forward(
             self,
             images,
-            return_codebook_ids=False,
-            return_recon_images=False
+            return_codebook_ids=False
     ):
         assert images.ndim == 4 and images.shape[-2:] == ((self.image_size,) * 2)
 
@@ -183,7 +199,7 @@ class TiTok(Module):
 
         # vq - usually tokens here, but they do the latents
 
-        quantized, indices, _ = self.vq(latents)
+        quantized, indices = self.vq(latents)
 
         # whether to early return
 
