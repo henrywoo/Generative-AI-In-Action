@@ -2,12 +2,9 @@ from math import sqrt
 
 import torch
 from torch import nn
-import torch.nn.functional as F
-from torch.nn import Module, ModuleList
-
+from torch.nn import Module
 from einops.layers.torch import Rearrange
 from einops import rearrange, repeat, pack, unpack
-
 from x_transformers import Encoder
 
 
