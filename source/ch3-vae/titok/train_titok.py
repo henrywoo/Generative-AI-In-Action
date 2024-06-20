@@ -7,7 +7,7 @@ import pandas as pd
 from torchvision.models import inception_v3
 from proxy import load_vqgan_model
 from hiq.vis import print_model
-from hiq import ensure_folder
+from hiq import ensure_folder, random_port
 from tqdm import tqdm
 import numpy as np
 from scipy.linalg import sqrtm
@@ -93,7 +93,7 @@ def plot_attention(image, attn):
     pad = ((0, 32), (0, 32), (0, 0))  # Pad bottom, right, and no padding for channels
     expanded_image_np = np.pad(image_np, pad_width=pad, mode='constant', constant_values=0)
     attn_resized = attn.cpu().detach().numpy()
-    #attn_resized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min())
+    # attn_resized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min())
     plt.figure(figsize=(4, 4))
     plt.imshow(expanded_image_np)
     plt.imshow(attn_resized, cmap='Reds', alpha=0.3)  # alpha controls the transparency of the overlay
@@ -142,7 +142,7 @@ def warmup_training(
             reconstructed, quantized_tokens, encoder_outputs = model(images)
             if os.getenv('DEBUG', 'False').lower() in ('true', '1', 't') and not showed_attention:
                 attn_weights = model.module.encoder.transformer.layers[-1][0].attn_weights
-                print(attn_weights.shape) # torch.Size([128, 3, 288, 288])
+                print(attn_weights.shape)  # torch.Size([128, 3, 288, 288])
                 plot_attention(images[0], attn_weights[0, 0])
                 showed_attention = True
             recon_loss = mse_loss(reconstructed, images)
@@ -160,7 +160,8 @@ def warmup_training(
         lr = scheduler.get_last_lr()[0]
         if rank == 0:
             print(
-                f'Epoch [{epoch + 1}/{args.num_epochs_warmup}], Total Loss: {avg_total_loss:.4f}, Recon Loss: {avg_recon_loss:.4f}, Commit Loss: {avg_commit_loss:.4f}, LR: {lr:.6f}')
+                f'Epoch [{epoch + 1}/{args.num_epochs_warmup}], Total Loss: {avg_total_loss:.4f}, '
+                f'Recon Loss: {avg_recon_loss:.4f}, Commit Loss: {avg_commit_loss:.4f}, LR: {lr:.6f}')
 
             # Save checkpoint
             checkpoint_path = args.resume
@@ -185,7 +186,7 @@ def warmup_training(
             metrics_df.to_csv(metrics_file, index=False)
 
             if (epoch + 1) % 1 == 0:
-                #print("labels[0]:", labels[0].item())
+                # print("labels[0]:", labels[0].item())
                 plot_combined(images[0], reconstructed[0], metrics_file, epoch + 1, args)
 
             if check_fid:
@@ -222,7 +223,7 @@ def main(rank, args):
     signal.signal(signal.SIGINT, signal_handler)
 
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = str(random_port())
 
     dist.init_process_group(backend='nccl', init_method='env://', world_size=args.world_size, rank=rank)
     torch.cuda.set_device(rank)

@@ -62,49 +62,39 @@ class TiTok(Module):
         enc_depth = depth
         dec_depth = depth
         self.image_size = image_size
-
         assert divisible_by(image_size, patch_size)
-
         dim_patch = channels * patch_size ** 2
         num_tokens = (image_size // patch_size) ** 2
-
         self.latents = nn.Parameter(torch.zeros(K, dim))
         self.pos_emb = nn.Parameter(torch.zeros(num_tokens, dim))
         self.mask_tokens = nn.Parameter(torch.zeros(num_tokens, dim))
-
         nn.init.normal_(self.latents, std=0.02)
         nn.init.normal_(self.pos_emb, std=0.02)
         nn.init.normal_(self.mask_tokens, std=0.02)
-
         self.image_to_tokens = nn.Sequential(
             Rearrange('b c (h p1) (w p2) -> b h w (c p1 p2)', p1=patch_size, p2=patch_size),
             nn.Linear(dim_patch, dim)
         )
-
         self.encoder = Encoder(
             dim=dim,
             depth=enc_depth,
             **enc_kwargs
         )
-
         """self.vq = VQ(
             dim=dim,
             codebook_dim=dim,
             codebook_size=codebook_size,
             **vq_kwargs
         )"""
-
         self.decoder = Encoder(
             dim=dim,
             depth=dec_depth,
             **dec_kwargs
         )
-
         self.tokens_to_image = nn.Sequential(
             nn.Linear(dim, dim_patch),
             Rearrange('b h w (c p1 p2) -> b c (h p1) (w p2)', p1=patch_size, p2=patch_size)
         )
-
         self.codebook_dim = codebook.shape[1] if codebook is not None else dim
         self.num_codes = codebook.shape[0] if codebook is not None else 1024
         self.codebook = codebook
@@ -121,23 +111,14 @@ class TiTok(Module):
 
     def decode(self, latents):
         batch = latents.shape[0]
-
         # append mask tokens
-
         mask_tokens = repeat(self.mask_tokens, 'n d -> b n d', b=batch)
-
         tokens, mask_packed_shape = pack([mask_tokens, latents], 'b * d')
-
         # decode
-
         tokens = self.decoder(tokens)
-
         tokens, _ = unpack(tokens, mask_packed_shape, 'b * d')
-
         tokens = unpack_square_height_width(tokens)
-
         # tokens to image patches
-
         recon = self.tokens_to_image(tokens)
         return recon
 
@@ -158,53 +139,28 @@ class TiTok(Module):
             return_codebook_ids=False
     ):
         assert images.ndim == 4 and images.shape[-2:] == ((self.image_size,) * 2)
-
         batch = images.shape[0]
-        orig_images = images
-
         # image patches to tokens
-
         tokens = self.image_to_tokens(images)
-
         tokens = pack_square_height_width(tokens)
-
         # add absolute positions
-
         pos_emb = repeat(self.pos_emb, 'n d -> b n d', b=batch)
-
         tokens = tokens + pos_emb
-
         # concat latents
-
         latents = repeat(self.latents, 'l d -> b l d', b=batch)
-
         tokens, latents_packed_shape = pack([tokens, latents], 'b * d')
-
         # encoder
-
         tokens = self.encoder(tokens)
-
         # slice out latents and pass through vq as codes
         # this is the important line of code and main proposal of the paper
-
         _, latents = unpack(tokens, latents_packed_shape, 'b * d')
-
         # vq - usually tokens here, but they do the latents
-
         quantized, indices = self.vq(latents)
-
-        # whether to early return
-
         if return_codebook_ids:
             return indices
-
         recon_images = self.decode(quantized)
-
         # reconstruction loss
-
         #recon_loss = F.mse_loss(recon_images, orig_images)
-
         #if not return_recon_images:
         #    return recon_loss
-
         return recon_images, quantized, latents
