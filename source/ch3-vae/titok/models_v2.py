@@ -133,11 +133,7 @@ class TiTok(Module):
         quantized_tokens = self.straight_through_estimator(latents, indices)
         return quantized_tokens, indices
 
-    def forward(
-            self,
-            images,
-            return_codebook_ids=False
-    ):
+    def forward(self, images, return_codebook_ids=False):
         assert images.ndim == 4 and images.shape[-2:] == ((self.image_size,) * 2)
         batch = images.shape[0]
         # image patches to tokens

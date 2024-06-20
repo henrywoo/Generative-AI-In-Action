@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import signal
 import sys
+from loss import perceptual_loss
 
 
 def commitment_loss(encoder_outputs, quantized_vectors, beta=0.25):
@@ -145,7 +146,8 @@ def warmup_training(
                 print(attn_weights.shape)  # torch.Size([128, 3, 288, 288])
                 plot_attention(images[0], attn_weights[0, 0])
                 showed_attention = True
-            recon_loss = mse_loss(reconstructed, images)
+            #recon_loss = mse_loss(reconstructed, images)
+            recon_loss = perceptual_loss(reconstructed, images)
             commit_loss = commitment_loss(encoder_outputs, quantized_tokens, beta)
             loss = recon_loss + commit_loss
             loss.backward()
@@ -187,7 +189,7 @@ def warmup_training(
 
             if (epoch + 1) % 1 == 0:
                 # print("labels[0]:", labels[0].item())
-                plot_combined(images[0], reconstructed[0], metrics_file, epoch + 1, args)
+                plot_combined(images[epoch%2], reconstructed[epoch%2], metrics_file, epoch + 1, args)
 
             if check_fid:
                 model.eval()
