@@ -122,6 +122,7 @@ class TiTok(Module):
         batch = latents.shape[0]
         # append mask tokens
         mask_tokens = repeat(self.mask_tokens, 'n d -> b n d', b=batch)
+        mask_tokens = self.positional_encoding(mask_tokens)
         if 0:
             tokens, mask_packed_shape = pack([mask_tokens, latents], 'b * d')
             # decode
