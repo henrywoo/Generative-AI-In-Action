@@ -47,44 +47,55 @@ def normalize_image(image_tensor):
     return image_tensor
 
 
-def plot_combined(image_tensor, recon_tensor, csv_file, i, args, task="recon"):
+def plot_combined(image_tensors, recon_tensors, csv_file, i, args, task="recon"):
     plt.style.use('ggplot')
     df = pd.read_csv(csv_file)
-    fig, axs = plt.subplots(2, 2, figsize=(18, 8))
 
-    # Average Total Loss Plot
-    axs[0, 0].plot(df['epoch'], df['avg_total_loss'], label='Average Total Loss', marker='o', alpha=0.5)
-    axs[0, 0].plot(df['epoch'], df['recon_loss'], label='Reconstruction Loss', marker='v', alpha=0.5)
-    axs[0, 0].set_title('Average Total & Reconstruction Loss over Epochs', fontsize=10)
-    axs[0, 0].set_xlabel('Epoch')
-    axs[0, 0].set_ylabel('Average Total Loss')
-    axs[0, 0].legend()
+    # First Figure: Losses
+    fig1, axs1 = plt.subplots(2, 1, figsize=(12, 8))
 
-    # Reconstruction and Commitment Loss Plot
-    axs[0, 1].plot(df['epoch'], df['commit_loss'], label='Commitment Loss', marker='x')
-    axs[0, 1].set_title('Commitment Loss over Epochs')
-    axs[0, 1].set_xlabel('Epoch')
-    axs[0, 1].set_ylabel('Loss')
-    axs[0, 1].legend()
+    # Average Total Loss and Reconstruction Loss Plot
+    axs1[0].plot(df['epoch'], df['avg_total_loss'], label='Average Total Loss', marker='o', alpha=0.5)
+    axs1[0].plot(df['epoch'], df['recon_loss'], label='Reconstruction Loss', marker='v', alpha=0.5)
+    axs1[0].set_title('Average Total & Reconstruction Loss over Epochs', fontsize=10)
+    axs1[0].set_xlabel('Epoch')
+    axs1[0].set_ylabel('Average Total Loss')
+    axs1[0].legend()
 
-    # Normalize and Clamp Image Tensors
-    image = normalize_image(image_tensor).permute(1, 2, 0).cpu().detach().numpy()
-    recon_image = normalize_image(recon_tensor).permute(1, 2, 0).cpu().detach().numpy()
-
-    # Original Image Plot
-    axs[1, 0].imshow(image)
-    axs[1, 0].set_title(f"Original Image at Epoch {i}")
-    axs[1, 0].axis('off')
-
-    # Reconstructed Image Plot
-    axs[1, 1].imshow(recon_image)
-    axs[1, 1].set_title(f"Reconstructed Image at Epoch {i}")
-    axs[1, 1].axis('off')
+    # Commitment Loss Plot
+    axs1[1].plot(df['epoch'], df['commit_loss'], label='Commitment Loss', marker='x')
+    axs1[1].set_title('Commitment Loss over Epochs')
+    axs1[1].set_xlabel('Epoch')
+    axs1[1].set_ylabel('Loss')
+    axs1[1].legend()
 
     plt.tight_layout()
-    fname = f"{here}/mbin/{args.model_type}/img/{task}_{i}.png"
-    ensure_folder(fname)
-    plt.savefig(fname)
+    fname1 = f"{here}/mbin/{args.model_type}-{args.batch_size}/img/loss_{task}_{i}.png"
+    ensure_folder(fname1)
+    plt.savefig(fname1)
+    plt.show()
+
+    # Second Figure: Original vs Reconstructed Images
+    fig2, axs2 = plt.subplots(2, 6, figsize=(10, 3.6))
+    # Normalize and Clamp Image Tensors
+    for idx in range(6):
+        image = normalize_image(image_tensors[idx]).permute(1, 2, 0).cpu().detach().numpy()
+        recon_image = normalize_image(recon_tensors[idx]).permute(1, 2, 0).cpu().detach().numpy()
+
+        # Original Image Plot
+        axs2[0, idx].imshow(image)
+        axs2[0, idx].set_title(f"Original Image {idx+1}")
+        axs2[0, idx].axis('off')
+
+        # Reconstructed Image Plot
+        axs2[1, idx].imshow(recon_image)
+        axs2[1, idx].set_title(f"Reconstructed Image {idx+1}")
+        axs2[1, idx].axis('off')
+
+    plt.tight_layout()
+    fname2 = f"{here}/mbin/{args.model_type}-{args.batch_size}/img/ori_vs_recon_{task}_{i}.png"
+    ensure_folder(fname2)
+    plt.savefig(fname2)
     plt.show()
 
 
@@ -110,7 +121,7 @@ def warmup_training(
 ):
     model.train()
     mse_loss = nn.MSELoss()
-    csv_name = f'{here}/mbin/{args.model_type}/metrics_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.csv'
+    csv_name = f'{here}/mbin/{args.model_type}-{args.batch_size}/metrics_{args.depth}_{args.heads}_{args.mlp_dim}_{args.image_size}_{args.K}.csv'
     ensure_folder(csv_name)
     metrics_file = os.path.join(args.log_dir, csv_name)
 
@@ -191,7 +202,7 @@ def warmup_training(
 
             if (epoch + 1) % 1 == 0:
                 # print("labels[0]:", labels[0].item())
-                plot_combined(images[epoch%2], reconstructed[epoch%2], metrics_file, epoch + 1, args)
+                plot_combined(images, reconstructed, metrics_file, epoch + 1, args)
 
             if check_fid:
                 model.eval()
@@ -325,7 +336,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.resume == '':
-        args.resume = f'{here}/mbin/{args.model_type}/checkpoint_{args.depth}_{args.batch_size}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
+        args.resume = f'{here}/mbin/{args.model_type}-{args.batch_size}/checkpoint_{args.depth}_{args.mlp_dim}_{args.image_size}_{args.K}.pth.tar'
         ensure_folder(args.resume)
     check_pt()
 
