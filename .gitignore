@@ -25,3 +25,7 @@ venv/
 source/ch11-llm/security/*
 .git.bk/*
 .git.bk
+*.tgz
+*.jpg
+*.mat
+*/checkpoints/*
