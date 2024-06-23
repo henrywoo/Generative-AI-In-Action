@@ -157,7 +157,7 @@ While common in supervised learning, using a separate validation set in GANs is 
 VQGAN (Vector Quantized Generative Adversarial Network) is a neural network architecture designed for **high-quality image synthesis**. It combines elements of VQ-VAE (Vector Quantized Variational Autoencoder) with GANs (Generative Adversarial Networks).
 
 ### 🐒 Problems VQGAN Solves
-1. **Image Synthesis Quality**: VQGAN generates _high-quality images_ that are often more detailed and realistic compared to traditional GANs.
+1. **Image Synthesis Quality**: VQGAN generates _higher-quality images_ that are often more detailed and realistic compared to traditional GANs.
 2. **Compression**: By using a discrete latent space, VQGAN can compress images efficiently, which is useful for tasks requiring _high-quality image reconstruction_ from a compressed representation.
 3. **Training Stability**: The integration of VQ-VAE and GAN helps improve the stability of training, a common challenge in GAN-based models.
 4. **Representation Learning**: VQGAN learns a _discrete representation_ of the image, which can be beneficial for various downstream tasks such as image editing, style transfer, and conditional image generation.
@@ -187,6 +187,21 @@ Repo:
 - https://github.com/joanrod/ocr-vqgan
 
 ![](vqgan.gif)
+
+### Variants of VQGAN
+
+- [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master)
+
+![](taming_vqgan.png)
+
+- [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py): a reimplementation of [Taming VQGAN](https://arxiv.org/abs/2012.09841)
+with several modifications. The non-local layers are removed from Taming VQGAN for faster speed.
+
+- [Valeo MaskGIT VQGAN](https://github.com/valeoai/Maskgit-pytorch?tab=readme-ov-file): The same as [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master).
+
+- [Open-Muse VQGAN](https://github.com/huggingface/open-muse): The same as [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py).
+
+- [aMUSEd VQGAN](https://github.com/huggingface/amused.git): We trained a 146M parameter VQ-GAN (Esser et al. (2021)) **with no self-attention layers**, a vocab size of 8192, and a latent dimension of 64. Our VQ-GAN downsamples resolutions by 16x, e.g. a 256x256 (512x512) resolution image is reduced to 16x16 (32x32) latent codes. We trained our VQ-GAN for 2.5M steps.
 
 Credit: - VQ-GAN | PyTorch Implementation https://www.youtube.com/watch?v=_Br5WRwUz_U&ab_channel=Outlier
 

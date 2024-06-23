@@ -8,6 +8,7 @@ from torchvision import datasets, transforms
 import shutil
 from model import VariationalAutoencoder
 
+
 # --- Data Handling ---
 def load_data(data_path, batch_size):
     transform = transforms.Compose([transforms.ToTensor()])  # Convert to PyTorch Tensors
@@ -19,9 +20,10 @@ def load_data(data_path, batch_size):
 
     return train_loader, valid_loader
 
+
 # --- Loss Function ---
 def vae_loss(reconstruction, original, mean, log_var):
-    reconstruction_loss = F.mse_loss(reconstruction, original) #, reduction='sum')
+    reconstruction_loss = F.mse_loss(reconstruction, original)  # , reduction='sum')
     kl_divergence = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
     return reconstruction_loss, kl_divergence
 
@@ -47,6 +49,7 @@ def train(model, train_loader, optimizer, device, beta):
     train_kl_loss /= len(train_loader.dataset)
     return train_recon_loss, train_kl_loss
 
+
 def validate(model, valid_loader, device, beta):
     model.eval()
     valid_recon_loss = 0
@@ -64,6 +67,7 @@ def validate(model, valid_loader, device, beta):
     valid_recon_loss /= len(valid_loader.dataset)
     valid_kl_loss /= len(valid_loader.dataset)
     return valid_recon_loss, valid_kl_loss
+
 
 # Define the model, training, and validation functions here...
 class EarlyStopping:

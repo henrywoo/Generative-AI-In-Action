@@ -24,7 +24,7 @@ class TrainVQGAN:
 
         self.prepare_training()
         self.args = args
-        #self.train(args)
+        self.best_loss = float('inf')  # Initialize best loss to infinity
 
     def configure_optimizers(self, args):
         lr = args.learning_rate
@@ -54,12 +54,13 @@ class TrainVQGAN:
             with tqdm(range(len(train_dataset))) as pbar:
                 for i, imgs in zip(pbar, train_dataset):
                     imgs = imgs[0].to(device=args.device)
-                    decoded_images, _, q_loss = self.vqgan(imgs)
 
+                    decoded_images, _, q_loss = self.vqgan(imgs)
                     disc_real = self.discriminator(imgs)
                     disc_fake = self.discriminator(decoded_images)
 
-                    disc_factor = self.vqgan.adopt_weight(args.disc_factor, epoch*steps_per_epoch+i, threshold=args.disc_start)
+                    disc_factor = self.vqgan.adopt_weight(args.disc_factor, epoch * steps_per_epoch + i,
+                                                          threshold=args.disc_start)
 
                     perceptual_loss = self.perceptual_loss(imgs, decoded_images)
                     rec_loss = torch.abs(imgs - decoded_images)
@@ -72,7 +73,7 @@ class TrainVQGAN:
 
                     d_loss_real = torch.mean(F.relu(1. - disc_real))
                     d_loss_fake = torch.mean(F.relu(1. + disc_fake))
-                    gan_loss = disc_factor * 0.5*(d_loss_real + d_loss_fake)
+                    gan_loss = disc_factor * 0.5 * (d_loss_real + d_loss_fake)
 
                     self.opt_vq.zero_grad()
                     vq_loss.backward(retain_graph=True)
@@ -83,7 +84,7 @@ class TrainVQGAN:
                     self.opt_vq.step()
                     self.opt_disc.step()
 
-                    if i % 10 == 0:
+                    if i % 1000 == 0:
                         with torch.no_grad():
                             real_fake_images = torch.cat((imgs[:4], decoded_images.add(1).mul(0.5)[:4]))
                             vutils.save_image(real_fake_images, os.path.join("results", f"{epoch}_{i}.jpg"), nrow=4)
@@ -93,7 +94,13 @@ class TrainVQGAN:
                         GAN_Loss=np.round(gan_loss.cpu().detach().numpy().item(), 3)
                     )
                     pbar.update(0)
-                torch.save(self.vqgan.state_dict(), os.path.join("checkpoints", f"vqgan_epoch_{epoch}.pt"))
+
+                    # Calculate total loss for comparison
+                    total_loss = vq_loss + gan_loss
+                    if total_loss < self.best_loss:
+                        self.best_loss = total_loss
+                        torch.save(self.vqgan.state_dict(), os.path.join("checkpoints", "vqgan_best.pt"))
+                        print(f"New best model saved with loss: {self.best_loss:.5f}")
 
 
 if __name__ == '__main__':
@@ -117,7 +124,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     train_vqgan = TrainVQGAN(args)
-    checkpoint_path = os.path.join("checkpoints", f"vqgan_epoch_99.pt")
+    checkpoint_path = os.path.join("checkpoints", f"vqgan_best.pt")
     if os.path.exists(checkpoint_path):
         print(f"Loading checkpoint from {checkpoint_path}")
         train_vqgan.vqgan.load_state_dict(torch.load(checkpoint_path, map_location=args.device))

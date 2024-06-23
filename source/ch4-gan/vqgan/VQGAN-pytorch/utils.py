@@ -40,13 +40,11 @@ class ImagePaths(Dataset):
         return example
 
 
-def load_data(args):
+def load_data(args, train=True):
     import torchvision.datasets as datasets
     import torchvision.transforms as transforms
+    from torch.utils.data import DataLoader
 
-    """
-    train_data = ImagePaths(args.dataset_path, size=256)
-    """
     transform = transforms.Compose(
         [
             transforms.Resize((256, 256)),
@@ -55,9 +53,10 @@ def load_data(args):
         ]
     )
     data_dir = os.getenv('DEVROOT2') + "/data"
-    train_data = datasets.Flowers102(root=data_dir, split='train', download=True, transform=transform)
-    train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=False)
-    return train_loader
+    split = 'train' if train else 'val'
+    dataset = datasets.Flowers102(root=data_dir, split=split, download=True, transform=transform)
+    data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True if train else False)
+    return data_loader
 
 
 # --------------------------------------------- #
