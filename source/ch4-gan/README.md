@@ -242,6 +242,9 @@ We can generate images conditional by class label as below:
 
 By conditioning the generation and discrimination processes on the class labels, the CGAN can generate images that belong to specific categories and more effectively differentiate between real and fake images within those categories.
 
+## Classifier-Free Guidance(CFG)
+
+
 ## VQGAN
 
 VQGAN (Vector Quantized Generative Adversarial Network) is a neural network architecture designed for **high-quality image synthesis**. It combines elements of VQ-VAE (Vector Quantized Variational Autoencoder) with GANs (Generative Adversarial Networks).
