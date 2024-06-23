@@ -210,7 +210,7 @@ with several modifications. **The non-local layers are removed** from Taming VQG
 ![](lfq.png)
 - [LlamaGen VQGAN](https://github.com/FoundationVision/LlamaGen): It uses the same architecture as Taming-VQGAN, encoder-quantizer-decoder. Following [VIM](https://arxiv.org/pdf/2110.04627), it also uses ℓ2-normalization to codebook vectors, low codebook vector dimension C, and large codebook size K. These designs significantly improve reconstruction quality and codebook usage.
 ![](llama_gen_tokenizer.png)
-- [ViT-VQGAN(aka VIM)](https://arxiv.org/abs/2110.04627): It proposes multiple improvements over vanilla VQGAN from architecture to codebook learning, yielding better efficiency and reconstruction fidelity. [code](https://github.com/thuanz123/enhancing-transformers)
+- [ViT-VQGAN(aka VIM)](https://arxiv.org/abs/2110.04627): It proposes multiple improvements over vanilla VQGAN from architecture to codebook learning, yielding better efficiency and reconstruction fidelity. [Unoffical Code](https://github.com/thuanz123/enhancing-transformers).
 ![](vim-gan.png)
 
 ### Quantitative Comparison
