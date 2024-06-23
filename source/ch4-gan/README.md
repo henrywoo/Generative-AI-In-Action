@@ -192,7 +192,7 @@ Repo:
 
 ### Variants of VQGAN
 
-- [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master): CNN-based encoder and decoder with [self-attention mechanism, or Non-Local Block](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/diffusionmodules/model.py#L140) in the [founding paper](https://arxiv.org/abs/2012.09841).
+- [Taming/Vanilla/Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master): CNN-based encoder and decoder with [self-attention mechanism, or Non-Local Block](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/diffusionmodules/model.py#L140) in the [founding paper](https://arxiv.org/abs/2012.09841).
 
 ![](taming_vqgan.png)
 
@@ -208,28 +208,32 @@ with several modifications. **The non-local layers are removed** from Taming VQG
 - [OmniTokenizer](https://arxiv.org/pdf/2406.09399v1)
 - [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2): It reduces the VQ-VAE codebook’s embedding dimension to zero, aka Lookup-free quantization([LFQ](https://github.com/TencentARC/Open-MAGVIT2/blob/main/taming/models/lfqgan.py#L18)) LFQGAN.
 ![](lfq.png)
+- [LlamaGen VQGAN](https://github.com/FoundationVision/LlamaGen): It uses the same architecture as Taming-VQGAN, encoder-quantizer-decoder. Following [VIM](https://arxiv.org/pdf/2110.04627), it also uses ℓ2-normalization to codebook vectors, low codebook vector dimension C, and large codebook size K. These designs significantly improve reconstruction quality and codebook usage.
+![](llama_gen_tokenizer.png)
+- [ViT-VQGAN(aka VIM)](https://arxiv.org/abs/2110.04627): It proposes multiple improvements over vanilla VQGAN from architecture to codebook learning, yielding better efficiency and reconstruction fidelity. [code](https://github.com/thuanz123/enhancing-transformers)
+![](vim-gan.png)
 
 ### Quantitative Comparison
 
 Reconstruction performance of different tokenizers on 256x256 ImageNet 50k validation set.
 
-| Method | Token Type | #Tokens | Train Data | Codebook Size | rFID | PSNR  | Codebook Utilization | Checkpoint |
-|:------:|:----:|:-----:|:-----:|:-------------:|:----:|:----:|:---------------------:|:----:|
-|VQGAN | 2D | 16 x 16 | 256 x 256 ImageNet  | 1024 | 7.94 | 19.4 | - | - |
-|SD-VQGAN | 2D | 16 x 16 | OpenImages | 16384 | 5.15 | - | - | - |
-|MaskGIT | 2D | 16 x 16 | 256 x 256 ImageNet  | 1024 | 2.28 | - | - | -|
-|LlamaGen | 2D | 16 x 16 | 256 x 256 ImageNet  | 16384 | 2.19  | 20.79 | 97% | -|
-|**Open-MAGVIT2** | 2D | 16 x 16 | 256 x 256 ImageNet | 262144 | **1.53** | **21.53** | **100%** | [IN256_Base](https://huggingface.co/TencentARC/Open-MAGVIT2/blob/main/imagenet_256_B.ckpt)|
-|ViT-VQGAN| 2D | 32 x 32 | 256 x 256 ImageNet | 8192 | 1.28 |  - | - | - |
-|VQGAN | 2D | 32 x 32 | OpenImages | 16384 | 1.19 | 23.38 | - | - |
-|SD-VQGAN | 2D | 32 x 32 | OpenImages | 16384 | 1.14 | - | - | - |
-|OmniTokenizer-VQ| 2D | 32 x 32 | 256 x 256 ImageNet | 8192 | 1.11 | -| - | -|
-|LlamaGen | 2D | 32 x 32 | 256 x 256 ImageNet | 16384 | 0.59 | 24.45 | - | - |
-|**Open-MAGVIT2*** | 2D | 32 x 32 | 128 x 128 ImageNet | 262144 | **0.39** | **25.78** | **100%** |[IN128_Base](https://huggingface.co/TencentARC/Open-MAGVIT2/blob/main/imagenet_128_B.ckpt)|
-|SD-VQGAN | 2D | 64 x 64 | OpenImages | 16384 | 0.58 | - | - | - |
-|TiTok-L | 1D | 32 |  256 x 256 ImageNet | 4096 | 2.21 | - | - | - |
-|TiTok-B | 1D | 64 |  256 x 256 ImageNet | 4096 | 1.70 | - | - | - | 
-|TiTok-S | 1D | 128 | 256 x 256 ImageNet | 4096  | 1.71 | - | - | - |
+|     Method      | Token Type | #Tokens | Train Data | Codebook Size | rFID | PSNR  | Codebook Utilization | Checkpoint |
+|:---------------:|:----:|:-----:|:-----:|:-------------:|:----:|:----:|:--------------------:|:----------:|
+|      VQGAN      | 2D | 16 x 16 | 256 x 256 ImageNet  | 1024 | 7.94 | 19.4 |          -           |     -      |
+|    SD-VQGAN     | 2D | 16 x 16 | OpenImages | 16384 | 5.15 | - |          -           |     -      |
+|     MaskGIT     | 2D | 16 x 16 | 256 x 256 ImageNet  | 1024 | 2.28 | - |          -           |     -      |
+|    LlamaGen     | 2D | 16 x 16 | 256 x 256 ImageNet  | 16384 | 2.19  | 20.79 |         97%          |     -      |
+|**Open-MAGVIT2** | 2D | 16 x 16 | 256 x 256 ImageNet | 262144 | **1.53** | **21.53** |       **100%**       |     -      |
+|    ViT-VQGAN    | 2D | 32 x 32 | 256 x 256 ImageNet | 8192 | 1.28 |  - |          -           |     -      |
+|      VQGAN      | 2D | 32 x 32 | OpenImages | 16384 | 1.19 | 23.38 |          -           |     -      |
+|    SD-VQGAN     | 2D | 32 x 32 | OpenImages | 16384 | 1.14 | - |          -           |     -      |
+|OmniTokenizer-VQ | 2D | 32 x 32 | 256 x 256 ImageNet | 8192 | 1.11 | -|          -           |     -      |
+|    LlamaGen     | 2D | 32 x 32 | 256 x 256 ImageNet | 16384 | 0.59 | 24.45 |        97.6%         |     -      |
+|**Open-MAGVIT2** | 2D | 32 x 32 | 128 x 128 ImageNet | 262144 | **0.39** | **25.78** |       **100%**       |     -      |
+|    SD-VQGAN     | 2D | 64 x 64 | OpenImages | 16384 | 0.58 | - |          -           |     -      |
+|     TiTok-L     | 1D | 32 |  256 x 256 ImageNet | 4096 | 2.21 | - |          -           |     -      |
+|     TiTok-B     | 1D | 64 |  256 x 256 ImageNet | 4096 | 1.70 | - |          -           |     -      | 
+|     TiTok-S     | 1D | 128 | 256 x 256 ImageNet | 4096  | 1.71 | - |          -           |     -      |
 
 Credit: Open-MAGVIT2
 
