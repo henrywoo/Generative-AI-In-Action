@@ -154,9 +154,11 @@ While common in supervised learning, using a separate validation set in GANs is 
 
 ## Conditional GAN (CGAN)
 
-In a CGAN, both the generator and discriminator are conditioned on additional information, such as class labels. This allows the generator to generate images that correspond to specific classes, and the discriminator to better distinguish between real and fake images by taking the class label into account.
+In an unconditioned generative model, there is no control on modes of the data being generated. In the Conditional GAN (CGAN), the generator learns to generate a fake sample **with a specific condition or characteristics (such as a label associated with an image or more detailed tag)** rather than a generic sample from unknown noise distribution. In a CGAN, both the generator and discriminator are conditioned on additional information, such as class labels. This allows the generator to generate images that correspond to specific classes, and the discriminator to better distinguish between real and fake images by taking the class label into account. Below is to use a sample code to demo how CGAN works.
 
 ![](cgan/cgan.png)
+
+### Generating Fashion MNIST Image with CGAN
 
 In this [sample code](cgan/train_cgan.py):
 - The generator (`Generator` class) takes a random noise vector `z` and a class label `labels` as inputs. It concatenates the label embeddings with the noise vector before feeding them through the network.
@@ -232,7 +234,7 @@ class Discriminator(nn.Module):
         return out.squeeze()
 ```
 
-We can generate images conditional by class label:
+We can generate images conditional by class label as below:
 
 ![](cgan/img/final.png)
 
