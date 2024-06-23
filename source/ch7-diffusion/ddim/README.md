@@ -62,7 +62,8 @@ python generate.py -cp "checkpoint/cifar10.pth" -bs 16 --interval 10 \
 
 ```shell
 python generate.py -cp "checkpoint/cifar10.pth" -bs 256 --show \
--sp "result/cifar10_result.png" --nrow 16 --result_only --sampler "ddim" --steps 200 --method "quadratic"
+-sp "result/cifar10_result.png" --nrow 16 --result_only --sampler "ddim" \
+--steps 200 --method "quadratic"
 ```
 
 ![](result/cifar10_result.png)
