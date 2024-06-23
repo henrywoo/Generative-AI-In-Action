@@ -31,14 +31,16 @@ After training, run the `generate.py` file to generate the results. These are th
 * MNIST，[click to download checkpoint](https://drive.google.com/file/d/1gwhczBWOjUtw4Fz_y2PidyKnrUsMSN8t/view?usp=drive_link)
 
 ```shell
-python generate.py -cp "checkpoint/mnist.pth" -bs 16 --interval 3 --show -sp "data/result/mnist_sampler.png" --sampler "ddim" --steps 50
+python generate.py -cp "checkpoint/mnist.pth" -bs 16 --interval 3 \
+--show -sp "data/result/mnist_sampler.png" --sampler "ddim" --steps 50
 ```
 
 
 ![](data/result/mnist_sampler.png)
 
 ```shell
-python generate.py -cp "checkpoint/mnist.pth" -bs 256 --show -sp "data/result/mnist_result.png" --nrow 16 --result_only --sampler "ddim" --steps 50
+python generate.py -cp "checkpoint/mnist.pth" -bs 256 --show \
+-sp "data/result/mnist_result.png" --nrow 16 --result_only --sampler "ddim" --steps 50
 ```
 
 ![](data/result/mnist_result.png)
@@ -46,13 +48,15 @@ python generate.py -cp "checkpoint/mnist.pth" -bs 256 --show -sp "data/result/mn
 * CIFAR10, [click to download checkpoint](https://drive.google.com/file/d/1GRVfLSfjGtEPJzxg52k4wj4w2TKk-utO/view?usp=drive_link)
 
 ```shell
-python generate.py -cp "checkpoint/cifar10.pth" -bs 16 --interval 10 --show -sp "data/result/cifar10_sampler.png" --sampler "ddim" --steps 200 --method "quadratic"
+python generate.py -cp "checkpoint/cifar10.pth" -bs 16 --interval 10 \
+--show -sp "data/result/cifar10_sampler.png" --sampler "ddim" --steps 200 --method "quadratic"
 ```
 
 ![](data/result/cifar10_sampler.png)
 
 ```shell
-python generate.py -cp "checkpoint/cifar10.pth" -bs 256 --show -sp "data/result/cifar10_result.png" --nrow 16 --result_only --sampler "ddim" --steps 200 --method "quadratic"
+python generate.py -cp "checkpoint/cifar10.pth" -bs 256 --show \
+-sp "data/result/cifar10_result.png" --nrow 16 --result_only --sampler "ddim" --steps 200 --method "quadratic"
 ```
 
 ![](data/result/cifar10_result.png)
