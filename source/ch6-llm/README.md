@@ -61,7 +61,7 @@ Taking BERT as an example.
 - https://towardsdatascience.com/transformers-explained-visually-part-3-multi-head-attention-deep-dive-1c1ff1024853
 
 
-### Why most LLM are decoder-only?
+### Why most LLMs are decoder-only?
 
 Decoder-only architecture has better **computation, parameter, and data efficiency**. With Encoder-Decoder, scaling involves more computation and dimension adjustment, making it harder to apply Scaling Laws. Decoder-only can do everything Encoder-Decoder can, with higher parameter efficiency. Tasks like fill-in-the-blank (BERT) are also possible with decoder-only models. (Check OpenAI's paper [Efficient Training of Language Models to Fill in the Middle](https://arxiv.org/abs/2207.14255)). It brings more efficient use of training data: For an input sequence x = \[x1, x2, ..., x_T\] with casual masking, a single forward-backward pass is equivalent to using the training data T+1 times (e.g., Begin -> x1, x1 -> x2, x1 x2 -> x3, ..., x1 x2 x3 ... -> x_T, x1 x2 x3 ... x_T -> End). The more unified modeling approach leads to better generalization during training.
 
