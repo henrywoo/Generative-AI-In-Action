@@ -204,6 +204,10 @@ with several modifications. **The non-local layers are removed** from Taming VQG
 - [Open-Muse VQGAN](https://github.com/huggingface/open-muse): The same as [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py).
 
 - [aMUSEd VQGAN](https://github.com/huggingface/amused.git): We trained a 146M parameter VQ-GAN (Esser et al. (2021)) **with no self-attention layers**, a vocab size of 8192, and a latent dimension of 64. Our VQ-GAN downsamples resolutions by 16x, e.g. a 256x256 (512x512) resolution image is reduced to 16x16 (32x32) latent codes. We trained our VQ-GAN for 2.5M steps. To improve the reconstruction of high-resolution images, we further fine-tuned the VQ-GAN decoder on a dataset of images greater than 1024x1024 resolution. The VQ-GAN decoder was finetuned on 2 8xA100 servers for 200,000 steps and used a per GPU batch size of 16 for a total batch size of 256.
+- [Asymmetric VQGAN](https://arxiv.org/abs/2306.04632): Asymmetric VQGAN involves two core designs compared with the original VQGAN as shown in the figure. First, we introduce a conditional branch into the decoder of the VQGAN which aims to handle the conditional input for image manipulation tasks. Second, we design a larger decoder for VQGAN to better recover the losing details of the quantized codes. It has a heavier [decoder](https://github.com/buxiangzhiren/Asymmetric_VQGAN/blob/main/ldm/modules/diffusionmodules/model.py#L462) than [encoder](https://github.com/buxiangzhiren/Asymmetric_VQGAN/blob/main/ldm/modules/diffusionmodules/model.py#L368).
+- [OmniTokenizer](https://arxiv.org/pdf/2406.09399v1)
+- [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2): It reduces the VQ-VAE codebook’s embedding dimension to zero, aka Lookup-free quantization([LFQ](https://github.com/TencentARC/Open-MAGVIT2/blob/main/taming/models/lfqgan.py#L18)) LFQGAN.
+![](lfq.png)
 
 ## StyleGAN Series (Chinese)
 
