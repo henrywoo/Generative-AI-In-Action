@@ -51,9 +51,8 @@ class Generator(nn.Module):
     def forward(self, z, labels=None):
         z = z.view(-1, self.z_size)
         if labels is not None:
-            c = self.label_emb(labels)
+            c = self.label_emb(labels.to(z.device))  # Ensure the labels are on the same device as z
         else:
-            # Create a zero tensor for the labels if labels are None
             c = torch.zeros(z.size(0), self.class_num).to(z.device)
         x = torch.cat([z, c], 1)
         out = self.model(x)
@@ -61,13 +60,11 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, discriminator_layer_size, img_size, class_num):
+    def __init__(self, discriminator_layer_size, img_size):
         super().__init__()
-        self.label_emb = nn.Embedding(class_num, class_num)
         self.img_size = img_size
-        self.class_num = class_num
         self.model = nn.Sequential(
-            nn.Linear(self.img_size * self.img_size + class_num, discriminator_layer_size[0]),
+            nn.Linear(self.img_size * self.img_size, discriminator_layer_size[0]),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Dropout(0.3),
             nn.Linear(discriminator_layer_size[0], discriminator_layer_size[1]),
@@ -80,14 +77,8 @@ class Discriminator(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, x, labels=None):
+    def forward(self, x):
         x = x.view(-1, self.img_size * self.img_size)
-        if labels is not None:
-            c = self.label_emb(labels)
-        else:
-            # Create a zero tensor for the labels if labels are None
-            c = torch.zeros(x.size(0), self.class_num).to(x.device)
-        x = torch.cat([x, c], 1)
         out = self.model(x)
         return out.squeeze()
 
@@ -99,24 +90,6 @@ def initialize_dataloader(data_dir, batch_size, img_size):
     ])
     train_dataset = datasets.FashionMNIST(root=data_dir, train=True, download=True, transform=transform)
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-
-def visualize_data(loader, args):
-    for images, _ in loader:
-        # Adjusting make_grid to have a tighter layout
-        grid_img = make_grid(images, nrow=8, normalize=True).permute(1, 2, 0)
-        # Setting the figure size based on the number of rows and columns
-        fig, ax = plt.subplots(figsize=(3, 3))
-        ax.imshow(grid_img)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        # Using tight_layout to minimize the extra spaces
-        plt.tight_layout()
-        # Save and show the figure
-        plt.savefig(os.path.join(args.output_dir, 'dataset_sample.png'))
-        plt.show()
-        break
-
 
 def save_checkpoint(epoch, generator, discriminator, g_optimizer, d_optimizer, checkpoint_dir):
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -151,31 +124,33 @@ def train(generator, discriminator, data_loader, g_optimizer, d_optimizer, crite
         print(f'Starting epoch {epoch + 1}...')
         for images, labels in data_loader:
             real_images = Variable(images).to(device)
-            labels = Variable(labels).to(device)
             batch_size = real_images.size(0)
 
             # Train Discriminator
             d_optimizer.zero_grad()
-            real_validity = discriminator(real_images, labels)
+            real_validity = discriminator(real_images)
             real_loss = criterion(real_validity, Variable(torch.ones(batch_size)).to(device))
 
             z = Variable(torch.randn(batch_size, z_size)).to(device)
-            fake_images = generator(z, labels)
-            fake_validity = discriminator(fake_images.detach(), labels)
-            fake_loss = criterion(fake_validity, Variable(torch.zeros(batch_size)).to(device))
+            fake_images_cond = generator(z, labels)
+            fake_images_uncond = generator(z)
 
-            d_loss = real_loss + fake_loss
+            fake_validity_cond = discriminator(fake_images_cond.detach())
+            fake_validity_uncond = discriminator(fake_images_uncond.detach())
+
+            fake_loss_cond = criterion(fake_validity_cond, Variable(torch.zeros(batch_size)).to(device))
+            fake_loss_uncond = criterion(fake_validity_uncond, Variable(torch.zeros(batch_size)).to(device))
+
+            d_loss = real_loss + guidance_scale * fake_loss_cond + (1 - guidance_scale) * fake_loss_uncond
             d_loss.backward()
             d_optimizer.step()
 
             # Train Generator
             g_optimizer.zero_grad()
-            z = Variable(torch.randn(batch_size, z_size)).to(device)
             fake_images_cond = generator(z, labels)
             fake_images_uncond = generator(z)
 
-            # Interpolated guidance
-            fake_validity_cond = discriminator(fake_images_cond, labels)
+            fake_validity_cond = discriminator(fake_images_cond)
             fake_validity_uncond = discriminator(fake_images_uncond)
 
             g_loss_cond = criterion(fake_validity_cond, Variable(torch.ones(batch_size)).to(device))
@@ -228,27 +203,16 @@ def discriminator_train_step(batch_size, discriminator, generator, d_optimizer, 
 
 
 def show_final_generated_images(generator, z_size, class_num, class_list, device, output_dir):
-    # Calculate the number of images to generate
     num_images = class_num * (class_num // 2)
-
-    # Generate latent vectors
     z = Variable(torch.randn(num_images, z_size)).to(device)
-    # Create labels for each class
     labels = Variable(torch.LongTensor([i for _ in range(class_num // 2) for i in range(class_num)])).to(device)
-
-    # Generate images
     sample_images = generator(z, labels).unsqueeze(1).data.cpu()
-
-    # Create grid of images
     grid = make_grid(sample_images, nrow=class_num, normalize=True).permute(1, 2, 0).numpy()
-
-    # Plot images
     fig, ax = plt.subplots(figsize=(5.8, 0.72 * (class_num // 2)))
     ax.imshow(grid)
     _ = plt.yticks([])
     _ = plt.xticks(np.arange(15, 300, 30), class_list, rotation=45, fontsize=8)
     plt.tight_layout()
-    # Save final image grid
     plt.savefig(os.path.join(output_dir, "final.png"))
     plt.show()
 
@@ -259,10 +223,8 @@ def main():
     class_list = ['T-Shirt', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
     class_num = len(class_list)
     train_loader = initialize_dataloader(args.data_dir, args.batch_size, args.img_size)
-    visualize_data(train_loader, args)
-
     generator = Generator(args.g_layers, args.z_size, args.img_size, class_num).to(device)
-    discriminator = Discriminator(args.d_layers, args.img_size, class_num).to(device)
+    discriminator = Discriminator(args.d_layers, args.img_size).to(device)
     print_model(generator, legend=True)
     print_model(generator)
 
