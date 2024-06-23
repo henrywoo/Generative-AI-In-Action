@@ -31,11 +31,11 @@ Dataset:
   suffix: ["png", "jpg"]
 
   # parameters for torch.utils.data.DataLoader
-  batch_size: 64
+  batch_size: 256
   shuffle: True
   drop_last: True
   pin_memory: True
-  num_workers: 4
+  num_workers: 8
 
 ### trainer params
 Trainer:
@@ -55,7 +55,7 @@ Callback:
 device: "cuda:0"
 epochs: 100
 # Whether to continue training, True or False
-resume: False
+resume: True
 # If continue training, which checkpoint to load
 resume_path: "./checkpoint/cifar10.pth"
 
