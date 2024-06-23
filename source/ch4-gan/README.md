@@ -190,7 +190,7 @@ Repo:
 
 > Image Credit: VQ-GAN | PyTorch Implementation https://www.youtube.com/watch?v=_Br5WRwUz_U&ab_channel=Outlier
 
-### Variants of VQGAN
+### 🏖 Variants of VQGAN
 
 - [Taming/Vanilla/Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master): CNN-based encoder and decoder with [self-attention mechanism, or Non-Local Block](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/diffusionmodules/model.py#L140) in the [founding paper](https://arxiv.org/abs/2012.09841).
 
