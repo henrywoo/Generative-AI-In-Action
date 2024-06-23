@@ -188,22 +188,22 @@ Repo:
 
 ![](vqgan.gif)
 
+> Image Credit: VQ-GAN | PyTorch Implementation https://www.youtube.com/watch?v=_Br5WRwUz_U&ab_channel=Outlier
+
 ### Variants of VQGAN
 
-- [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master)
+- [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master): CNN-based encoder and decoder with [self-attention mechanism, or Non-Local Block](https://github.com/CompVis/taming-transformers/blob/master/taming/modules/diffusionmodules/model.py#L140) in the [founding paper](https://arxiv.org/abs/2012.09841).
 
 ![](taming_vqgan.png)
 
 - [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py): a reimplementation of [Taming VQGAN](https://arxiv.org/abs/2012.09841)
-with several modifications. The non-local layers are removed from Taming VQGAN for faster speed.
+with several modifications. **The non-local layers are removed** from Taming VQGAN for faster speed.
 
 - [Valeo MaskGIT VQGAN](https://github.com/valeoai/Maskgit-pytorch?tab=readme-ov-file): The same as [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master).
 
 - [Open-Muse VQGAN](https://github.com/huggingface/open-muse): The same as [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py).
 
-- [aMUSEd VQGAN](https://github.com/huggingface/amused.git): We trained a 146M parameter VQ-GAN (Esser et al. (2021)) **with no self-attention layers**, a vocab size of 8192, and a latent dimension of 64. Our VQ-GAN downsamples resolutions by 16x, e.g. a 256x256 (512x512) resolution image is reduced to 16x16 (32x32) latent codes. We trained our VQ-GAN for 2.5M steps.
-
-Credit: - VQ-GAN | PyTorch Implementation https://www.youtube.com/watch?v=_Br5WRwUz_U&ab_channel=Outlier
+- [aMUSEd VQGAN](https://github.com/huggingface/amused.git): We trained a 146M parameter VQ-GAN (Esser et al. (2021)) **with no self-attention layers**, a vocab size of 8192, and a latent dimension of 64. Our VQ-GAN downsamples resolutions by 16x, e.g. a 256x256 (512x512) resolution image is reduced to 16x16 (32x32) latent codes. We trained our VQ-GAN for 2.5M steps. To improve the reconstruction of high-resolution images, we further fine-tuned the VQ-GAN decoder on a dataset of images greater than 1024x1024 resolution. The VQ-GAN decoder was finetuned on 2 8xA100 servers for 200,000 steps and used a per GPU batch size of 16 for a total batch size of 256.
 
 ## StyleGAN Series (Chinese)
 
