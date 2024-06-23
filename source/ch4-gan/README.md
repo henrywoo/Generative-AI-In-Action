@@ -24,6 +24,8 @@ The core idea behind GANs is that this adversarial training process will eventua
 
 The standard GAN loss function is often called the **Minimax Loss** or the **original GAN loss**. It combines the objectives of both the generator and discriminator:
 
+![](loss.png)
+
 ```
 min G max D [ log(D(x)) + log(1 - D(G(z))) ]
 ```
