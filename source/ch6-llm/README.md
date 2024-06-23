@@ -63,39 +63,15 @@ Taking BERT as an example.
 
 ### Why most LLM are decoder-only?
 
-Here's a breakdown of the reasons why most large language models (LLMs) favor a decoder-only architecture:
+Decoder-only architecture has better **computation, parameter, and data efficiency**. With Encoder-Decoder, scaling involves more computation and dimension adjustment, making it harder to apply Scaling Laws. Decoder-only can do everything Encoder-Decoder can, with higher parameter efficiency. Tasks like fill-in-the-blank (BERT) are also possible with decoder-only models. (Check OpenAI's paper [Efficient Training of Language Models to Fill in the Middle](https://arxiv.org/abs/2207.14255)). It brings more efficient use of training data: For an input sequence x = \[x1, x2, ..., x_T\] with casual masking, a single forward-backward pass is equivalent to using the training data T+1 times (e.g., Begin -> x1, x1 -> x2, x1 x2 -> x3, ..., x1 x2 x3 ... -> x_T, x1 x2 x3 ... x_T -> End). The more unified modeling approach leads to better generalization during training.
 
 ![](decoder-only.png)
 
-**1. Task Suitability**
+Some research brings up that bidirectional attention can introduce the low-rank problem, potentially reducing the LLM's ability to represent complex relationships in the input. Decoder-only LLMs avoid this issue because the attention matrix is always positive definite with full rank, ensuring strong baseline performance. This is based on the assumption that the attention map is a lower triangular matrix and all diagonal elements are positive because a token always has positive attention to itself. But I checked and found it is not that case in practise. In many cases, one token can attend some other important token like the first SOS or CLS token so that it doesn't attend itself. Below is a figure on decoder-only Gemma where many attention maps are not full-rank:
 
-* **Causal Language Modeling:** The primary objective of LLMs has traditionally been generative text tasks. This means predicting the next word or token given a sequence of previous words. Decoder-only architectures are a natural fit for this causal language modeling setup, as they only have access to past context.
-* **Efficiency:**  In tasks like translation or summarization, where the input and output sequences have strong dependencies, bidirectional attention (encoder-decoder) might be more beneficial.  However, pure generative text tasks benefit from the computational efficiency of decoder-only models.
+![](rank.png)
 
-**2. Training Advantages**
-
-* **Parallelism:** Decoder-only models enable highly efficient parallelization during training. Since each position attends only to the past, computations for different tokens can happen simultaneously, leading to faster training times.
-* **Data Availability:**  Massive text datasets are readily available. Training solely on this type of data aligns perfectly with the causal prediction capabilities of decoder-only models.
-
-**3. The Low-Rank Issue**
-
-![](lowrank.png)
-
-* **Expressivity Concerns:** Bidirectional attention can introduce the low-rank problem, potentially reducing the LLM's ability to represent complex relationships in the input. Decoder-only LLMs avoid this issue, ensuring strong baseline performance.
-
-**4. Performance Success**
-
-* **Empirical Evidence:**  Decoder-only models like GPT-3 have achieved impressive results on various language tasks, demonstrating that they can learn rich linguistic representations even with the unidirectional constraint.
-* **Refinement over Replacement:** Much of the recent research has focused on refining decoder-only LLMs (scaling, efficient attention mechanisms, etc.) rather than fundamentally shifting towards bidirectional architectures for pure language generation tasks.
-
-**Important Considerations**
-
-* **Not Universal:**  While decoder-only models dominate, there are scenarios where bidirectional attention and encoder-decoder architecture are beneficial(ie. BERT, T5).  Tasks that require understanding the entirety of the input sequence, like machine translation or question answering, often use encoder-decoder architectures.
-* **Evolving Landscape:** Research is ongoing. New techniques for mitigating the limitations of bidirectional attention or hybrid approaches combining the strengths of both architectures could emerge in the future.
-
-**In Summary**
-
-The dominance of decoder-only LLMs stems from a combination of factors: their natural alignment with generative text tasks, training efficiency, avoidance of potential expressiveness limitations, and the sheer success they've achieved.
+While decoder-only models dominate in the current LLM world, there are scenarios where bidirectional attention and encoder-decoder architecture are beneficial(ie. BERT, T5).  Tasks that require understanding the entirety of the input sequence, like machine translation or question answering, often use encoder-decoder architectures.
 
 https://www.zhihu.com/question/588325646/answers/updated
 
