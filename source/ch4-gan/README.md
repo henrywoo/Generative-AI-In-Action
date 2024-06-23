@@ -152,6 +152,92 @@ While common in supervised learning, using a separate validation set in GANs is 
 ![](vanilla/output/epoch_500/image.png)
 
 
+## Conditional GAN (CGAN)
+
+In a CGAN, both the generator and discriminator are conditioned on additional information, such as class labels. This allows the generator to generate images that correspond to specific classes, and the discriminator to better distinguish between real and fake images by taking the class label into account.
+
+![](cgan/cgan.png)
+
+In this [sample code](cgan/train_cgan.py):
+- The generator (`Generator` class) takes a random noise vector `z` and a class label `labels` as inputs. It concatenates the label embeddings with the noise vector before feeding them through the network.
+- The discriminator (`Discriminator` class) takes an image and a class label as inputs. It concatenates the label embeddings with the image vector before feeding them through the network.
+
+Key points that make it a Conditional GAN:
+1. **Label Embeddings**: Both the generator and discriminator use `nn.Embedding` to create embeddings for the class labels.
+2. **Concatenation of Labels**: The labels are concatenated with the noise vector (in the generator) and with the flattened image (in the discriminator) before being passed through the respective networks.
+
+Here's a brief summary of how the conditioning works in the code:
+
+### Generator
+In the `Generator` class:
+- Labels are embedded and concatenated with the noise vector `z`.
+- The concatenated vector is passed through the network to generate an image.
+
+```python
+class Generator(nn.Module):
+    def __init__(self, generator_layer_size, z_size, img_size, class_num):
+        super().__init__()
+        self.z_size = z_size
+        self.img_size = img_size
+        self.label_emb = nn.Embedding(class_num, class_num)
+        self.model = nn.Sequential(
+            nn.Linear(self.z_size + class_num, generator_layer_size[0]),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(generator_layer_size[0], generator_layer_size[1]),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(generator_layer_size[1], generator_layer_size[2]),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(generator_layer_size[2], self.img_size * self.img_size),
+            nn.Tanh()
+        )
+
+    def forward(self, z, labels):
+        z = z.view(-1, self.z_size)
+        c = self.label_emb(labels)
+        x = torch.cat([z, c], 1)
+        out = self.model(x)
+        return out.view(-1, self.img_size, self.img_size)
+```
+
+### Discriminator
+In the `Discriminator` class:
+- Labels are embedded and concatenated with the flattened image vector.
+- The concatenated vector is passed through the network to determine if the image is real or fake.
+
+```python
+class Discriminator(nn.Module):
+    def __init__(self, discriminator_layer_size, img_size, class_num):
+        super().__init__()
+        self.label_emb = nn.Embedding(class_num, class_num)
+        self.img_size = img_size
+        self.model = nn.Sequential(
+            nn.Linear(self.img_size * self.img_size + class_num, discriminator_layer_size[0]),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(discriminator_layer_size[0], discriminator_layer_size[1]),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(discriminator_layer_size[1], discriminator_layer_size[2]),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(discriminator_layer_size[2], 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x, labels):
+        x = x.view(-1, self.img_size * self.img_size)
+        c = self.label_emb(labels)
+        x = torch.cat([x, c], 1)
+        out = self.model(x)
+        return out.squeeze()
+```
+
+We can generate images conditional by class label:
+
+![](cgan/img/final.png)
+
+By conditioning the generation and discrimination processes on the class labels, the CGAN can generate images that belong to specific categories and more effectively differentiate between real and fake images within those categories.
+
 ## VQGAN
 
 VQGAN (Vector Quantized Generative Adversarial Network) is a neural network architecture designed for **high-quality image synthesis**. It combines elements of VQ-VAE (Vector Quantized Variational Autoencoder) with GANs (Generative Adversarial Networks).
