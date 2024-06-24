@@ -30,6 +30,12 @@ def score_function(x, model):
 
 This score function provides information about the direction in which the probability density increases most rapidly at a given point in the data space. By learning to predict the score function, diffusion models can generate new samples by iteratively refining a random noise input based on the predicted gradient information.
 
+**How Diffusion Models Work (Simplified)**
+
+- Forward Diffusion (Corrupting the Data): Begin with a piece of training data (e.g., an image of a cat). The diffusion model systematically adds small amounts of Gaussian noise to the image over many steps. Eventually, the original image becomes unrecognizable as pure noise.
+- Reverse Diffusion (Learning to Clean): A neural network is trained to reverse this noise process. At each step, it's tasked with taking a slightly noisy image and trying to predict the original, less noisy image from the previous step.
+- Generation: Once trained, the diffusion model can start with pure noise and run the reverse diffusion process repeatedly. This transforms the noise into a completely new sample similar to the data it was trained on (e.g., a new, unique image of a cat).
+
 
 There are several types of diffusion models including Denoising Diffusion Probabilistic Models (DDPM), Denoising Diffusion Implicit Models (DDIM) and Latent Diffusion Models (LDM).
 
