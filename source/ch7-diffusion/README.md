@@ -2,6 +2,8 @@
 
 ## DDPM
 
+![](ddpm-pt-mnist-cond-unet/demo_diffusion_process.png)
+
 [Code](vallina_ddpm_ddim/sampler/ddpm.py)
 
 ## DDIM

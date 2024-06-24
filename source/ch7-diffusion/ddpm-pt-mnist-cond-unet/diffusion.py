@@ -60,18 +60,18 @@ def reverse_diffusion(noise, model, t, num_steps=T):
 
 
 def display_images(original_images, noisy_images):
-    plt.figure(figsize=(7, 6.8))
+    plt.figure(figsize=(3.6, 3.4))
 
     for i, (original, noisy) in enumerate(zip(original_images, noisy_images)):
         plt.subplot(2, len(original_images), i + 1)
-        plt.title(f'Original Image {i + 1}')
+        plt.title(f'Original Image {i + 1}', fontsize=8)
         plt.imshow(tensor_to_pil(original))
         plt.axis('off')
         plt.xticks([])
         plt.yticks([])
 
         plt.subplot(2, len(original_images), i + 1 + len(original_images))
-        plt.title(f'Noisy Image {i + 1}')
+        plt.title(f'Noisy Image {i + 1}', fontsize=8)
         plt.imshow(tensor_to_pil((noisy + 1) / 2))
         plt.axis('off')
         plt.xticks([])
