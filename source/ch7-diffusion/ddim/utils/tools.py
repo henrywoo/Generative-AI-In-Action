@@ -6,6 +6,17 @@ from PIL import Image
 from pathlib2 import Path
 import yaml
 
+def extract(v, i, shape):
+    """
+    Get the i-th number in v, and the shape of v is mostly (T, ), the shape of i is mostly (batch_size, ).
+    equal to [v[index] for index in i]
+    """
+    out = torch.gather(v, index=i, dim=0)
+    out = out.to(device=i.device, dtype=torch.float32)
+
+    # reshape to (batch_size, 1, 1, 1, 1, ...) for broadcasting purposes.
+    out = out.view([i.shape[0]] + [1] * (len(shape) - 1))
+    return out
 
 def load_yaml(yml_path: Union[Path, str], encoding="utf-8"):
     if isinstance(yml_path, str):

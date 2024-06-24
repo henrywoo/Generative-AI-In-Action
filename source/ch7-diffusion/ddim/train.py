@@ -1,6 +1,6 @@
 from dataset import create_dataset
 from model.UNet import UNet
-from utils.engine import GaussianDiffusionTrainer
+from utils.gaussian_trainer import GaussianDiffusionTrainer
 from utils.tools import train_one_epoch, load_yaml
 import torch
 from pprint import pprint
