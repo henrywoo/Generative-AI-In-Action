@@ -1,5 +1,4 @@
 import os
-import sys
 import argparse
 import torch
 from torch import nn
@@ -7,9 +6,7 @@ from torchvision.utils import save_image
 from config import DEVICE, T, IMG_SIZE
 from unet import UNet
 from diffusion import *
-from dataset import tensor_to_pil
 from lora import LoraLayer, inject_lora
-import matplotlib.pyplot as plt
 from hiq import print_model
 
 
@@ -23,6 +20,7 @@ def parse_args():
     parser.add_argument('--num_images', type=int, default=1, help='Number of images to generate.')
     parser.add_argument('--class_label', type=int, default=0, help='Class label to guide image generation.')
     parser.add_argument('--use_lora', action='store_true', help='Use LoRA for inference.')
+    parser.add_argument('--sampling_method', type=str, default='ddpm', choices=['ddpm', 'ddim'], help='Sampling method to use (ddpm or ddim).')
     return parser.parse_args()
 
 
@@ -72,7 +70,7 @@ def load_model(model_path, use_lora=False):
     return model
 
 
-def backward_denoise(model, batch_x_t, batch_cls):
+def backward_denoise_ddpm(model, batch_x_t, batch_cls):
     steps = [batch_x_t, ]
     global alphas, alphas_cumprod, variance
 
@@ -103,7 +101,49 @@ def backward_denoise(model, batch_x_t, batch_cls):
     return steps
 
 
-def generate_images(model_path, num_images, class_label, output_dir, use_lora):
+def backward_denoise_ddim(model, batch_x_t, batch_cls, ddim_steps=50, eta=0.0):
+    steps = [batch_x_t, ]
+    global alphas, alphas_cumprod, betas
+
+    model = model.to(DEVICE)
+    batch_x_t = batch_x_t.to(DEVICE)
+    alphas = alphas.to(DEVICE)
+    alphas_cumprod = alphas_cumprod.to(DEVICE)
+    betas = betas.to(DEVICE)
+    batch_cls = batch_cls.to(DEVICE)
+
+    model.eval()
+    with torch.no_grad():
+        ddim_timesteps = torch.linspace(0, T - 1, steps=ddim_steps).to(torch.int64).to(DEVICE)
+        for i in range(len(ddim_timesteps) - 1, -1, -1):
+            t = ddim_timesteps[i]
+            batch_t = torch.full((batch_x_t.size(0),), t).to(DEVICE)
+            batch_predict_noise_t = model(batch_x_t, batch_t, batch_cls)
+            alpha_t = alphas[t]
+            alpha_cumprod_t = alphas_cumprod[t]
+            alpha_cumprod_next = alphas_cumprod[ddim_timesteps[i - 1]] if i > 0 else torch.tensor(1.0).to(DEVICE)
+
+            batch_mean_t = (
+                torch.sqrt(alpha_cumprod_next) *
+                (
+                    (batch_x_t - torch.sqrt(1 - alpha_cumprod_t) * batch_predict_noise_t) /
+                    torch.sqrt(alpha_cumprod_t)
+                ) +
+                torch.sqrt(1 - alpha_cumprod_next) * batch_predict_noise_t
+            )
+
+            if eta > 0:
+                z = torch.randn_like(batch_x_t)
+                sigma_t = eta * torch.sqrt((1 - alpha_cumprod_next) / (1 - alpha_cumprod_t) * (1 - alpha_t))
+                batch_mean_t += sigma_t * z
+
+            batch_x_t = batch_mean_t
+            batch_x_t = torch.clamp(batch_x_t, -1.0, 1.0).detach()
+            steps.append(batch_x_t)
+    return steps
+
+
+def generate_images(model_path, num_images, class_label, output_dir, use_lora, sampling_method):
     """
     Generate images using the trained model.
     """
@@ -115,10 +155,13 @@ def generate_images(model_path, num_images, class_label, output_dir, use_lora):
             noise = torch.randn(1, 1, IMG_SIZE, IMG_SIZE).to(DEVICE)
             class_tensor = torch.tensor([class_label], dtype=torch.long).to(DEVICE)
 
-            steps = backward_denoise(model, noise, class_tensor)
-            generated_image = (steps[-1].to('cpu') + 1) / 2
+            if sampling_method == 'ddpm':
+                steps = backward_denoise_ddpm(model, noise, class_tensor)
+            elif sampling_method == 'ddim':
+                steps = backward_denoise_ddim(model, noise, class_tensor)
 
-            save_image(generated_image, os.path.join(output_dir, f"generated_image_{i + 1}.png"))
+            generated_image = (steps[-1].to('cpu') + 1) / 2
+            save_image(generated_image, os.path.join(output_dir, f"{sampling_method}_{i + 1}.png"))
 
             print(f"Generated image {i + 1} saved to {output_dir}")
 
@@ -128,7 +171,7 @@ def main():
     Main function to parse arguments and generate images.
     """
     args = parse_args()
-    generate_images(args.model_path, args.num_images, args.class_label, args.output_dir, args.use_lora)
+    generate_images(args.model_path, args.num_images, args.class_label, args.output_dir, args.use_lora, args.sampling_method)
 
 
 if __name__ == '__main__':
