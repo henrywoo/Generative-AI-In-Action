@@ -51,13 +51,64 @@ There are several types of diffusion models including Denoising Diffusion Probab
 
 Diffusion models, including DDPM, DDIM, and LDM, represent an exciting direction in generative modeling. They are particularly effective at generating high-quality images by reversing a noise process. Implementations like Stable Diffusion have brought these techniques into practical use, enabling the creation of impressive visuals with efficient computation.
 
-## DDPM
+## Denoising Diffusion Probabilistic Models (DDPM)
+
+Denoising Diffusion Probabilistic Models (DDPM) are a type of generative model that have gained attention for their ability to generate high-quality images. DDPMs are built on the concept of diffusion, a process where data is gradually transformed into a simpler form by adding noise, and then reconstructed back by removing the noise.
+
+![](ddpm-paper-1.webp)
+
+### Model Training (Left Loop):
+
+1. Loop over the epochs.
+2. Sample a batch of images from the dataset.
+3. For each image in the batch, sample a value of t uniformly.
+4. Add noise to each image using a Gaussian Distribution with mean 0 and unit variance.
+5. The model predicts the noise in each image at the given timestep t.
+6. Compute the Mean Squared Error (MSE) loss between the sampled noise and the predicted noise for each image.
+
+Instead of modeling the entire diffusion process as a single process, we can model each individual timestep separately. This approach speeds up training and likely results in a more stable training setting. By sampling the value of t uniformly for each training image, the model learns to handle all values of t while also learning the real image distribution.
+
+### Image Generation/Sampling (Right Loop):
+
+1. Sample noise from a Gaussian Distribution with mean 0 and unit variance. This represents the noisy image at time T.
+2. Loop from time t = T to t = 1:
+   - Sample new noise from a Gaussian Distribution to move the image to the previous timestep, t-1.
+   - Using the trained model ε_θ, predict the noise at the current timestep. Remove this noise to move the image to the previous timestep t-1.
+3. Repeat the loop until t = 1.
+4. After completing all T iterations, a new image will be generated at timestep 0.
+
+> [Code](vallina_ddpm_ddim/sampler/ddpm.py)
 
 ![](ddpm-pt-mnist-cond-unet/demo_diffusion_process.png)
 
-[Code](vallina_ddpm_ddim/sampler/ddpm.py)
+## Denoising Diffusion Implicit Models (DDIM)
 
-## DDIM
+DDIM is an extension and improvement of DDPM. DDIMs enhance the diffusion-based generative modeling framework by introducing a non-Markovian reverse diffusion process. This modification results in faster and higher-quality image generation while retaining the robustness of the training phase seen in DDPMs. By leveraging deterministic transformations during the reverse process, DDIMs provide an efficient and effective way to generate realistic images from noise.
+
+### How DDIM Works?
+
+#### Training Phase
+
+There is no difference between DDPM (Denoising Diffusion Probabilistic Models) and DDIM (Denoising Diffusion Implicit Models) in the training stage. Both models are trained using the same objective: to predict the noise that was added to the original data.
+
+#### Generation/Sampling Phase (Reverse Diffusion Process with DDIM):
+The key difference between DDIM and DDPM lies in the reverse diffusion process. DDIM modifies the reverse diffusion to be **non-Markovian**, meaning that the generation process does not depend solely on the previous timestep but can incorporate a more flexible transformation.
+
+1. **Initialize with Noise**: Start with noise sampled from a Gaussian Distribution with mean 0 and unit variance. This represents the noisy image at time T.
+2. **Non-Markovian Reverse Process**:
+   - Loop from time t = T to t = 1 with a more flexible step size.
+   - Instead of using new noise for each timestep, DDIM uses a deterministic approach that transforms the noisy image at the current timestep to the previous timestep directly.
+   - The transformation is guided by the trained model (denoted as ε_θ) to predict the noise and adjust the image accordingly.
+3. **Repeat**: Continue this process until t = 1.
+4. **Final Image**: After completing all T iterations, the final generated image at timestep 0 is obtained.
+
+### Benefits of DDIM:
+
+1. **Faster Sampling**: DDIM can generate images faster than DDPM due to the deterministic nature of the reverse process, requiring fewer steps to reach the final image.
+2. **Improved Quality**: The non-Markovian approach allows for more flexibility and potentially higher quality in the generated images.
+3. **Controlled Generation**: DDIM offers better control over the generation process, allowing for smoother and more stable transitions between timesteps.
+
+
 
 [Code](vallina_ddpm_ddim/sampler/ddim.py)
 
