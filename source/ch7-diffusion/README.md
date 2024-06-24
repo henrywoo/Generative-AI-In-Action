@@ -4,13 +4,11 @@ Diffusion models are a class of generative models that have gained significant a
 
 Mathematically, diffusion models aim to capture the complex patterns within high-dimensional data. Instead of directly estimating the probability distribution of the data p(x) like traditional likelihood-based models, diffusion models focus on predicting the gradient of the log probability, also known as the **score function**:
 
-🔻x(log(p(x)))
-
 $$
 \nabla_x \log p(x)
 $$
 
-In python:
+In python, it is like this:
 
 ```python
 import torch
