@@ -1,0 +1,1 @@
+This is actually from: https://www.kaggle.com/datasets/nikhilshingadiya/tinyimagenet200
