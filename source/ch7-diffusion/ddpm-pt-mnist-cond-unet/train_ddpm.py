@@ -11,21 +11,22 @@ from torch.utils.tensorboard import SummaryWriter
 
 here = os.path.dirname(os.path.realpath(__file__))
 
-if os.path.exists(f"{here}/model.pt"):
+model_path = f"{here}/model.pt" # mbin/
+if os.path.exists(model_path):
     import sys
     print("Model exists! Please remove it before training.")
     sys.exit(0)
 
 EPOCH = 200
-BATCH_SIZE = 400
+BATCH_SIZE = 512
 
-dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4, persistent_workers=True,
-                        shuffle=True)  # 数据加载器
+# 数据加载器
+dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4, persistent_workers=True, shuffle=True)
 
 try:
-    model = torch.load('model.pt')
+    model = torch.load(model_path)
 except:
-    model = UNet(1).to(DEVICE)  # 噪音预测模型
+    model = UNet(img_channel=1).to(DEVICE)  # 噪音预测模型
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)  # 优化器
 loss_fn = nn.L1Loss()  # 损失函数(绝对值误差均值)
