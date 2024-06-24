@@ -6,6 +6,7 @@ from dataset import tensor_to_pil
 from lora import LoraLayer
 from torch import nn
 from lora import inject_lora
+from unet import UNet
 
 
 def backward_denoise(model, batch_x_t, batch_cls):
@@ -48,7 +49,9 @@ def backward_denoise(model, batch_x_t, batch_cls):
 
 if __name__ == '__main__':
     # 加载模型
-    model = torch.load('model.pt')
+    model = UNet(img_channel=1).to(DEVICE)
+    checkpoint = torch.load('model.pt')
+    model.load_state_dict(checkpoint['model_state_dict'])
 
     USE_LORA = False
 
@@ -86,7 +89,7 @@ if __name__ == '__main__':
                 setattr(cur_layer, name_cols[-1], layer.raw_linear)
 
     # 打印模型结构
-    print(model)
+    print_model(model)
 
     # 生成噪音图
     batch_size = 10

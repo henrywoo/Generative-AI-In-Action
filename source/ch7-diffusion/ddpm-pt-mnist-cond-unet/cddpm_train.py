@@ -14,9 +14,6 @@ from tqdm import tqdm
 
 
 def parse_args():
-    """
-    Parse command-line arguments.
-    """
     parser = argparse.ArgumentParser(description="Train a UNet model for diffusion.")
     parser.add_argument('--epochs', type=int, default=200, help='Number of training epochs.')
     parser.add_argument('--batch_size', type=int, default=512, help='Batch size for training.')
@@ -24,15 +21,9 @@ def parse_args():
     parser.add_argument('--model_path', type=str, default='model.pt', help='Path to save the trained model.')
     return parser.parse_args()
 
-
-
 def load_model(model_path):
-    """
-    Load the model from the specified path. If it exists, load the state dictionary and optimizer state to resume training.
-    """
     model = UNet(img_channel=1).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters())
-
     if os.path.exists(model_path):
         print("Resuming training from existing model...")
         checkpoint = torch.load(model_path)
@@ -47,9 +38,6 @@ def load_model(model_path):
 
 
 def train(model, optimizer, dataloader, epochs, start_epoch, lr, model_path):
-    """
-    Train the model with the given parameters.
-    """
     loss_fn = nn.L1Loss()  # Loss function (Mean Absolute Error)
     writer = SummaryWriter()  # TensorBoard writer for logging
     n_iter = start_epoch * len(dataloader)
@@ -65,20 +53,16 @@ def train(model, optimizer, dataloader, epochs, start_epoch, lr, model_path):
             batch_predict_t = model(batch_x_t, batch_t, batch_cls)  # Model predicts the noise at time t
             loss = loss_fn(batch_predict_t, batch_noise_t)  # Calculate loss
             optimizer.zero_grad()  # Zero the gradients
-            loss.backward()  # Backpropagate the loss
+            loss.backward()  # Backprop the loss
             optimizer.step()  # Update the model parameters
             last_loss = loss.item()
             writer.add_scalar('Loss/train', last_loss, n_iter)  # Log the loss
             n_iter += 1
-
         print(f'\nepoch:{epoch} loss={last_loss}')  # Print epoch and loss
         save_model(model, optimizer, epoch, model_path)  # Save the model
 
 
 def save_model(model, optimizer, epoch, model_path):
-    """
-    Save the model state, optimizer state, and the current epoch to the specified path.
-    """
     torch.save({
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
@@ -87,12 +71,7 @@ def save_model(model, optimizer, epoch, model_path):
 
 
 def main():
-    """
-    Main function to parse arguments, load data, and start the training process.
-    """
     args = parse_args()
-
-    # Data loader
     dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=4, persistent_workers=True, shuffle=True)
     model, optimizer, start_epoch = load_model(args.model_path)
     train(model, optimizer, dataloader, args.epochs, start_epoch, args.lr, args.model_path)

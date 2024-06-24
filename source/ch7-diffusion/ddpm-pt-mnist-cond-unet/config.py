@@ -1,4 +1,5 @@
 import torch 
+from hiq import print_model, deterministic
 
 IMG_SIZE=48   # 图像尺寸
 T=1000   # 加噪最大步数

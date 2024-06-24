@@ -5,16 +5,45 @@ from dataset import train_dataset, tensor_to_pil
 from config import *
 from diffusion import forward_diffusion
 from time_position_emb import TimePositionEmbedding
-from conv_block import ConvBlock
+from cross_attn import CrossAttention
 
 
+class ConvBlock(nn.Module):
+    def __init__(self, in_channel, out_channel, time_emb_size, qsize, vsize, fsize, cls_emb_size):
+        super().__init__()
+
+        self.seq1 = nn.Sequential(
+            nn.Conv2d(in_channel, out_channel, kernel_size=3, stride=1, padding=1),  # 改通道数,不改大小
+            nn.BatchNorm2d(out_channel),
+            nn.ReLU(),
+        )
+
+        self.time_emb_linear = nn.Linear(time_emb_size, out_channel)  # Time时刻emb转成channel宽,加到每个像素点上
+        self.relu = nn.ReLU()
+
+        self.seq2 = nn.Sequential(
+            nn.Conv2d(out_channel, out_channel, kernel_size=3, stride=1, padding=1),  # 不改通道数,不改大小
+            nn.BatchNorm2d(out_channel),
+            nn.ReLU(),
+        )
+
+        # 像素做Query，计算对分类ID的注意力，实现分类信息融入图像，不改变图像形状和通道数
+        self.crossattn = CrossAttention(channel=out_channel, qsize=qsize, vsize=vsize, fsize=fsize,
+                                        cls_emb_size=cls_emb_size)
+
+    def forward(self, x, t_emb, cls_emb):  # t_emb: (batch_size,time_emb_size)
+        x = self.seq1(x)  # 改通道数,不改大小
+        # t_emb: (batch_size,out_channel,1,1)
+        t_emb = self.relu(self.time_emb_linear(t_emb)).view(x.size(0), x.size(1), 1, 1)
+        output = self.seq2(x + t_emb)  # 不改通道数,不改大小
+        return self.crossattn(output, cls_emb)  # 图像和引导向量做attention
+
+UNET_CHANNELS = [64, 128, 256, 512, 1024]
 class UNet(nn.Module):
-    def __init__(self, img_channel, channels=[64, 128, 256, 512, 1024], time_emb_size=256, qsize=16, vsize=16, fsize=32,
-                 cls_emb_size=32):
+    def __init__(self, img_channel, channels=UNET_CHANNELS, time_emb_size=256, qsize=16, vsize=16, fsize=32, cls_emb_size=32):
         super().__init__()
 
         channels = [img_channel] + channels
-
         # Time embedding
         self.time_emb = nn.Sequential(
             TimePositionEmbedding(time_emb_size),
@@ -87,7 +116,7 @@ def display_images(images, idx=0):
         plt.figure(figsize=(9, 3))
         titles = ["batch_x_t", "batch_predict_noise_t", "generated_images"]
         for i in range(3):
-            plt.subplot(1, 3, i+1)
+            plt.subplot(1, 3, i + 1)
             plt.title(titles[i])
             plt.imshow(tensor_to_pil((images[i][j] + 1) / 2))
             plt.axis('off')
@@ -100,11 +129,13 @@ def display_images(images, idx=0):
 if __name__ == '__main__':
     from hiq import deterministic
 
-    img = torch.stack((train_dataset[0][0], train_dataset[1][0]), dim=0).to(DEVICE)  # Combine 2 images into a batch, (2,1,48,48)
+    img = torch.stack((train_dataset[0][0], train_dataset[1][0]), dim=0).to(
+        DEVICE)  # Combine 2 images into a batch, (2,1,48,48)
     batch_x = img * 2 - 1  # Adjust pixel values to [-1,1] to match Gaussian noise range
     batch_cls = torch.tensor([train_dataset[0][1], train_dataset[1][1]], dtype=torch.long).to(DEVICE)  # Class IDs
 
-    batch_t = torch.randint(0, T, size=(batch_x.size(0),)).to(DEVICE)  # Randomly generate diffusion steps for each image
+    batch_t = torch.randint(0, T, size=(batch_x.size(0),)).to(
+        DEVICE)  # Randomly generate diffusion steps for each image
     batch_x_t, batch_noise_t = forward_diffusion(batch_x, batch_t)
 
     print("batch_cls:", batch_cls.detach().cpu().numpy())
