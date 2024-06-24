@@ -1,7 +1,8 @@
-from utils.engine import DDPMSampler, DDIMSampler
+from sampler.ddpm import DDPMSampler
+from sampler.ddim import DDIMSampler
 from model.UNet import UNet
 import torch
-from utils.tools import save_sample_image, save_image
+from sampler.tools import save_sample_image, save_image
 from argparse import ArgumentParser
 
 

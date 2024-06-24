@@ -1,5 +1,14 @@
 # Diffusion Model
 
+## DDPM
+
+[Code](vallina_ddpm_ddim/sampler/ddpm.py)
+
+## DDIM
+
+[Code](vallina_ddpm_ddim/sampler/ddim.py)
+
+
 
 一文解释 Diffusion Model (一) DDPM 理论推导
 
