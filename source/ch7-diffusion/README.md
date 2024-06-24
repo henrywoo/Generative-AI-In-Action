@@ -91,8 +91,9 @@ DDIM is an extension and improvement of DDPM. DDIMs enhance the diffusion-based 
 
 There is no difference between DDPM (Denoising Diffusion Probabilistic Models) and DDIM (Denoising Diffusion Implicit Models) in the training stage. Both models are trained using the same objective: to predict the noise that was added to the original data.
 
-#### Generation/Sampling Phase (Reverse Diffusion Process with DDIM):
-The key difference between DDIM and DDPM lies in the reverse diffusion process. DDIM modifies the reverse diffusion to be **non-Markovian**, meaning that the generation process does not depend solely on the previous timestep but can incorporate a more flexible transformation.
+#### Generation/Sampling Phase (Reverse Diffusion Process with DDIM)
+
+The key difference between DDIM and DDPM lies in the reverse diffusion process. In the sampling process, DDPM focuses solely on predicting the noise at each timestep. It starts from pure noise and iteratively denoises it based on the predicted noise at each step, eventually arriving at the generated image. DDIM modifies the reverse diffusion to be **non-Markovian**, meaning that the generation process does not depend solely on the previous timestep but can incorporate a more flexible transformation. DDIM's sampling process, however, incorporates information about both **the predicted noise** and **the current state of the image at each timestep**. This allows DDIM to take more direct "steps" towards the final image, resulting in faster sampling. In other words, DDIM's sampling process can be seen as having a more "goal-oriented" approach compared to DDPM's more "noise-focused" approach. This allows it to generate high-quality samples in fewer steps.
 
 1. **Initialize with Noise**: Start with noise sampled from a Gaussian Distribution with mean 0 and unit variance. This represents the noisy image at time T.
 2. **Non-Markovian Reverse Process**:
@@ -101,14 +102,6 @@ The key difference between DDIM and DDPM lies in the reverse diffusion process. 
    - The transformation is guided by the trained model (denoted as ε_θ) to predict the noise and adjust the image accordingly.
 3. **Repeat**: Continue this process until t = 1.
 4. **Final Image**: After completing all T iterations, the final generated image at timestep 0 is obtained.
-
-### Benefits of DDIM:
-
-1. **Faster Sampling**: DDIM can generate images faster than DDPM due to the deterministic nature of the reverse process, requiring fewer steps to reach the final image.
-2. **Improved Quality**: The non-Markovian approach allows for more flexibility and potentially higher quality in the generated images.
-3. **Controlled Generation**: DDIM offers better control over the generation process, allowing for smoother and more stable transitions between timesteps.
-
-
 
 [Code](vallina_ddpm_ddim/sampler/ddim.py)
 
