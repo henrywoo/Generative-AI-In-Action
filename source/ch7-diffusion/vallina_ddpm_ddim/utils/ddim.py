@@ -42,8 +42,7 @@ class DDIMSampler(nn.Module):
         return x_t_minus_one
 
     @torch.no_grad()
-    def forward(self, x_t, steps: int = 1, method="linear", eta=0.0,
-                only_return_x_0: bool = True, interval: int = 1):
+    def forward(self, x_t, steps: int = 1, method="linear", eta=0.0, only_return_x_0: bool = True, interval: int = 1):
         """
         Parameters:
             x_t: Standard Gaussian noise. A tensor with shape (batch_size, channels, height, width).
