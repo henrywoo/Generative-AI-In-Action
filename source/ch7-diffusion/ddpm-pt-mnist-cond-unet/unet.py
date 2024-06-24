@@ -83,18 +83,18 @@ def display_images(images, idx=0):
         predicted_noise: Tensor of the predicted noise.
         generated_image: Tensor of the generated image.
     """
-    plt.figure(figsize=(9, 3))
-    titles = ["batch_x_t", "batch_predict_noise_t", "generated_images"]
-    for i in range(3):
-        plt.subplot(1, 3, i+1)
-        plt.title(titles[i])
-        plt.imshow(tensor_to_pil((images[i][idx] + 1) / 2))
-        plt.axis('off')
-        plt.xticks([])
-        plt.yticks([])
-
-    plt.tight_layout()
-    plt.show()
+    for j in range(len(images[0])):
+        plt.figure(figsize=(9, 3))
+        titles = ["batch_x_t", "batch_predict_noise_t", "generated_images"]
+        for i in range(3):
+            plt.subplot(1, 3, i+1)
+            plt.title(titles[i])
+            plt.imshow(tensor_to_pil((images[i][j] + 1) / 2))
+            plt.axis('off')
+            plt.xticks([])
+            plt.yticks([])
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -107,6 +107,7 @@ if __name__ == '__main__':
     batch_t = torch.randint(0, T, size=(batch_x.size(0),)).to(DEVICE)  # Randomly generate diffusion steps for each image
     batch_x_t, batch_noise_t = forward_diffusion(batch_x, batch_t)
 
+    print("batch_cls:", batch_cls.detach().cpu().numpy())
     print("batch_t:", batch_t.detach().cpu().numpy())
     print('batch_x_t:', batch_x_t.size())
     print('batch_noise_t:', batch_noise_t.size())
