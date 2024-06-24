@@ -30,6 +30,19 @@ Diffusion models, including DDPM, DDIM, and LDM, represent an exciting direction
 
 [Code](vallina_ddpm_ddim/sampler/ddim.py)
 
+## Conditional Diffusion
+
+### Text Condition
+
+[Code](ddpm-pt-mnist-cond-unet/unet.py)
+
+[Model Checkpoint](https://drive.google.com/file/d/1EPAEqMTVnOacVbZsaJcj2zajaQ9N99Ju/view?usp=drive_link)
+
+Label: 0
+Generated Image: 
+
+![](ddpm-pt-mnist-cond-unet/output_images/generated_image_1.png)
+
 ## CFG
 
 ![](cfg.webp)
