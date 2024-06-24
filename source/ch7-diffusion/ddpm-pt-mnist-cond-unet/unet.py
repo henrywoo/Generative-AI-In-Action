@@ -79,7 +79,9 @@ class UNet(nn.Module):
         # Output layer
         self.output = nn.Conv2d(channels[1], img_channel, kernel_size=1, stride=1, padding=0)
 
-    def forward(self, x, t, cls):
+    def forward(self, x, t, cls, uncond_cls=None):
+        """uncond_cls: If it's None, we use the provided cls_emb as usual. If it's not None, it should be the class
+        embedding corresponding to the "unconditional" class (usually representing a lack of guidance)."""
         # Time embedding
         t_emb = self.time_emb(t)
 
@@ -89,7 +91,7 @@ class UNet(nn.Module):
         # Encoder stage
         residual = []
         for i, conv in enumerate(self.enc_convs):
-            x = conv(x, t_emb, cls_emb)
+            x = conv(x, t_emb, cls_emb if uncond_cls is None else uncond_cls)
             if i != len(self.enc_convs) - 1:
                 residual.append(x)
                 x = self.maxpools[i](x)

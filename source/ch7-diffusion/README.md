@@ -120,6 +120,48 @@ Generated Image:
 
 ## Classifier-Free Guidance (CFG)
 
+分类器自由引导（CFG）是一种在生成模型中常用的技术，特别是扩散模型，用于提高生成样本的质量和多样性。CFG 不依赖于分类器来指导生成过程，而是直接在生成模型的训练和采样阶段应用一些技术来实现这一目的。
+
+### CFG 的基本原理
+
+#### 1. 训练阶段
+
+在训练阶段，模型会学习从数据分布中提取特征。为了实现分类器自由引导，训练过程可以包含两种模式：
+
+- **有条件模式（Conditional Mode）**：模型在生成样本时依赖于某些条件信息，例如标签或文本描述。这种模式下，模型不仅学习数据本身的分布，还学习条件信息与数据之间的关系。
+  
+- **无条件模式（Unconditional Mode）**：模型在生成样本时不依赖任何条件信息，仅学习数据本身的分布。
+
+#### 2. 采样阶段
+
+在采样阶段，CFG 技术通过在生成过程中混合有条件和无条件的预测来引导生成样本。这一过程通常包括以下步骤：
+
+1. **无条件预测（Unconditional Prediction）**：生成模型在不依赖任何条件信息的情况下，生成一个无条件的预测结果。
+
+2. **有条件预测（Conditional Prediction）**：生成模型在给定条件信息（如标签或描述）的情况下，生成一个有条件的预测结果。
+
+3. **引导采样（Guided Sampling）**：通过结合无条件和有条件的预测结果，调整生成过程以平衡生成样本的多样性和真实性。通常，可以通过加权平均或其他混合策略来实现这一点，公式如下：
+
+   \[
+   \text{CFG}_\text{output} = (1 - w) \times \text{Unconditional Prediction} + w \times \text{Conditional Prediction}
+   \]
+
+   其中，\( w \) 是一个权重参数，控制有条件和无条件预测的混合比例。
+
+### CFG 的优势
+
+1. **提高生成质量**：通过有条件引导，模型能够生成更加符合条件信息的样本，从而提高生成样本的质量。
+
+2. **增强生成多样性**：混合有条件和无条件的预测结果，能够在保持样本多样性的同时，确保生成样本的真实性。
+
+3. **减少对分类器的依赖**：CFG 技术不需要单独训练一个分类器来引导生成过程，简化了模型训练和应用的复杂度。
+
+### 总结
+
+分类器自由引导（CFG）是一种有效的生成模型引导技术，通过在生成过程中结合有条件和无条件的预测结果，能够在提高生成样本质量和多样性的同时，简化模型的训练和应用。CFG 技术在扩散模型和其他生成模型中得到了广泛应用，展示了其在生成任务中的强大潜力。
+
+> CFG is primarily a sampling technique. You don't change the loss function or the training objective itself. The modifications are solely in how you pass class embeddings and interpret the model's output.
+
 Simply put, the CFG scale (classifier-free guidance scale) or guidance scale is a parameter that controls how much the image generation process follows the text prompt. The higher the value, the more the image sticks to a given text input. But this does not mean that the value should always be set to maximum, as more guidance means less diversity and quality.
 
 
