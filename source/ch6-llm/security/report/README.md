@@ -18,19 +18,8 @@ Pattern-matching tools use predefined rules to identify known vulnerabilities. T
 
 ### Static Analysis
 
-Static analysis tools perform a deep analysis of the codebase, going beyond just looking for patterns. It needs to understand the structure of the code, how different parts interact, and the flow of data. It requires **the code is compilable**. Compiling the code allows it to create an internal representation (often an intermediate representation like bytecode or an abstract syntax tree) that facilitates this in-depth analysis. For instance, taint analysis tracks the flow of data through the code to identify potential vulnerabilities. It marks potentially dangerous data (tainted data) and follows its flow through the application to see if it reaches sensitive areas without proper sanitization or validation.
+Static analysis tools perform a deep analysis of the codebase, going beyond just looking for patterns. It needs to understand the structure of the code, how different parts interact, and the flow of data. Therefore, it requires **the code to be compilable**. CodeQL and Fortify are great static analysis tools working at repo level. Parfait, an Oracle-owned product is able to work at code level with acceptable latency(500ms-2s). Fortify is widely used in Oracle as repo level code scanner but the latency is 15-20 seconds according to our test, so it doesn't fit into this project.
 
-#### CodeQL
-
-CodeQL is a powerful tool that allows users to write queries to identify patterns of vulnerabilities in codebases. It is highly customizable and can be used to create complex rules for detecting specific security issues.
-
-#### Fortify
-
-Fortify is a static analysis tool that includes taint analysis capabilities. It helps identify vulnerabilities by examining data flows and identifying places where tainted data can cause security issues. The latency is 15-20 seconds according to my test.
-
-#### Parfait
-
-An Oracle product for static code analysis.
 
 ### Deep Learning
 
