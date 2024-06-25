@@ -5,20 +5,26 @@
 Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate code better and better. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this document is to leverage a combination of traditional security analysis tool and latest LLMs to ensure the security of the generated code.
 
 
+## Background
 
-## Related Works
+Code vulnerability detection methods can be categorized to static, dynamic and 
 
-### LLM
+### Rule-Based Pattern Matching
 
-Several deep learning-based vulnerability detection tools have been proposed in recent years that attempt to learn vulnerable patterns from large corpuses of code. This eliminates the need for writing specific rules for detecting vulnerabilities and has been made possible by the introduction of large real-world datasets like **CVEFixes** for Java. These tools leverage LLMs(DNN/GNN) to detect vulnerabilities by recognizing vulnerabilities in the code.
+Pattern-matching tools use predefined rules to identify known vulnerabilities. These tools scan the codebase for patterns that match known vulnerability signatures.
+
+#### Meta Insecure Code Detector
+
+Meta Insecure Code Detector is another pattern-matching tool that scans codebases for insecure patterns. It uses a database of known insecure patterns and applies them to the code to identify potential issues.
+
 
 ### Static Analysis
 
-Static analysis tools analyze code without executing it to identify potential vulnerabilities. These tools scan the code for patterns that match known vulnerability signatures. The advantage of static analysis is that it can be applied to the entire codebase and identify potential issues early in the development cycle. However, they may produce false positives and negatives due to the complexity of accurately modeling all possible code behaviors.
+Static analysis tools perform a deep analysis of the codebase, going beyond just looking for patterns. It needs to understand the structure of the code, how different parts interact, and the flow of data. It requires **the code is compilable**. Compiling the code allows it to create an internal representation (often an intermediate representation like bytecode or an abstract syntax tree) that facilitates this in-depth analysis. For instance, taint analysis tracks the flow of data through the code to identify potential vulnerabilities. It marks potentially dangerous data (tainted data) and follows its flow through the application to see if it reaches sensitive areas without proper sanitization or validation.
 
-### Taint Analysis 
+#### CodeQL
 
-Taint analysis tracks the flow of data through the code to identify potential vulnerabilities. It marks potentially dangerous data (tainted data) and follows its flow through the application to see if it reaches sensitive areas without proper sanitization or validation.
+CodeQL is a powerful tool that allows users to write queries to identify patterns of vulnerabilities in codebases. It is highly customizable and can be used to create complex rules for detecting specific security issues.
 
 #### Fortify
 
@@ -28,17 +34,22 @@ Fortify is a static analysis tool that includes taint analysis capabilities. It 
 
 An Oracle product for static code analysis.
 
-### Pattern-Matching
+### Deep Learning
 
-Pattern-matching tools use predefined rules to identify known vulnerabilities. These tools scan the codebase for patterns that match known vulnerability signatures.
+#### CodeLM
 
-#### CodeQL
+Deep learning has obtained encouraging results for software vulnerability, in particular using sequence- and graph-based techniques such as Bi-LSTM, Graph Neural Networks(GNN) and Transformers. These techniques attempt to embed syntactic and semantic information from the code explicitly, for example by using various dependency and data flow analyses to preprocess source code and extract various artefact such as code gadgets, control flow graphs and dependency graphs which are eventually fed to the respective neural network.
 
-CodeQL is a powerful tool that allows users to write queries to identify patterns of vulnerabilities in codebases. It is highly customizable and can be used to create complex rules for detecting specific security issues.
+Several deep learning-based vulnerability detection tools have been proposed in recent years that attempt to learn vulnerable patterns from large corpora of code. This **eliminates the need for writing specific rules** for detecting vulnerabilities and has been made possible by the introduction of large real-world datasets like **CVEFixes** for Java. These tools leverage LLMs(DNN/GNN) to detect vulnerabilities by recognizing vulnerabilities in the code.
 
-#### Meta Insecure Code Detector
 
-Meta Insecure Code Detector is another pattern-matching tool that scans codebases for insecure patterns. It uses a database of known insecure patterns and applies them to the code to identify potential issues.
+#### LLM
+
+Recently, Large Language Models (LLMs), such as GPT-4 and CodeLlama, have demonstrated remarkable performance on code-related tasks. It has been found that LLMs can often perform better than existing static analysis and deep learning-based vulnerability detection tools, especially for certain classes of vulnerabilities. Moreover, LLMs also often provide reliable explanations, precisely identifying the vulnerable data flows in code. Fine-tuning smaller LLMs can outperform the larger LLMs.
+
+## LLM vs. CodeLM vs. Static Analysis vs. Pattern Matching
+
+While DNNs offer promising enhancements, especially in terms of adaptability and potentially improved accuracy, they are not yet a complete replacement for rule-based systems in static code analysis. A hybrid approach, where DNNs complement rule-based tools, is more effective, leveraging the strengths of both methodologies. For now, rule-based tools remain valuable due to their stability, interpretability, and extensive rule sets developed over years of security research and practice.
 
 ## Architecture
 
@@ -101,6 +112,8 @@ Paper:
 - Yujia Fu, Peng Liang, Amjed Tahir, Zengyang Li, Mojtaba Shahin, and Jiaxin Yu. 2023. Security Weaknesses of Copilot Generated Code in GitHub. arXiv preprint arXiv:2310.02059 (2023).
 - Raphaël Khoury, Anderson R Avila, Jacob Brunelle, and Baba Mamadou Camara. 2023. How Secure is Code Generated by ChatGPT? arXiv preprint arXiv:2304.09655 (2023).
 - Hammond Pearce, Baleegh Ahmad, Benjamin Tan, Brendan Dolan-Gavitt, and Ramesh Karri. 2022. Asleep at the Keyboard? Assessing the Security of GitHub Copilot’s Code Contributions. In 2022 IEEE Symposium on Security and Privacy (SP). 754–768. https://doi.org/10.1109/SP46214.2022.9833571
+- SkipAnalyzer: A Tool for Static Code Analysis with Large Language Models based on ChatGPT (It can detect bugs, filter false positive warnings, and patch the detected bugs without human intervention.)
+- Vulnerability Detection with Code Language Models: How Far Are We?
 
 
 Code:
@@ -109,3 +122,4 @@ Code:
 - SVEN: Security Hardening and Adversarial Testing for Code LLMs: https://github.com/eth-sri/sven
 - Codexity: Secure AI-assisted Code Generation https://github.com/Codexity-APR/Codexity Codexity, a security-focused code generation framework integrated with five LLMs.
 - CVEFixes: https://paperswithcode.com/dataset/cvefixes
+- PrimeVul: https://github.com/DLVulDet/PrimeVul
