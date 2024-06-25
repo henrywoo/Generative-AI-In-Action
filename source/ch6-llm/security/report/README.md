@@ -40,6 +40,8 @@ An Oracle product for static code analysis.
 
 Deep learning has obtained encouraging results for software vulnerability, in particular using sequence- and graph-based techniques such as Bi-LSTM, Graph Neural Networks(GNN) and Transformers. These techniques attempt to embed syntactic and semantic information from the code explicitly, for example by using various dependency and data flow analyses to preprocess source code and extract various artefact such as code gadgets, control flow graphs and dependency graphs which are eventually fed to the respective neural network.
 
+![](attn_map_codeboost3.png)
+
 Several deep learning-based vulnerability detection tools have been proposed in recent years that attempt to learn vulnerable patterns from large corpora of code. This **eliminates the need for writing specific rules** for detecting vulnerabilities and has been made possible by the introduction of large real-world datasets like **CVEFixes** for Java. These tools leverage LLMs(DNN/GNN) to detect vulnerabilities by recognizing vulnerabilities in the code.
 
 
