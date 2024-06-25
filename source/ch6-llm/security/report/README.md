@@ -42,7 +42,14 @@ Recently, Large Language Models (LLMs), such as GPT-4 and CodeLlama, have demons
 
 ## LLM vs. CodeLM vs. Static Analysis vs. Pattern Matching
 
-While DNNs offer promising enhancements, especially in terms of adaptability and potentially improved accuracy, they are not yet a complete replacement for rule-based systems in static code analysis. A hybrid approach, where DNNs complement rule-based tools, is more effective, leveraging the strengths of both methodologies. For now, rule-based tools remain valuable due to their stability, interpretability, and extensive rule sets developed over years of security research and practice.
+![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/ad8a8207-5757-46a9-87d2-b50e2702c4e2)
+
+![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/72a58cc9-abc7-4899-ac48-e777c3f28439)
+
+![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/249862ef-3866-4e4b-94cd-e7148117a0f4)
+
+
+We can see while DNNs offer promising enhancements, especially in terms of adaptability and potentially improved accuracy, they are not yet a complete replacement for rule-based systems in static code analysis. A hybrid approach, where DNNs complement rule-based tools, is more effective, leveraging the strengths of both methodologies. For now, rule-based tools remain valuable due to their stability, interpretability, and extensive rule sets developed over years of security research and practice.
 
 ## Architecture
 
