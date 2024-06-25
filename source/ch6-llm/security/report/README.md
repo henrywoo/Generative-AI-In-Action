@@ -1,11 +1,15 @@
+## Team
+
+Fuheng, Kevin, Gary, Wei
+
 ## Overview
 
-Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate code better and better. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant in real time.
+Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate better quality code. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant in real time.
 
 
 ## Background
 
-We categorize the solutions to `basic rule-based pattern matching`, `advanced data and dependency based static analysis`, and `deep learning` methods as follows.
+We categorize the solutions to `basic rule-based pattern matching`, `advanced static analysis`, and `deep learning` methods as follows.
 
 ### Rule-Based Pattern Matching
 
