@@ -1,21 +1,19 @@
-# Secure LLM Code Assistant
-
 ## Overview
 
-Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate code better and better. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this document is to leverage a combination of traditional security analysis tool and latest LLMs to ensure the security of the generated code.
+Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate code better and better. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant.
 
 
 ## Background
 
-Code vulnerability detection methods can be categorized to static, dynamic and 
+We categorize the solutions to basic rule-based static analysis, more advanced data and dependency based static analysis, and deep learning methods as follows.
 
 ### Rule-Based Pattern Matching
 
 Pattern-matching tools use predefined rules to identify known vulnerabilities. These tools scan the codebase for patterns that match known vulnerability signatures.
 
-#### Meta Insecure Code Detector
+#### Insecure Code Detector
 
-Meta Insecure Code Detector is another pattern-matching tool that scans codebases for insecure patterns. It uses a database of known insecure patterns and applies them to the code to identify potential issues.
+Insecure Code Detector is a pattern-matching tool that scans code for insecure patterns. It uses a database of known insecure patterns and applies them to the code to identify potential issues.
 
 
 ### Static Analysis
