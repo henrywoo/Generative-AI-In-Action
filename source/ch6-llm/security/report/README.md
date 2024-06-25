@@ -6,6 +6,8 @@ Fuheng, Kevin, Gary, Wei
 
 Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate better quality code. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant in real time.
 
+![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/61561469-f9ee-4206-89c2-9890ea887f56)
+
 
 ## Background
 
@@ -14,6 +16,8 @@ We categorize the solutions to `basic rule-based pattern matching`, `advanced st
 ### Rule-Based Pattern Matching
 
 Pattern-matching tools use predefined rules to identify known vulnerabilities. These tools scan the codebase for patterns that match known vulnerability signatures. We use Insecure Code Detector(ICD) as our baseline solution as it was originally designed by Meta to safeguard their code assist output. It is expandable and works in realtime, perfectly fit into our use case.
+
+![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/44d2ec5d-5d07-473a-906c-6002f170ef41)
 
 
 ### Static Analysis
