@@ -4,7 +4,7 @@ Fuheng, Kevin, Gary, Wei
 
 ## Overview
 
-Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate better quality code. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant in real time.
+Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate better quality code. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the LLM-generated code **secure and compliant** in **real time**.
 
 ![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/61561469-f9ee-4206-89c2-9890ea887f56)
 
