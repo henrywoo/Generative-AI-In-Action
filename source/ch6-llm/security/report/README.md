@@ -96,6 +96,16 @@ The future direction for the Secure Code Assistant includes:
 - Deeper Integration with Development Tools: Integrating more deeply with popular development environments and CI/CD pipelines to provide seamless security analysis.
 - User Customization: Allowing users to customize security rules and analysis settings to better fit their specific needs and requirements.
 
+These efforts are hindered by many contraints we are having right now. To improve the system perforamnce, there are several key areas we need to explore in the future:
+
+### Need for More Context
+
+The current work formulates the problem as: **given the code of a single function, determine whether that function contains a security vulnerability**. However, this may incur high false positives and negatives. Determining whether code is vulnerable generally depends on information about other components of the system as well, such as whether inputs to the function have already been sanitized, how outputs will be used, or what invariants are established by the rest of the system. This focus on function-level analysis without the consideration of other contexts (such as interprocedural data flows and dependencies) would make it difficult for even a human to detect vulnerabilities, let alone a model. In the future, we need to more access to a broader context, such as file-level, or even repo level. We can integrate vision-language model to detect the human intention which provide multi-modal context inputs.
+
+### Integration LLM, CodeLM and Traditional Static Analysis Tools
+### Better Prompt Engineering such as ICL, COT
+
+
 ## Reference
 
 @article{sven-llm,
