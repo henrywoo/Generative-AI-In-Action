@@ -20,6 +20,7 @@ Pattern-matching tools use predefined rules to identify known vulnerabilities. T
 
 Static analysis tools perform a deep analysis of the codebase, going beyond just looking for patterns. It needs to understand the structure of the code, how different parts interact, and the flow of data. Therefore, it requires **the code to be compilable**. CodeQL and Fortify are great static analysis tools working at repo level. Parfait, an Oracle-owned product is able to work at code level with acceptable latency(500ms-2s). Fortify is widely used in Oracle as repo level code scanner but the latency is 15-20 seconds according to our test, so it doesn't fit into this project.
 
+![image](https://github.com/henrywoo/Generative-AI-In-Action/assets/458995/888a97be-314f-4c5f-8172-eb67613d4955)
 
 ### Deep Learning
 
@@ -30,7 +31,6 @@ Deep learning has obtained encouraging results for software vulnerability, in pa
 ![](attn_map_codeboost3.png)
 
 Several deep learning-based vulnerability detection tools have been proposed in recent years that attempt to learn vulnerable patterns from large corpora of code. This **eliminates the need for writing specific rules** for detecting vulnerabilities and has been made possible by the introduction of large real-world datasets like **CVEFixes** for Java. These tools leverage LLMs(DNN/GNN) to detect vulnerabilities by recognizing vulnerabilities in the code.
-
 
 #### LLM
 
