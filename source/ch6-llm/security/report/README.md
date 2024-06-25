@@ -1,19 +1,15 @@
 ## Overview
 
-Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate code better and better. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant.
+Large language models (LLMs) introduce new security risks. They are increasingly trained on massive codebases and used to generate code better and better. However, LLMs [lack awareness of security and are found to frequently produce unsafe code.](https://arxiv.org/abs/2302.05319). The goal of this work is to ensure the generated code secure and compliant in real time.
 
 
 ## Background
 
-We categorize the solutions to basic rule-based static analysis, more advanced data and dependency based static analysis, and deep learning methods as follows.
+We categorize the solutions to `basic rule-based pattern matching`, `advanced data and dependency based static analysis`, and `deep learning` methods as follows.
 
 ### Rule-Based Pattern Matching
 
-Pattern-matching tools use predefined rules to identify known vulnerabilities. These tools scan the codebase for patterns that match known vulnerability signatures.
-
-#### Insecure Code Detector
-
-Insecure Code Detector is a pattern-matching tool that scans code for insecure patterns. It uses a database of known insecure patterns and applies them to the code to identify potential issues.
+Pattern-matching tools use predefined rules to identify known vulnerabilities. These tools scan the codebase for patterns that match known vulnerability signatures. We use Insecure Code Detector(ICD) as our baseline solution as it was originally designed by Meta to safeguard their code assist output. It is expandable and works in realtime, perfectly fit into our use case.
 
 
 ### Static Analysis
