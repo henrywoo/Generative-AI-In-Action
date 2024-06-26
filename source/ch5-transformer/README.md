@@ -532,6 +532,24 @@ Following the original Vision Transformer, some follow-up works have been made:
 - DINO (a method for self-supervised training of Vision Transformers) by Facebook AI. Vision Transformers trained using the DINO method show very interesting properties not seen with convolutional models. They are capable of segmenting objects, without having ever been trained to do so.
 - MAE (Masked Autoencoders) by Facebook AI. By pre-training Vision Transformers to reconstruct pixel values for a high portion (75%) of masked patches (using an asymmetric encoder-decoder architecture), the authors show that this simple method outperforms supervised pre-training after fine-tuning.
 
+## BEiT 1,2,3
+
+- BEiTv1 Loss: CCE of masked patches.
+
+![](beit.png)
+
+Loss: https://github.com/microsoft/unilm/blob/master/beit/engine_for_pretraining.py#L49-L56
+
+- BEITv2: VQ-KD, Patch Aggregation
+
+![](beit2.png)
+
+Loss: https://github.com/microsoft/unilm/blob/master/beit2/engine_for_pretraining.py#L54-L68
+
+- BEITv3: Multimodal
+
+![](beit3.png)
+
 ## MaskGIT
 
 [MaskGIT (Masked Generative Image Transformer)](https://arxiv.org/abs/2202.04200) generates images in parallel by predicting and refining masked tokens iteratively, utilizing a bidirectional non-autoregressive transformer trained with masked visual token modeling(MVTM) task. It represents another type of generative methods known as **Masked Generative models (MGM)**.
@@ -544,4 +562,5 @@ Following the original Vision Transformer, some follow-up works have been made:
 
 ## 📌 Reference
 
+- Mask Image Modeling: https://github.com/ucasligang/awesome-MIM
 - Transformer升级之路：1、Sinusoidal位置编码追根溯源 https://kexue.fm/archives/8231

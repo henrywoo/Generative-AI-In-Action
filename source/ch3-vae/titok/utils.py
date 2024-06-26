@@ -216,4 +216,6 @@ def load_checkpoint(filename, model, optimizer):
 
 
 if __name__ == '__main__':
+    get_dataset('imagenet-1k', 256, 2, None, rank=None, world_size=None)
     demo_get_inception_score()
+

@@ -94,6 +94,9 @@ These steps should help in stabilizing the validation loss and improving the mod
 
 ### Computer Vision
 
+- HuggingFace: [datasets](https://pypi.org/project/datasets/)
+- Torchvision datasets: [torchvision.datasets](https://pytorch.org/vision/0.8/datasets.html)
+
 Here's a table listing some of the most popular image datasets for computer vision.
 
 | Dataset Name            | Primary Usage                   | Size (GB) | License                                      | Image Size (CxHxW) | Number of Images  |
