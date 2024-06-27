@@ -24,7 +24,7 @@ import matplotlib.patches as patches
 import numpy as np
 from PIL import ImageFilter, Image
 import requests
-import tensorflow.compat.v1 as tf
+#import tensorflow.compat.v1 as tf
 
 from maskgit.nets import vqgan_tokenizer, maskgit_transformer
 from maskgit.configs import maskgit_class_cond_config

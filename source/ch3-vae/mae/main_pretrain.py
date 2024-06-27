@@ -103,27 +103,10 @@ def get_args_parser():
 
     return parser
 
-class ImageNet1KDataSet:
-    def __init__(self, dataset, transform=None):
-        self.dataset = dataset
-        self.transform = transform
 
-    def __len__(self):
-        return len(self.dataset)
+from hiq.cv_torch import get_cv_dataset, IN_STD, IN_MEAN, DS_PATH_IMAGENET
 
-    def __getitem__(self, idx):
-        sample = self.dataset[idx]
-        image = sample['image']
 
-        # Ensure the image is in RGB format
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-
-        if self.transform:
-            image = self.transform(image)
-        return image, sample['label']
-
-from datasets import load_dataset
 def main(args):
     misc.init_distributed_mode(args)
 
@@ -141,14 +124,11 @@ def main(args):
 
     # simple augmentation
     transform_train = transforms.Compose([
-            transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    ds = load_dataset("imagenet-1k", trust_remote_code=True)
-    dataset_train = ImageNet1KDataSet(ds["train"], transform=transform_train)
-    #dataset_train = datasets.ImageFolder(os.path.join(args.data_path, 'train'), transform=transform_train)
-    print(dataset_train)
+        transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=IN_MEAN, std=IN_STD)])
+    dataset_train = get_cv_dataset(path=DS_PATH_IMAGENET, transform=transform_train)
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
@@ -173,7 +153,7 @@ def main(args):
         pin_memory=args.pin_mem,
         drop_last=True,
     )
-    
+
     # define the model
     model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
 
@@ -183,7 +163,7 @@ def main(args):
     print("Model = %s" % str(model_without_ddp))
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
-    
+
     if args.lr is None:  # only base_lr is specified
         args.lr = args.blr * eff_batch_size / 256
 
@@ -196,7 +176,7 @@ def main(args):
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
         model_without_ddp = model.module
-    
+
     # following timm: set wd as 0 for bias and norm layers
     param_groups = optim_factory.param_groups_weight_decay(model_without_ddp, args.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
@@ -222,7 +202,7 @@ def main(args):
                 loss_scaler=loss_scaler, epoch=epoch)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,}
+                     'epoch': epoch, }
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:

@@ -76,6 +76,4 @@ def get_config():
 
 
 def get_hyper(h):
-
-  return h.product([
-  ], name="config")
+  return h.product([], name="config")

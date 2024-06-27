@@ -24,7 +24,6 @@ import matplotlib.patches as patches
 import numpy as np
 from PIL import ImageFilter, Image
 import requests
-import tensorflow.compat.v1 as tf
 
 def visualize_images(images, title='', figsize=(30, 6)):
   batch_size, height, width, c = images.shape
@@ -37,6 +36,7 @@ def visualize_images(images, title='', figsize=(30, 6)):
   plt.imshow(image_grid)
   plt.axis("off")
   plt.title(title)
+  plt.show()
 
 def read_image_from_url(url, height=None, width=None):
   resp = requests.get(url)
@@ -49,6 +49,7 @@ def read_image_from_url(url, height=None, width=None):
   return np.float32(pil_image) / 255.
 
 def restore_from_path(path):
+  import tensorflow.compat.v1 as tf
   with tf.io.gfile.GFile(path, "rb") as f:
     state = flax.serialization.from_bytes(None, f.read())
   return state

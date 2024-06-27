@@ -5,7 +5,7 @@ from hiq.utils import read_file
 from util import plot_attention_map_FLFH, plot_attention_rank
 
 """
-🌳 UniXcoder<all params:125929728>
+🌳 UniXcoder<all params:125,929,728>
 ├── RobertaModel(model)
 │   ├── RobertaEmbeddings(embeddings)
 │   │   ├── Embedding(word_embeddings)|weight[51416,768]

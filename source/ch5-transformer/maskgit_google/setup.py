@@ -2,11 +2,9 @@ from setuptools import setup, find_packages
 import os
 
 here = os.path.dirname(os.path.realpath(__file__))
-HAS_CUDA = os.system("nvidia-smi > /dev/null 2>&1") == 0
 
 VERSION = "0.0.1.dev0"
 DESCRIPTION = "maskgit"
-
 
 def read_file(filename: str):
     try:
@@ -17,26 +15,22 @@ def read_file(filename: str):
     except:
         return []
 
-
-def package_files(directories, skip_patterns):
+def package_files(directory, skip_patterns):
     paths = []
-    for directory in directories:
-        for root, _, filenames in os.walk(directory):
-            for filename in filenames:
-                file_path = os.path.join(root, filename)
-                relative_path = os.path.relpath(file_path, directory)
-                if not any(skip_pattern in relative_path for skip_pattern in skip_patterns):
-                    paths.append(relative_path)
+    for root, _, filenames in os.walk(directory):
+        for filename in filenames:
+            file_path = os.path.join(root, filename)
+            relative_path = os.path.relpath(file_path, here)
+            if not any(skip_pattern in relative_path for skip_pattern in skip_patterns):
+                paths.append(relative_path)
     return paths
-
 
 # Define directories and patterns to skip
 directories = ["maskgit/"]
 skip_patterns = ["__pycache__", ".pyc", ".pyo", ".git", ".bin", "pretrained_maskgit", "data", ".huggingface"]
 
 # Get the list of extra files
-extra_files = package_files(directories, skip_patterns)
-print(extra_files)
+extra_files = package_files("maskgit", skip_patterns)
 
 setup(
     name="maskgit",
@@ -58,6 +52,8 @@ setup(
         "Programming Language :: Python :: 3.12",
     ],
     include_package_data=True,
-    packages=find_packages(),
-    package_data={"maskgit": extra_files}
+    packages=find_packages(include=['maskgit', 'maskgit.*']),
+    package_data={
+        'maskgit': extra_files,
+    },
 )
