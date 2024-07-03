@@ -167,7 +167,7 @@ While common in supervised learning, using a separate validation set in GANs is 
 * Consider human evaluation for complex domains.
 * Validation sets can be used to monitor the discriminator's performance.
 
-### Example - Trainning MNIST with GAN
+### Example - Training MNIST with GAN
 
 **Epoch 150**
 
