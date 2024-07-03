@@ -362,7 +362,7 @@ Repo:
 - [ViT-VQGAN(aka VIM)](https://arxiv.org/abs/2110.04627): It proposes multiple improvements over vanilla VQGAN from architecture to codebook learning, yielding better efficiency and reconstruction fidelity. [Unoffical Code](https://github.com/thuanz123/enhancing-transformers).
 ![](vim-gan.png)
 
-### Quantitative Comparison
+### 🧭 Quantitative Comparison
 
 Reconstruction performance of different tokenizers on 256x256 ImageNet 50k validation set.
 
