@@ -57,6 +57,41 @@ The minimax loss is derived from the idea of a zero-sum game between the generat
 > - Understanding GAN Loss Functions https://neptune.ai/blog/gan-loss-functions
 
 
+## Hinge loss
+
+Hinge loss is a type of loss function commonly used in machine learning, particularly for training classifiers like Support Vector Machines (SVMs). It's designed to find the optimal decision boundary that maximizes the margin between different classes in your data.
+
+**How it works:**
+
+* **Binary Classification:** In binary classification (where you have two classes), hinge loss calculates a penalty based on the distance between a data point and the decision boundary. 
+* **Margin:** Ideally, you want a large margin, which means the data points are far away from the decision boundary, making the classifier more confident in its predictions.
+* **Penalty:** Hinge loss penalizes misclassified points and also those that are correctly classified but fall within the margin. This encourages the model to find a boundary that maximizes the margin while still correctly classifying most points.
+
+**Mathematical Definition:**
+
+For a single data point, the hinge loss is defined as:
+
+```
+L(y, f(x)) = max(0, 1 - y * f(x))
+```
+
+where:
+
+* `y` is the true label (-1 or 1 for binary classification)
+* `f(x)` is the predicted value (output of the classifier)
+
+**Key Properties:**
+
+* **Max-margin:** Hinge loss is designed to find a decision boundary that maximizes the margin between classes.
+* **Robustness:** It's relatively robust to outliers compared to some other loss functions.
+* **Non-differentiable at zero:** This can pose challenges for some optimization algorithms, but it's usually not a major issue in practice.
+
+**Comparison with Other Loss Functions:**
+
+* **Logistic Loss:** While both are used for classification, logistic loss focuses more on the probability of a correct classification. Hinge loss focuses on maximizing the margin.
+* **Squared Loss:**  Squared loss penalizes errors more harshly than hinge loss, which can make it more sensitive to outliers.
+
+
 ## What is Wasserstein Loss?
 
 The Wasserstein loss, used in Wasserstein GANs (WGANs), is a prime example of an alternative loss function designed to address the stability and convergence issues often encountered with the original minimax loss in GANs.
@@ -306,8 +341,7 @@ Repo:
 
 ![](taming_vqgan.png)
 
-- [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py): a reimplementation of [Taming VQGAN](https://arxiv.org/abs/2012.09841)
-with several modifications. **The non-local layers are removed** from Taming VQGAN for faster speed.
+- [Google MaskGIT VQGAN](https://github.com/google-research/maskgit/blob/main/maskgit/nets/vqgan_tokenizer.py): A reimplementation of [Taming VQGAN](https://arxiv.org/abs/2012.09841) with several modifications. **The non-local layers are removed** from Taming VQGAN for faster speed.
 
 - [Valeo MaskGIT VQGAN](https://github.com/valeoai/Maskgit-pytorch?tab=readme-ov-file): The same as [Taming or Official VQGAN](https://github.com/CompVis/taming-transformers/tree/master).
 
@@ -315,9 +349,14 @@ with several modifications. **The non-local layers are removed** from Taming VQG
 
 - [aMUSEd VQGAN](https://github.com/huggingface/amused.git): We trained a 146M parameter VQ-GAN (Esser et al. (2021)) **with no self-attention layers**, a vocab size of 8192, and a latent dimension of 64. Our VQ-GAN downsamples resolutions by 16x, e.g. a 256x256 (512x512) resolution image is reduced to 16x16 (32x32) latent codes. We trained our VQ-GAN for 2.5M steps. To improve the reconstruction of high-resolution images, we further fine-tuned the VQ-GAN decoder on a dataset of images greater than 1024x1024 resolution. The VQ-GAN decoder was finetuned on 2 8xA100 servers for 200,000 steps and used a per GPU batch size of 16 for a total batch size of 256.
 - [Asymmetric VQGAN](https://arxiv.org/abs/2306.04632): Asymmetric VQGAN involves two core designs compared with the original VQGAN as shown in the figure. First, we introduce a conditional branch into the decoder of the VQGAN which aims to handle the conditional input for image manipulation tasks. Second, we design a larger decoder for VQGAN to better recover the losing details of the quantized codes. It has a heavier [decoder](https://github.com/buxiangzhiren/Asymmetric_VQGAN/blob/main/ldm/modules/diffusionmodules/model.py#L462) than [encoder](https://github.com/buxiangzhiren/Asymmetric_VQGAN/blob/main/ldm/modules/diffusionmodules/model.py#L368).
-- [OmniTokenizer](https://arxiv.org/pdf/2406.09399v1)
-- [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2): It reduces the VQ-VAE codebook’s embedding dimension to zero, aka Lookup-free quantization([LFQ](https://github.com/TencentARC/Open-MAGVIT2/blob/main/taming/models/lfqgan.py#L18)) LFQGAN.
+- [OmniTokenizer](https://arxiv.org/pdf/2406.09399v1): The training of VQVAE includes two stages: image-only training on a fixed resolution, and image-video joint training on multiple resolutions. After this, finetune the VQVAE model w/ KL loss to obtain a VAE model.[A joint image-video tokenizer](https://github.com/FoundationVision/OmniTokenizer)
+
+![](images/omnitokenizer_vae.png)
+
+- [Open-MAGVIT2](https://github.com/TencentARC/Open-MAGVIT2): It uses a predefined static codebook where each codeword can be mapped by the index or vice versa, aka Lookup-free quantization([LFQ](https://github.com/TencentARC/Open-MAGVIT2/blob/main/taming/models/lfqgan.py#L18)), and also a predefined extremely simple quantization rule(non-negative to 1 and negative to -1). Another innovation is using **entropy loss** to increase the book utilization rate and book commitment.
+
 ![](lfq.png)
+
 - [LlamaGen VQGAN](https://github.com/FoundationVision/LlamaGen): It uses the same architecture as Taming-VQGAN, encoder-quantizer-decoder. Following [VIM](https://arxiv.org/pdf/2110.04627), it also uses ℓ2-normalization to codebook vectors, low codebook vector dimension C, and large codebook size K. These designs significantly improve reconstruction quality and codebook usage.
 ![](llama_gen_tokenizer.png)
 - [ViT-VQGAN(aka VIM)](https://arxiv.org/abs/2110.04627): It proposes multiple improvements over vanilla VQGAN from architecture to codebook learning, yielding better efficiency and reconstruction fidelity. [Unoffical Code](https://github.com/thuanz123/enhancing-transformers).
@@ -327,22 +366,22 @@ with several modifications. **The non-local layers are removed** from Taming VQG
 
 Reconstruction performance of different tokenizers on 256x256 ImageNet 50k validation set.
 
-|     Method      | Token Type | #Tokens | Train Data | Codebook Size | rFID | PSNR  | Codebook Utilization | Checkpoint |
-|:---------------:|:----:|:-----:|:-----:|:-------------:|:----:|:----:|:--------------------:|:----------:|
-|      VQGAN      | 2D | 16 x 16 | 256 x 256 ImageNet  | 1024 | 7.94 | 19.4 |          -           |     -      |
-|    SD-VQGAN     | 2D | 16 x 16 | OpenImages | 16384 | 5.15 | - |          -           |     -      |
-|     MaskGIT     | 2D | 16 x 16 | 256 x 256 ImageNet  | 1024 | 2.28 | - |          -           |     -      |
-|    LlamaGen     | 2D | 16 x 16 | 256 x 256 ImageNet  | 16384 | 2.19  | 20.79 |         97%          |     -      |
-|**Open-MAGVIT2** | 2D | 16 x 16 | 256 x 256 ImageNet | 262144 | **1.53** | **21.53** |       **100%**       |     -      |
+|     Method      | Token Type | #Tokens |     Train Data     | Codebook Size | rFID | PSNR  | Codebook Utilization | Checkpoint |
+|:---------------:|:----:|:-----:|:------------------:|:-------------:|:----:|:----:|:--------------------:|:----------:|
+|      VQGAN      | 2D | 16 x 16 | 256 x 256 ImageNet | 1024 | 7.94 | 19.4 |          -           |     -      |
+|    SD-VQGAN     | 2D | 16 x 16 |     OpenImages     | 16384 | 5.15 | - |          -           |     -      |
+|     MaskGIT     | 2D | 16 x 16 | 256 x 256 ImageNet | 1024 | 2.28 | - |          -           |     -      |
+|    LlamaGen     | 2D | 16 x 16 | 256 x 256 ImageNet | 16384 | 2.19  | 20.79 |         97%          |     -      |
+|**Open-MAGVIT2** | 2D | 16 x 16 | 128 x 128 ImageNet | 262144 | **1.53** | **21.53** |       **100%**       |     -      |
 |    ViT-VQGAN    | 2D | 32 x 32 | 256 x 256 ImageNet | 8192 | 1.28 |  - |          -           |     -      |
-|      VQGAN      | 2D | 32 x 32 | OpenImages | 16384 | 1.19 | 23.38 |          -           |     -      |
-|    SD-VQGAN     | 2D | 32 x 32 | OpenImages | 16384 | 1.14 | - |          -           |     -      |
+|      VQGAN      | 2D | 32 x 32 |     OpenImages     | 16384 | 1.19 | 23.38 |          -           |     -      |
+|    SD-VQGAN     | 2D | 32 x 32 |     OpenImages     | 16384 | 1.14 | - |          -           |     -      |
 |OmniTokenizer-VQ | 2D | 32 x 32 | 256 x 256 ImageNet | 8192 | 1.11 | -|          -           |     -      |
 |    LlamaGen     | 2D | 32 x 32 | 256 x 256 ImageNet | 16384 | 0.59 | 24.45 |        97.6%         |     -      |
-|**Open-MAGVIT2** | 2D | 32 x 32 | 128 x 128 ImageNet | 262144 | **0.39** | **25.78** |       **100%**       |     -      |
-|    SD-VQGAN     | 2D | 64 x 64 | OpenImages | 16384 | 0.58 | - |          -           |     -      |
-|     TiTok-L     | 1D | 32 |  256 x 256 ImageNet | 4096 | 2.21 | - |          -           |     -      |
-|     TiTok-B     | 1D | 64 |  256 x 256 ImageNet | 4096 | 1.70 | - |          -           |     -      | 
+|**Open-MAGVIT2** | 2D | 32 x 32 | 256 x 256 ImageNet | 262144 | **0.39** | **25.78** |       **100%**       |     -      |
+|    SD-VQGAN     | 2D | 64 x 64 |     OpenImages     | 16384 | 0.58 | - |          -           |     -      |
+|     TiTok-L     | 1D | 32 | 256 x 256 ImageNet | 4096 | 2.21 | - |          -           |     -      |
+|     TiTok-B     | 1D | 64 | 256 x 256 ImageNet | 4096 | 1.70 | - |          -           |     -      | 
 |     TiTok-S     | 1D | 128 | 256 x 256 ImageNet | 4096  | 1.71 | - |          -           |     -      |
 
 Credit: Open-MAGVIT2
