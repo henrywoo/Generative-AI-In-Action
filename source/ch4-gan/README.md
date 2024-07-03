@@ -349,6 +349,8 @@ Repo:
 
 - [aMUSEd VQGAN](https://github.com/huggingface/amused.git): We trained a 146M parameter VQ-GAN (Esser et al. (2021)) **with no self-attention layers**, a vocab size of 8192, and a latent dimension of 64. Our VQ-GAN downsamples resolutions by 16x, e.g. a 256x256 (512x512) resolution image is reduced to 16x16 (32x32) latent codes. We trained our VQ-GAN for 2.5M steps. To improve the reconstruction of high-resolution images, we further fine-tuned the VQ-GAN decoder on a dataset of images greater than 1024x1024 resolution. The VQ-GAN decoder was finetuned on 2 8xA100 servers for 200,000 steps and used a per GPU batch size of 16 for a total batch size of 256.
 - [Asymmetric VQGAN/SD-VQGAN](https://arxiv.org/abs/2306.04632): Asymmetric VQGAN involves two core designs compared with the original VQGAN as shown in the figure. First, we introduce a conditional branch into the decoder of the VQGAN which aims to handle the conditional input for image manipulation tasks. Second, we design a larger decoder for VQGAN to better recover the losing details of the quantized codes. It has a heavier [decoder](https://github.com/buxiangzhiren/Asymmetric_VQGAN/blob/main/ldm/modules/diffusionmodules/model.py#L462) than [encoder](https://github.com/buxiangzhiren/Asymmetric_VQGAN/blob/main/ldm/modules/diffusionmodules/model.py#L368).
+![](images/sd-vqgan.png)
+
 - [OmniTokenizer](https://arxiv.org/pdf/2406.09399v1): The training of VQVAE includes two stages: image-only training on a fixed resolution, and image-video joint training on multiple resolutions. After this, finetune the VQVAE model w/ KL loss to obtain a VAE model.[A joint image-video tokenizer](https://github.com/FoundationVision/OmniTokenizer)
 
 ![](images/omnitokenizer_vae.png)
