@@ -571,3 +571,10 @@ This code demonstrates the rejection sampling technique and visualizes the resul
 
 ![](fourier_transform.gif)
 
+
+## HyperCube abd HyperBall
+
+![](hyperball_0.png)
+![](hyperball_1.png)
+![](hyperball_3d.gif)
+![](hyperball_2.png)
