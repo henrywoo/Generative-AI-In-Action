@@ -603,3 +603,8 @@ mapped_points = points / np.linalg.norm(points, axis=1, keepdims=True)
     projected_points_2d_23 = mapped_points[:, 1:3]
 ```
 ![](hyperball_2.png)
+
+- Volume and Surface Area
+
+![](hyperball_d_vs_vol_surface.png)
+
