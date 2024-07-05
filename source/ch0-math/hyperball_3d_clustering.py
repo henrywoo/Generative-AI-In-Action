@@ -41,7 +41,7 @@ _, indices = tree.query(mapped_points)
 final_mapped_points = super_points[indices]
 
 # 绘制图形
-fig = plt.figure(figsize=(10, 10))
+fig = plt.figure(figsize=(5, 5))
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(super_points[:, 0], super_points[:, 1], super_points[:, 2], c='b', label='Super Points')  # 超级点
 ax.scatter(random_points[:, 0], random_points[:, 1], random_points[:, 2], c='g', alpha=0.5, label='Random Points')  # 随机点
@@ -55,7 +55,7 @@ for i in range(num_random_points):
 ax.view_init(elev=30, azim=30)  # 这里可以修改视角的 elev 和 azim 参数
 
 # 设置图形属性
-ax.set_title('Mapping Random Points to Nearest Super Points on a Sphere')
+ax.set_title('Mapping Random Points to Nearest Super Points on a Sphere', fontsize=9)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
