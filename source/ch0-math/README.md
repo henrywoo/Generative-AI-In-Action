@@ -574,7 +574,32 @@ This code demonstrates the rejection sampling technique and visualizes the resul
 
 ## HyperCube abd HyperBall
 
+### HyperBall
+
+- Generic Formula
+```python
+mapped_points = points / np.linalg.norm(points, axis=1, keepdims=True)
+```
+
+- 2D HyperBall
+
 ![](hyperball_0.png)
+
+- 3D HyperBall
+
 ![](hyperball_1.png)
 ![](hyperball_3d.gif)
+
+- 4D HyperBall
+
+```python
+    # 投影到3D空间（选择前三个坐标）
+    projected_points_3d_123 = mapped_points[:, :3]
+
+    # 投影到3D空间（选择后三个坐标）
+    projected_points_3d_234 = mapped_points[:, 1:]
+
+    # 投影到2D空间（选择中间两个坐标）
+    projected_points_2d_23 = mapped_points[:, 1:3]
+```
 ![](hyperball_2.png)

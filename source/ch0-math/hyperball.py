@@ -117,8 +117,7 @@ def demo_4d(imgnum=2):
     points = np.random.randn(num_points, 4)  # 生成随机点 (x, y, z, w)
 
     # 将点映射到单位4D超球面上
-    norms = np.linalg.norm(points, axis=1, keepdims=True)
-    mapped_points = points / norms
+    mapped_points = points / np.linalg.norm(points, axis=1, keepdims=True)
 
     # 投影到3D空间（选择前三个坐标）
     projected_points_3d_123 = mapped_points[:, :3]
