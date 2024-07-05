@@ -608,3 +608,8 @@ mapped_points = points / np.linalg.norm(points, axis=1, keepdims=True)
 
 ![](hyperball_d_vs_vol_surface.png)
 
+- Clustering
+
+![](circle_0.png)
+
+![](hyperball_3d_clustering_0.png)
