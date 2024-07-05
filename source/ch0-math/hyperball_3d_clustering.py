@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 from mpl_toolkits.mplot3d import Axes3D
+from hiq import deterministic
 
 # 获取脚本文件名（不包含扩展名）
 script_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -41,7 +42,7 @@ _, indices = tree.query(mapped_points)
 final_mapped_points = super_points[indices]
 
 # 绘制图形
-fig = plt.figure(figsize=(5, 5))
+fig = plt.figure(figsize=(6, 6))
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(super_points[:, 0], super_points[:, 1], super_points[:, 2], c='b', label='Super Points')  # 超级点
 ax.scatter(random_points[:, 0], random_points[:, 1], random_points[:, 2], c='g', alpha=0.5, label='Random Points')  # 随机点
@@ -59,7 +60,7 @@ ax.set_title('Mapping Random Points to Nearest Super Points on a Sphere', fontsi
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-ax.legend()
+ax.legend(fontsize=8)
 plt.grid(True)
 
 save_figure(fig, script_name, imgnum)

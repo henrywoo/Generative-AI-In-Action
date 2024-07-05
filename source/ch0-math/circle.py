@@ -34,7 +34,7 @@ _, indices = tree.query(mapped_points)
 final_mapped_points = super_points[indices]
 
 # 绘制图形
-fig = plt.figure(figsize=(4, 4))
+fig = plt.figure(figsize=(6, 6))
 plt.plot(super_points[:, 0], super_points[:, 1], 'bo', label='Super Points')  # 超级点
 plt.plot(random_points[:, 0], random_points[:, 1], 'go', label='Random Points', alpha=0.5)  # 随机点
 plt.plot(mapped_points[:, 0], mapped_points[:, 1], 'co', label='Mapped Points on Unit Circle')  # 映射到单位圆上的点
@@ -51,7 +51,7 @@ plt.gca().set_aspect('equal')  # 确保圆形比例
 plt.title('Mapping Random Points to Nearest Super Points on a Circle', fontsize=9)
 plt.xlabel('x')
 plt.ylabel('y')
-plt.legend()
+plt.legend(fontsize='small')
 plt.grid(True)
 save_figure(fig, script_name, imgnum)
 plt.show()
