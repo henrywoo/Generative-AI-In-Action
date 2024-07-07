@@ -2,17 +2,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
+from save_image import save_figure
 from hiq import deterministic
-
-# 获取脚本文件名（不包含扩展名）
-script_name = os.path.splitext(os.path.basename(__file__))[0]
-# 初始化图像编号
-imgnum = 0
-
-def save_figure(fig, script_name, imgnum):
-    filename = f"{script_name}_{imgnum}.png"
-    fig.savefig(filename)
-    print(f"Figure saved as {filename}")
 
 # 点的数量
 num_super_points = 128
@@ -53,5 +44,5 @@ plt.xlabel('x')
 plt.ylabel('y')
 plt.legend(fontsize='small')
 plt.grid(True)
-save_figure(fig, script_name, imgnum)
+save_figure(fig, 0, __file__)
 plt.show()

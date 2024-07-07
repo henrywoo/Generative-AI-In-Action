@@ -6,17 +6,42 @@ from sampler.gaussian_trainer import GaussianDiffusionTrainer
 from sampler.tools import train_one_epoch, load_yaml
 from sampler.callbacks import ModelCheckpoint
 from hiq import print_model
+from hiq.cv_torch import get_cv_dataset
+
+
+def get_dl(name='cifar10'):
+    from torchvision import transforms
+    transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+    loader_params = dict(
+        shuffle=True,
+        drop_last=True,
+        pin_memory=True,
+    )
+    return get_cv_dataset(path=name,
+                          image_size=32,
+                          split='train',
+                          batch_size=2,
+                          num_workers=2,
+                          transform=transform,
+                          return_type="pair",
+                          return_loader=True,
+                          **loader_params
+                          )
 
 
 def train(config):
     resume = config["resume"]
     if resume:
         cp = torch.load(config["resume_path"])
-        cp['config']["Dataset"]["batch_size"] = config["Dataset"]["batch_size"]
+        #cp['config']["Dataset"]["batch_size"] = config["Dataset"]["batch_size"]
         config = cp["config"]
     pprint(config)
     device = torch.device(config["device"])
-    loader = create_dataset(**config["Dataset"])
+    loader = get_dl()  # create_dataset(**config["Dataset"])
     start_epoch = 1
     model = UNet(**config["Model"]).to(device)
     print_model(model)

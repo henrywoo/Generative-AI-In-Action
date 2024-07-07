@@ -2,16 +2,20 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
+from hiq.cv_torch import get_cv_dataset
 
 def create_cifar10_dataset(data_path, batch_size, **kwargs):
     train = kwargs.get("train", True)
     download = kwargs.get("download", True)
 
-    dataset = CIFAR10(root=data_path, train=train, download=download, transform=transforms.Compose([
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ]))
+    dataset = CIFAR10(root=data_path,
+                      train=train,
+                      download=download,
+                      transform=transforms.Compose([
+                          transforms.RandomHorizontalFlip(p=0.5),
+                          transforms.ToTensor(),
+                          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                      ]))
 
     loader_params = dict(
         shuffle=kwargs.get("shuffle", True),

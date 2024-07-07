@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import gamma
+from save_image import save_figure
 
 def volume_n_sphere(n, r=1):
     """计算n维球的体积"""
@@ -39,5 +40,5 @@ ax1[1].grid(True)
 
 # 显示图形
 plt.tight_layout()
-plt.savefig('hyperball_d_vs_vol_surface.png')
+save_figure(fig, 0, __file__)
 plt.show()

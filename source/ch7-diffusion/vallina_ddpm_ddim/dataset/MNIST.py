@@ -8,11 +8,14 @@ def create_mnist_dataset(data_path, batch_size, **kwargs):
     download = kwargs.get("download", True)  # Download if dataset isn't found
 
     # Load the MNIST dataset and apply transformations
-    dataset = MNIST(root=data_path, train=train, download=download, transform=transforms.Compose([
-        transforms.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
-        transforms.ToTensor(),  # Convert images to PyTorch tensors
-        transforms.Normalize((0.5, ), (0.5, ))  # Normalize for better training
-    ]))
+    dataset = MNIST(root=data_path,
+                    train=train,
+                    download=download,
+                    transform=transforms.Compose([
+                        transforms.RandomHorizontalFlip(p=0.5),  # Randomly flip images horizontally
+                        transforms.ToTensor(),  # Convert images to PyTorch tensors
+                        transforms.Normalize((0.5,), (0.5,))  # Normalize for better training
+                    ]))
 
     # Parameters for the DataLoader
     loader_params = dict(
