@@ -368,25 +368,27 @@ Repo:
 
 Reconstruction performance of different tokenizers on 256x256 ImageNet 50k validation set.
 
-|      Model       | Token Type | #Tokens |     Train Data     | Codebook Size |   rFID   |   PSNR    | Codebook Utilization |
-|:----------------:|:----:|:-------:|:------------------:|:-------------:|:--------:|:---------:|:--------------------:|
-|      VQGAN       | 2D | 16 x 16 | 256 x 256 ImageNet |     1024      |   7.94   |   19.4    |          -           |
-|     SD-VQGAN     | 2D | 16 x 16 |     OpenImages     |     16384     |   5.15   |     -     |          -           |
-|     MaskGIT      | 2D | 16 x 16 | 256 x 256 ImageNet |     1024      |   2.28   |     -     |          -           |
-|     LlamaGen     | 2D | 16 x 16 | 256 x 256 ImageNet |     16384     |   2.19   |   20.79   |         97%          |
-| **Open-MAGVIT2** | 2D | 16 x 16 | 128 x 128 ImageNet |    262144     | **1.53** | **21.53** |       **100%**       |
-|    ViT-VQGAN     | 2D | 32 x 32 | 256 x 256 ImageNet |     8192      |   1.28   |     -     |          -           |
-|      VQGAN       | 2D | 32 x 32 |     OpenImages     |     16384     |   1.19   |   23.38   |          -           |
-|     SD-VQGAN     | 2D | 32 x 32 |     OpenImages     |     16384     |   1.14   |     -     |          -           |
-| OmniTokenizer-VQ | 2D | 32 x 32 | 256 x 256 ImageNet |     8192      |   1.11   |     -     |          -           |
-|     LlamaGen     | 2D | 32 x 32 | 256 x 256 ImageNet |     16384     |   0.59   |   24.45   |        97.6%         |
-| **Open-MAGVIT2** | 2D | 32 x 32 | 256 x 256 ImageNet |    262144     | **0.39** | **25.78** |       **100%**       |
-|     SD-VQGAN     | 2D | 64 x 64 |     OpenImages     |     16384     |   0.58   |     -     |          -           |
-|     TiTok-L      | 1D |   32    | 256 x 256 ImageNet |     4096      |   2.21   |     -     |          -           |
-|     TiTok-B      | 1D |   64    | 256 x 256 ImageNet |     4096      |   1.70   |     -     |          -           | 
-|     TiTok-S      | 1D |   128   | 256 x 256 ImageNet |     4096      |   1.71   |     -     |          -           |
-|     **VAR**      | 2D | 16 x 16 |     OpenImages     |     4096      | **0.48** |     -     |          -           |
+|      Model       | Dim | #Token/D |    Train Data     | Codebook Size |   rFID   |   PSNR    | Codebook Utilization |
+|:----------------:|:---:|:---------:|:-----------------:|:-------------:|:--------:|:---------:|:--------------------:|
+|      VQGAN       | 2D  |    16     |   256 ImageNet    |     1024      |   7.94   |   19.4    |          -           |
+|     SD-VQGAN     | 2D  |    16     |    OpenImages     |     16384     |   5.15   |     -     |          -           |
+|     MaskGIT      | 2D  |    16     |   256 ImageNet    |     1024      |   2.28   |     -     |          -           |
+|     LlamaGen     | 2D  |    16     |   256 ImageNet    |     16384     |   2.19   |   20.79   |         97%          |
+| **Open-MAGVIT2** | 2D  |    16     |   128 ImageNet    |   18x262144   | **1.53** | **21.53** |       **100%**       |
+|     **VAR**      | 2D  |    16     |  256 OpenImages   |    32x4096    | **0.48** |     -     |          -           |
+|    ViT-VQGAN     | 2D  |    32     |   256 ImageNet    |     8192      |   1.28   |     -     |          -           |
+|      VQGAN       | 2D  |    32     |    OpenImages     |     16384     |   1.19   |   23.38   |          -           |
+|     SD-VQGAN     | 2D  |    32     |    OpenImages     |     16384     |   1.14   |     -     |          -           |
+| OmniTokenizer-VQ | 2D  |    32     |   256 ImageNet    |     8192      |   1.11   |     -     |          -           |
+|     LlamaGen     | 2D  |    32     |   256 ImageNet    |     16384     |   0.59   |   24.45   |        97.6%         |
+| **Open-MAGVIT2** | 2D  |    32     |   256 ImageNet    |   18x262144   | **0.39** | **25.78** |       **100%**       |
+|     TiTok-L      | 1D  |    32     |   256 ImageNet    |     4096      |   2.21   |     -     |          -           |
+|     TiTok-B      | 1D  |    64     |   256 ImageNet    |     4096      |   1.70   |     -     |          -           | 
+|     SD-VQGAN     | 2D  |    64     |    OpenImages     |     16384     |   0.58   |     -     |          -           |
+|     TiTok-S      | 1D  |    128    |   256 ImageNet    |    12x4096    |   1.71   |     -     |          -           |
 
+- Dim - Token dimension
+- #Tokens/D means `token number per dimension`.
 
 ## StyleGAN Series (Chinese)
 
