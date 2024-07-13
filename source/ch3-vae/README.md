@@ -1,5 +1,27 @@
 # Autoencoder
 
+## Latent Space and Representative Learning
+
+There are 24 bits per pixel, with 8 bits for each of the three color channels, leading to a total of 2^24 possible colors. Given an image of height 𝐻 and width 𝑊, the total number of pixels in the image is 𝐻×𝑊. Each pixel is represented by 24 bits. Therefore, the total number of possible images is:(2^24)^(𝐻×𝑊)=2^(24×H×W). This demonstrates the vastness of the space of all possible images of a given size with 24-bit RGB color representation.
+
+A pixel in an image is a point in a 5-D Space with 5 orthogonal axis: RGBHW(当然RGBHW都是有取值范围的整数). For a specific image, the points cloud clusters in the 5D space. We know DNN can project the manifold from this 5D space into feature spaces. 
+
+![](https://miro.medium.com/v2/resize:fit:1200/1*8PiBIL5fhlC6KY8-5yh0jQ.jpeg)
+
+比如在CNN的前几层（靠近输入层），特征图通常保持较大的空间维度（H和W），但通道数（C，特征的深度）较少。随着网络的深入，通过卷积和池化操作，特征图的空间维度（H和W）逐渐减小，而特征图的深度（通道数）逐渐增加。这意味着图像的空间信息被逐步压缩，而特征信息（抽象表示）则被逐步增加和强化。特征提取的过程实际上是在原始数据中找到某些有意义的模式或特征，并忽略那些不相关或噪声信息。当我们说提取某个特定特征时，可以理解为网络识别出这个特征并将其表示出来，同时，网络通过权重学习和激活函数抑制那些与这个特征正交（不相关）的信息。 正交的信息指的是那些在特征空间中与当前特征不相关或没有贡献的信息，这些信息在特征提取的过程中被逐渐丢弃。
+
+![](ae_compression.png)
+
+
+
+![](https://miro.medium.com/v2/resize:fit:4800/format:webp/0*z2OVr3BICT8bwAIa.png)
+
+如果原始图片是3x128x128, 假设feature map的大小是18x16x16，可以理解为有18个不同的features,每一个点可以用18个F（Feature）维度的直来描述，总共有256个这样的点，原始图片中的每一个16×16区域被编码成一个18维的特征向量。所以原始图片变成18维空间的256个点。
+
+可以把原始图像想象成一本书，每个像素是一个字。 特征是对这本书内容的总结，比如主题、情感、风格等。特征图是对这本书的摘要，每个点代表一个章节的总结。潜在空间是对这本书的极简概括，用几个关键词就能大致描述这本书的内容。
+
+ImageNet-1K has 1M images, then there are 256M 18-D points, which is $2^28$ 18-D points. 这些点在空间中形成点云，好比宇宙中的星云和星系，数量巨多又间隔遥远。
+
 ## Autoencoder
 
 ### How to Reconstruct an Image?
@@ -934,6 +956,7 @@ class MaskedAutoencoderViT(nn.Module):
 
 ## Reference
 
+- [Math - Latent space and generative modeling, autoencoders, and variational autoencoders](https://learning-oreilly-com.rpa.sccl.org/library/view/math-and-architectures/9781617296482/OEBPS/Text/14.html#sec-generative-classifiers)
 - [漫谈VAE和VQVAE，从连续分布到离散分布](https://zhuanlan.zhihu.com/p/388299884) 
 - [自编码器AE、VAE、dVAE、VQ-VAE、VQ-VAE2](https://www.p-chao.com/2024-01-28/%E8%87%AA%E7%BC%96%E7%A0%81%E5%99%A8ae%E3%80%81vae%E3%80%81dvae%E3%80%81vq-vae%E3%80%81vq-vae2/)
 - [生成模型之VAE与VQ-VAE](https://blog.csdn.net/m0_56214772/article/details/129711670)

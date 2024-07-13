@@ -7,25 +7,29 @@ from pathlib import Path
 from torchvision import datasets, transforms
 import shutil
 from model import VariationalAutoencoder
+from hiq.cv_torch import get_cv_dataset
 
 
 # --- Data Handling ---
 def load_data(data_path, batch_size):
-    transform = transforms.Compose([transforms.ToTensor()])  # Convert to PyTorch Tensors
-    train_dataset = datasets.FashionMNIST(data_path, train=True, download=True, transform=transform)
-    valid_dataset = datasets.FashionMNIST(data_path, train=False, download=True, transform=transform)
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    loader_params = dict(
+        shuffle=True,
+        drop_last=True,
+        pin_memory=True,
+    )
+    dataloader = get_cv_dataset(path=str(data_path),
+                                batch_size=batch_size,
+                                num_workers=2,
+                                transform=transform,
+                                image_size=128,
+                                return_type="pair",
+                                return_loader=True,
+                                **loader_params)
+    return dataloader['train'], dataloader['test']
     return train_loader, valid_loader
-
-
-# --- Loss Function ---
-def vae_loss(reconstruction, original, mean, log_var):
-    reconstruction_loss = F.mse_loss(reconstruction, original)  # , reduction='sum')
-    kl_divergence = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
-    return reconstruction_loss, kl_divergence
 
 
 def train(model, train_loader, optimizer, device, beta):
@@ -90,10 +94,10 @@ class EarlyStopping:
             self.counter = 0
 
 
-def save_checkpoint(state, is_best, filename='vae_checkpoint.pth.tar'):
-    torch.save(state, filename)
+def save_checkpoint(state, is_best, folder, filename):
+    torch.save(state, f'{folder}/{filename}')
     if is_best:
-        shutil.copyfile(filename, 'vae_best.pth.tar')
+        shutil.copyfile(filename, f'{folder}/best.pt')
 
 
 def main(args):
@@ -106,14 +110,13 @@ def main(args):
     optimizer = getattr(optim, args.optimizer)(model.parameters(), lr=args.lr)
 
     start_epoch = 1
-    if args.resume and (MODEL_PATH / "vae_fashion_mnist.pth").exists():
-        checkpoint = torch.load(MODEL_PATH / "vae_fashion_mnist.pth")
+    if args.resume and (MODEL_PATH / "best.pt").exists():
+        checkpoint = torch.load(MODEL_PATH / "best.pt")
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         start_epoch = checkpoint['epoch'] + 1
         print(f'Resuming training from epoch {start_epoch}')
 
-    torch.manual_seed(args.seed)
     early_stopping = EarlyStopping(patience=args.patience, verbose=True)
 
     train_recon_losses = []
@@ -144,7 +147,7 @@ def main(args):
             'state_dict': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'codings_size': args.codings_size,
-        }, is_best=False, filename=MODEL_PATH / "vae_fashion_mnist.pth")
+        }, is_best=False, folder=MODEL_PATH, filename=f"vae_{epoch}.pt")
 
     plt.style.use('ggplot')
     plt.figure(figsize=(8, 4))
@@ -155,18 +158,19 @@ def main(args):
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(MODEL_PATH / "vae_fashion_mnist_losses.png")
+    plt.savefig("img/vae_fashion_mnist_losses.png")
     plt.show()
 
 
 if __name__ == "__main__":
+    from hiq import deterministic
     parser = argparse.ArgumentParser(description="Variational Autoencoder for FashionMNIST")
-    parser.add_argument('--data_path', type=str, default='data', help='Path to dataset')
-    parser.add_argument('--model_path', type=str, default='models', help='Path to save the model')
+    # fashion_mnist
+    parser.add_argument('--data_path', type=str, default="fashion_mnist", help='Path to dataset')
+    parser.add_argument('--model_path', type=str, default='mbin', help='Path to save the model')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=15, help='Number of epochs to train')
     parser.add_argument('--codings_size', type=int, default=10, help='Size of the latent codings')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Optimizer (e.g., Adam, SGD, etc.)')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--patience', type=int, default=5, help='Patience for early stopping')
