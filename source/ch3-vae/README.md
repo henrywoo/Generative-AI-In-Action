@@ -57,11 +57,11 @@ The encoding can scatter everywhere.
 
 ![](flower3.png)
 
-
+----
 
 ## Variational Autoencoder (VAE)
 
-![](vae.jpg)
+![](img/vae.jpg)
 
 **Variational Autoencoders (VAEs): A Bayesian Approach to Representation Learning**
 
@@ -127,12 +127,39 @@ VAEs can be seen as performing approximate Bayesian inference. The prior distrib
 
 In VAE, each training sample x is mapped to a distribution p(z|x) in the latent space. Different samples x_i yield different distributions p(z_i | x_i).
 
-![](img/vae_norm.png)
-
 The KL divergence loss term encourages these p(z_i | x_i) distributions to approximate a **standard normal distribution N(0, I)**. VAE does **not encode the latent space as multiple normal distributions for different attributes**. Instead, VAE maps each input sample to a distribution in the latent space and uses the KL divergence to ensure that these distributions are close to the standard normal distribution. This allows for more structured and smooth sampling in the latent space, facilitating better generation and interpolation of new samples.
 
+## What will happen if no KL Div in Loss of VAE?
 
-## Derive ELBO for Variational Autoencoder
+> Potential Degeneration of VAE into a Standard Autoencoder
+
+VAEs aim to reconstruct input data (X) by minimizing the reconstruction loss between the original input and its reconstructed version (X^k). The latent variable (Z) is sampled from a distribution, introducing noise into the reconstruction process. This noise makes reconstruction harder. **To make reconstruction easier, the model might try to reduce the variance of the latent distribution to zero.** This eliminates the randomness and essentially turns the VAE into a standard autoencoder, where the latent representation simply becomes the mean value calculated by a neural network. If the noise disappears, the model loses its ability to generate new data, as it's just learning to encode and decode specific points rather than understanding the underlying distribution of the data.
+
+**The Solution: Regularization with the KL Divergence**
+
+VAEs address this issue by incorporating a regularization term in their loss function: the Kullback-Leibler (KL) divergence.
+
+![](img/vae_norm.png)
+
+1. **KL Divergence:** This term measures the difference between the learned latent distribution (p(Z|X)) and a standard normal distribution (N(0, I)).
+
+![](img/std_norm.png)
+
+2. **Encouraging Similarity:** By minimizing the KL divergence, the VAE encourages the latent distribution to be close to the standard normal distribution. This prevents the variance from collapsing to zero and maintains the randomness necessary for generating new data.
+3. **Ensuring Generative Ability:** When all p(Z|X) are close to the standard normal distribution, the overall distribution of Z (p(Z)) also becomes close to the standard normal distribution. This allows us to sample from N(0, I) to generate new data points.
+
+This following is what I got from my VAE training code:
+
+![](vae/torch/latent_space_dist.png)
+
+**In Summary**
+
+* The KL divergence term in the VAE loss function acts as a regularizer, preventing the model from degenerating into a simple autoencoder.
+* By keeping the latent distribution close to a standard normal distribution, the VAE ensures that it retains its generative capabilities.
+* This allows us to sample from the latent space and generate new data points that are similar to the training data.
+
+
+## Derive ELBO for Variational Autoencoder   
 
 The Evidence Lower Bound (ELBO) is derived using **Jensen's inequality** and the concept of **Kullback-Leibler (KL) divergence**. Here's the step-by-step derivation:
 
@@ -888,6 +915,7 @@ Masked Autoencoders (MAE) are designed for vision tasks, such as image reconstru
 ```
 
 I feel the following image is better than the paper one. The encoder is deeper but shorter, compared with decoder.
+
 ![](mae/mae.png)
 
 > **Question**:
