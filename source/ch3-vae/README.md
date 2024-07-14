@@ -67,6 +67,8 @@ The encoding can scatter everywhere.
 
 VAEs are a powerful tool for learning meaningful, compressed representations (latent variables) from complex data, such as images.  They combine the strengths of neural networks with the principles of Bayesian inference.
 
+![](img/vae.svg)
+
 In a VAE, the Encoder learns two encodings: the mean and the standard deviation. It then randomly samples a code from a normal distribution, and through the formula `sampled_code = epsilon * std + mean`, it resamples to get the latent code, which is then reconstructed by the Decoder.
 
 Using the flower example above, the encodings by VAE are normalized due to Gaussian sampling:
@@ -74,6 +76,7 @@ Using the flower example above, the encodings by VAE are normalized due to Gauss
 ![](flower4.png)
 
 Due to the normalization, all features use the same scale, so similar flowers are close to each other and also closer to vector space center.
+
 ![](flower5.png)
 
 Due to the continuity of the normal distribution, there is no issue with differentiability. The reparameterization trick allows for the recovery of the latent code and enables gradient updates through the chain rule.
@@ -110,7 +113,6 @@ ELBO = E[log p(x|z)] - DKL[q(z|x) || p(z)]
 
 * **DKL[q(z|x) || p(z)] - Regularization:** This is the Kullback-Leibler (KL) divergence between the approximate posterior distribution `q(z|x)` (encoded by the encoder network) and the prior distribution `p(z)`. It acts as a regularizer, encouraging the learned latent space to be close to the chosen prior distribution (often a standard normal distribution).
 
-
 **The Bayesian Connection:**
 
 VAEs can be seen as performing approximate Bayesian inference. The prior distribution represents our initial beliefs, the likelihood is encoded in the generative model, and the approximate posterior is learned through optimization. Maximizing the ELBO helps us find the best approximation of the true posterior distribution.
@@ -123,7 +125,63 @@ VAEs can be seen as performing approximate Bayesian inference. The prior distrib
 
 ### Clarification on VAE
 
-In VAE, each training sample x is mapped to a distribution p(z|x) in the latent space. Different samples x_i yield different distributions p(z_i | x_i). The KL divergence loss term encourages these p(z_i | x_i) distributions to approximate a standard normal distribution N(0, I). Therefore, VAE does **not encode the latent space as multiple normal distributions for different attributes**. Instead, VAE maps each input sample to a distribution in the latent space and uses the KL divergence to ensure that these distributions are close to the standard normal distribution. This allows for more structured and smooth sampling in the latent space, facilitating better generation and interpolation of new samples.
+In VAE, each training sample x is mapped to a distribution p(z|x) in the latent space. Different samples x_i yield different distributions p(z_i | x_i).
+
+![](img/vae_norm.png)
+
+The KL divergence loss term encourages these p(z_i | x_i) distributions to approximate a **standard normal distribution N(0, I)**. VAE does **not encode the latent space as multiple normal distributions for different attributes**. Instead, VAE maps each input sample to a distribution in the latent space and uses the KL divergence to ensure that these distributions are close to the standard normal distribution. This allows for more structured and smooth sampling in the latent space, facilitating better generation and interpolation of new samples.
+
+
+## Derive ELBO for Variational Autoencoder
+
+The Evidence Lower Bound (ELBO) is derived using **Jensen's inequality** and the concept of **Kullback-Leibler (KL) divergence**. Here's the step-by-step derivation:
+
+1. **Log-likelihood decomposition:** Start with the log-likelihood of the observed data x:
+   ```
+   log p(x) = log ∫ p(x, z) dz 
+   ```
+
+2. **Introduce variational distribution:** Introduce a variational distribution q(z|x) to approximate the true posterior p(z|x):
+   ```
+   log p(x) = log ∫ q(z|x) [p(x, z) / q(z|x)] dz
+   ```
+
+3. 😅**Apply Jensen's inequality:** Apply Jensen's inequality to the **log function**, which is **concave**:
+   ```
+   log p(x) ≥ ∫ q(z|x) log [p(x, z) / q(z|x)] dz
+   ```
+
+![](img/jensen.png)
+
+4. **Expand and rearrange:** Expand the logarithm and rearrange the terms:
+   ```
+   log p(x) ≥ ∫ q(z|x) log p(x, z) dz - ∫ q(z|x) log q(z|x) dz
+   ```
+
+5. **Identify ELBO and KL divergence:** The right-hand side of the inequality is the ELBO:
+   ```
+   ELBO = ∫ q(z|x) log p(x, z) dz - ∫ q(z|x) log q(z|x) dz
+   ```
+   The second term is the negative KL divergence between q(z|x) and p(z|x):
+   ```
+   -KL(q(z|x) || p(z|x)) = - ∫ q(z|x) log [q(z|x) / p(z|x)] dz
+   ```
+
+6. **Final expression:** Combine the ELBO and KL divergence terms:
+   ```
+   log p(x) = ELBO + KL(q(z|x) || p(z|x))
+   ```
+
+Since KL divergence is always non-negative, we have:
+
+```
+log p(x) ≥ ELBO
+```
+
+This means the ELBO is a lower bound on the log-likelihood of the data. By maximizing the ELBO, we indirectly maximize the log-likelihood, which is the objective of the VAE.
+
+**In summary:** The ELBO is derived by introducing a variational distribution to approximate the true posterior, applying Jensen's inequality, and rearranging terms to obtain a lower bound on the log-likelihood.
+
 
 
 ## Vector Quantization

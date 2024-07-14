@@ -1,3 +1,4 @@
+# This is actually a beta-VAE.
 import argparse
 import torch
 import torch.nn.functional as F
@@ -24,12 +25,12 @@ def load_data(data_path, batch_size):
                                 batch_size=batch_size,
                                 num_workers=2,
                                 transform=transform,
-                                image_size=128,
+                                image_size=None,
                                 return_type="pair",
                                 return_loader=True,
+                                convert_rgb=False,
                                 **loader_params)
     return dataloader['train'], dataloader['test']
-    return train_loader, valid_loader
 
 
 def train(model, train_loader, optimizer, device, beta):
@@ -150,7 +151,7 @@ def main(args):
         }, is_best=False, folder=MODEL_PATH, filename=f"vae_{epoch}.pt")
 
     plt.style.use('ggplot')
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(16, 4))
     plt.plot(train_recon_losses, label='Train Recon Loss', marker='o', alpha=0.5)
     plt.plot(train_kl_losses, label='Train KL Loss', marker='v', alpha=0.5)
     plt.plot(valid_recon_losses, label='Valid Recon Loss', marker='x', alpha=0.5)
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_path', type=str, default="fashion_mnist", help='Path to dataset')
     parser.add_argument('--model_path', type=str, default='mbin', help='Path to save the model')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
-    parser.add_argument('--epochs', type=int, default=15, help='Number of epochs to train')
+    parser.add_argument('--epochs', type=int, default=100, help='Number of epochs to train')
     parser.add_argument('--codings_size', type=int, default=10, help='Size of the latent codings')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Optimizer (e.g., Adam, SGD, etc.)')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
