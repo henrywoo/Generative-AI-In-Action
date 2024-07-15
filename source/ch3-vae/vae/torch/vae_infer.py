@@ -10,8 +10,6 @@ torch.manual_seed(0)
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-classes = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
-           'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 def load_checkpoint(filepath, device):
     checkpoint = torch.load(filepath, map_location=device)
     model = VariationalAutoencoder(checkpoint['codings_size']).to(device)

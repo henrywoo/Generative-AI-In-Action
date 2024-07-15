@@ -36,9 +36,9 @@ def load_data(data_path, batch_size):
                                 **loader_params)
     return dataloader['train'], dataloader['test']
 
-class VAE(nn.Module):
+class SVAE(nn.Module):
     def __init__(self):
-        super(VAE, self).__init__()
+        super(SVAE, self).__init__()
         self.encoder = nn.Sequential(
             nn.Linear(original_dim, intermediate_dim),
             nn.ReLU(),
@@ -178,7 +178,7 @@ def plot_loss(train_loss_history, val_loss_history):
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VAE().to(device)
+    model = SVAE().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
@@ -210,7 +210,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="VAE Training Script")
+    parser = argparse.ArgumentParser(description="SVAE Training Script")
     parser.add_argument("--batch_size", type=int, default=30000, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
