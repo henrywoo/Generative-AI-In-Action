@@ -143,7 +143,7 @@ def visualize_generated_images(model, num_samples, device, noise_scale=0.1):
         for i in range(num_samples):
             axes[i].imshow(samples[i].reshape(28, 28), cmap='gray')
             axes[i].axis('off')
-        plt.savefig("generated_images_vq_svae.png")
+        plt.savefig("generated_images_vq_svae_v2.png")
         plt.show()
 
 def main(args):
