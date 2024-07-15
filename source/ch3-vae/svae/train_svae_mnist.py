@@ -132,6 +132,9 @@ def visualize_latent_space(model, test_loader, device):
             data = data.view(-1, original_dim).to(device)
             label = label.to(device)
             z_mean = model.encode(data)
+            if hasattr(model, 'quant'):
+                _, z_mean = model.quant(z_mean)
+                z_mean = z_mean.view(z_mean.shape[0], latent_dim)
             z_means.append(z_mean)
             labels.append(label)
         z_means = torch.cat(z_means).cpu().numpy()
