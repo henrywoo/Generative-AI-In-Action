@@ -1,26 +1,29 @@
+import os
+import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+from torchvision import transforms
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from tqdm import tqdm
 from hiq.cv_torch import get_cv_dataset, DS_PATH_MNIST
+from hiq import deterministic
 
 # Parameters
-batch_size = 100
+batch_size = 30000
 original_dim = 784
-latent_dim = 2
+latent_dim = 3
 intermediate_dim = 256
-epochs = 100
+epochs = 30
 num_classes = 10
+checkpoint_dir = 'mbin'
 
 
 def load_data(data_path, batch_size):
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+    transform = transforms.Compose([transforms.ToTensor()])
     loader_params = dict(
         shuffle=True,
         drop_last=False,
@@ -35,10 +38,6 @@ def load_data(data_path, batch_size):
     return dataloader['train'], dataloader['test']
 
 
-train_loader, test_loader = load_data(DS_PATH_MNIST, batch_size)
-
-
-# Encoder network
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
@@ -55,7 +54,6 @@ class Encoder(nn.Module):
         return z_mean, z_log_var, yh
 
 
-# Decoder network
 class Decoder(nn.Module):
     def __init__(self):
         super(Decoder, self).__init__()
@@ -68,10 +66,9 @@ class Decoder(nn.Module):
         return x_reconstructed
 
 
-# VAE model
-class VAE(nn.Module):
+class CVAE(nn.Module):
     def __init__(self):
-        super(VAE, self).__init__()
+        super(CVAE, self).__init__()
         self.encoder = Encoder()
         self.decoder = Decoder()
 
@@ -87,79 +84,148 @@ class VAE(nn.Module):
         return x_reconstructed, z_mean, z_log_var, yh
 
 
-# Loss function
 def loss_function(x, x_reconstructed, z_mean, z_log_var, yh):
     xent_loss = F.binary_cross_entropy(x_reconstructed, x, reduction='sum')
     kl_loss = -0.5 * torch.sum(1 + z_log_var - torch.pow(z_mean - yh, 2) - torch.exp(z_log_var))
     return xent_loss + kl_loss
 
 
-# Training
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-vae = VAE().to(device)
-optimizer = optim.Adam(vae.parameters(), lr=1e-3)
+def save_checkpoint(state, filename):
+    torch.save(state, filename)
 
-for epoch in range(epochs):
-    vae.train()
-    train_loss = 0
-    for batch_idx, (data, labels) in enumerate(train_loader):
-        data = data.view(-1, original_dim).to(device)
-        labels = F.one_hot(labels, num_classes).float().to(device)
 
-        # Check input range
-        assert torch.min(data) >= 0.0 and torch.max(data) <= 1.0, "Input data is out of range [0, 1]"
+def load_checkpoint(filename, model, optimizer):
+    checkpoint = torch.load(filename)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1
+    return start_epoch, checkpoint['train_loss_history']
 
-        optimizer.zero_grad()
-        x_reconstructed, z_mean, z_log_var, yh = vae(data, labels)
 
-        # Check shapes
-        assert data.shape == x_reconstructed.shape, f"Shape mismatch: {data.shape} vs {x_reconstructed.shape}"
+def train(model, train_loader, optimizer, device, start_epoch, epochs, checkpoint_path):
+    train_loss_history = []
 
-        loss = loss_function(data, x_reconstructed, z_mean, z_log_var, yh)
-        loss.backward()
-        train_loss += loss.item()
-        optimizer.step()
-    print(f'Epoch {epoch + 1}, Loss: {train_loss / len(train_loader.dataset)}')
+    for epoch in range(start_epoch, epochs + 1):
+        model.train()
+        train_loss = 0
+        for batch_idx, (data, labels) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}", leave=False)):
+            data = data.view(-1, original_dim).to(device)
+            labels = F.one_hot(labels, num_classes).float().to(device)
 
-# Visualization
-vae.eval()
-with torch.no_grad():
-    z_means = []
-    labels = []
-    for data, label in test_loader:
-        data = data.view(-1, original_dim).to(device)
-        label = label.to(device)
-        z_mean, _, _ = vae.encoder(data, F.one_hot(label, num_classes).float().to(device))
-        z_means.append(z_mean)
-        labels.append(label)
-    z_means = torch.cat(z_means).cpu().numpy()
-    labels = torch.cat(labels).cpu().numpy()
+            optimizer.zero_grad()
+            x_reconstructed, z_mean, z_log_var, yh = model(data, labels)
+            loss = loss_function(data, x_reconstructed, z_mean, z_log_var, yh)
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
 
-plt.figure(figsize=(6, 6))
-plt.scatter(z_means[:, 0], z_means[:, 1], c=labels, cmap='viridis')
-plt.colorbar()
-plt.show()
+        avg_train_loss = train_loss / len(train_loader.dataset)
+        train_loss_history.append(avg_train_loss)
+        print(f'Epoch {epoch}, Loss: {avg_train_loss}')
 
-# Generating digits
-n = 15  # figure with 15x15 digits
-digit_size = 28
-figure = np.zeros((digit_size * n, digit_size * n))
+        save_checkpoint({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss_history': train_loss_history
+        }, checkpoint_path)
 
-output_digit = 9  # specify the digit to generate
+    return train_loss_history
 
-with torch.no_grad():
-    yh = vae.encoder.fc3(torch.eye(num_classes)[output_digit].to(device)).cpu().numpy()
-    grid_x = norm.ppf(np.linspace(0.05, 0.95, n)) + yh[0][1]
-    grid_y = norm.ppf(np.linspace(0.05, 0.95, n)) + yh[0][0]
 
-    for i, yi in enumerate(grid_x):
-        for j, xi in enumerate(grid_y):
-            z_sample = torch.tensor([[xi, yi]], device=device).float()
-            x_decoded = vae.decoder(z_sample).cpu().numpy()
-            digit = x_decoded[0].reshape(digit_size, digit_size)
-            figure[i * digit_size: (i + 1) * digit_size,
-            j * digit_size: (j + 1) * digit_size] = digit
+def visualize_training_curve(train_loss_history, save_path):
+    plt.figure(figsize=(8, 4.8))
+    plt.plot(train_loss_history, label='Train Loss', marker='o', alpha=0.5)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Training Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(save_path)
+    plt.show()
 
-plt.figure(figsize=(10, 10))
-plt.imshow(figure, cmap='Greys_r')
-plt.show()
+
+def visualize_latent_space(model, test_loader, device):
+    from mpl_toolkits.mplot3d import Axes3D
+
+    model.eval()
+    with torch.no_grad():
+        z_means = []
+        labels = []
+        for data, label in test_loader:
+            data = data.view(-1, original_dim).to(device)
+            label = label.to(device)
+            z_mean, _, _ = model.encoder(data, F.one_hot(label, num_classes).float().to(device))
+            z_means.append(z_mean)
+            labels.append(label)
+        z_means = torch.cat(z_means).cpu().numpy()
+        labels = torch.cat(labels).cpu().numpy()
+
+    fig = plt.figure(figsize=(9, 9))  # Larger figure size
+    ax = fig.add_subplot(111, projection='3d')
+    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='viridis')
+    ax.set_xlabel('Z1')
+    ax.set_ylabel('Z2')
+    ax.set_zlabel('Z3')
+    cbar = fig.colorbar(scatter)
+    cbar.ax.tick_params(labelsize=10)  # Smaller color bar labels
+    plt.savefig("latent_space.png")
+    plt.show()
+
+
+
+def generate_digits(model, device, output_digit=9, n=15, digit_size=28):
+    figure = np.zeros((digit_size * n, digit_size * n))
+
+    with torch.no_grad():
+        yh = model.encoder.fc3(torch.eye(num_classes)[output_digit].to(device)).cpu().numpy()
+        grid_x = norm.ppf(np.linspace(0.05, 0.95, n)) + yh[1]
+        grid_y = norm.ppf(np.linspace(0.05, 0.95, n)) + yh[0]
+
+        for i, yi in enumerate(grid_x):
+            for j, xi in enumerate(grid_y):
+                z_sample = torch.tensor([[xi, yi, yh[2]]], device=device).float()
+                x_decoded = model.decoder(z_sample).cpu().numpy()
+                digit = x_decoded[0].reshape(digit_size, digit_size)
+                figure[i * digit_size: (i + 1) * digit_size,
+                j * digit_size: (j + 1) * digit_size] = digit
+
+    plt.figure(figsize=(10, 10))
+    plt.imshow(figure, cmap='Greys_r')
+    plt.savefig("generated_digits_cvae.png")
+    plt.show()
+
+
+def main(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    cvae = CVAE().to(device)
+    optimizer = optim.Adam(cvae.parameters(), lr=1e-3)
+    start_epoch = 1
+
+    checkpoint_path = os.path.join(args.checkpoint_dir, 'cvae_checkpoint.pth')
+    if os.path.exists(checkpoint_path):
+        start_epoch, train_loss_history = load_checkpoint(checkpoint_path, cvae, optimizer)
+        print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
+    else:
+        train_loss_history = []
+
+    train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
+
+    train_loss_history += train(cvae, train_loader, optimizer, device, start_epoch, args.epochs, checkpoint_path)
+
+    visualize_training_curve(train_loss_history, "training_curve.png")
+    visualize_latent_space(cvae, test_loader, device)
+    generate_digits(cvae, device, output_digit=9, n=15, digit_size=28)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="CVAE Training Script")
+    parser.add_argument("--batch_size", type=int, default=batch_size, help="Batch size for training")
+    parser.add_argument("--epochs", type=int, default=epochs, help="Number of epochs to train")
+    parser.add_argument("--checkpoint_dir", type=str, default=checkpoint_dir, help="Directory to save checkpoints")
+    args = parser.parse_args()
+    main(args)
+
+"""
+python train_cvae.py --batch_size 30000 --epochs 30 --checkpoint_dir mbin
+"""

@@ -1,24 +1,23 @@
+import os
+import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torchvision import datasets, transforms
+from torchvision import transforms
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from hiq.cv_torch import get_cv_dataset, DS_PATH_MNIST
+from hiq import deterministic
 
 # 基本参数
-batch_size = 30000
 original_dim = 784
 latent_dim = 3
 intermediate_dim = 256
-epochs = 50
 kappa = 20
 epsilon = 1e-7
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# 加载数据集
 def load_data(data_path, batch_size):
     transform = transforms.Compose([transforms.ToTensor()])
     loader_params = dict(
@@ -37,9 +36,6 @@ def load_data(data_path, batch_size):
                                 **loader_params)
     return dataloader['train'], dataloader['test']
 
-train_loader, test_loader = load_data(DS_PATH_MNIST, batch_size)
-
-# 定义模型
 class VAE(nn.Module):
     def __init__(self):
         super(VAE, self).__init__()
@@ -82,13 +78,23 @@ class VAE(nn.Module):
         z = self.reparameterize(mu)
         return self.decode(z), mu
 
-# 损失函数
 def loss_function(recon_x, x):
     BCE = F.binary_cross_entropy(recon_x, x.view(-1, original_dim), reduction='sum')
     return BCE
 
-# 训练模型
-def train(model, epoch, train_loader, optimizer, train_loss_history):
+def save_checkpoint(state, filename):
+    torch.save(state, filename)
+
+def load_checkpoint(filename, model, optimizer):
+    checkpoint = torch.load(filename)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1
+    train_loss_history = checkpoint['train_loss_history']
+    val_loss_history = checkpoint['val_loss_history']
+    return start_epoch, train_loss_history, val_loss_history
+
+def train(model, epoch, train_loader, optimizer, device, train_loss_history):
     model.train()
     train_loss = 0
     for batch_idx, (data, _) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}", leave=False)):
@@ -105,7 +111,7 @@ def train(model, epoch, train_loader, optimizer, train_loss_history):
     train_loss_history.append(avg_train_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}')
 
-def validate(model, test_loader, val_loss_history):
+def validate(model, test_loader, device, val_loss_history):
     model.eval()
     test_loss = 0
     with torch.no_grad():
@@ -117,26 +123,36 @@ def validate(model, test_loader, val_loss_history):
     val_loss_history.append(avg_val_loss)
     print(f'====> Test set loss: {avg_val_loss:.4f}')
 
-if __name__ == '__main__':
-    # 训练模型
-    model = VAE().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+def visualize_latent_space(model, test_loader, device):
+    model.eval()
+    with torch.no_grad():
+        z_means = []
+        labels = []
+        for data, label in test_loader:
+            data = data.view(-1, original_dim).to(device)
+            label = label.to(device)
+            z_mean = model.encode(data)
+            z_means.append(z_mean)
+            labels.append(label)
+        z_means = torch.cat(z_means).cpu().numpy()
+        labels = torch.cat(labels).cpu().numpy()
 
-    train_loss_history = []
-    val_loss_history = []
+    fig = plt.figure(figsize=(10, 10))  # Larger figure size
+    ax = fig.add_subplot(111, projection='3d')
+    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='viridis', s=10)  # Smaller points
+    ax.set_xlabel('Z1')
+    ax.set_ylabel('Z2')
+    ax.set_zlabel('Z3')
+    plt.show()
 
-    for epoch in tqdm(range(1, epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, train_loss_history)
-        validate(model, test_loader, val_loss_history)
 
-    # 可视化生成的结果
+def visualize_reconstructed_digits(model, device, latent_dim):
     with torch.no_grad():
         n = 15
         digit_size = 28
         figure = np.zeros((digit_size * n, digit_size * n))
         for i in range(n):
             for j in range(n):
-                # 在hyperball球面上取点
                 z_sample = torch.randn(1, latent_dim, device=device)
                 z_sample /= z_sample.norm()
                 x_decoded = model.decode(z_sample).view(digit_size, digit_size).cpu()
@@ -145,12 +161,13 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(10, 10))
     plt.imshow(figure, cmap='Greys_r')
-    plt.savefig('test.png')
+    plt.savefig('reconstructed_digits.png')
+    plt.show()
 
-    # 绘制损失曲线
+def plot_loss(train_loss_history, val_loss_history):
     plt.figure(figsize=(10, 5))
-    plt.plot(train_loss_history, label='Train Loss')
-    plt.plot(val_loss_history, label='Validation Loss')
+    plt.plot(train_loss_history, label='Train Loss', marker='o', alpha=0.5)
+    plt.plot(val_loss_history, label='Validation Loss', marker='o', alpha=0.5)
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss')
@@ -158,3 +175,45 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.savefig('loss_curve.png')
     plt.show()
+
+def main(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = VAE().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+
+    train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
+
+    train_loss_history = []
+    val_loss_history = []
+    start_epoch = 1
+
+    checkpoint_path = os.path.join(args.checkpoint_dir, 'vae_checkpoint.pth')
+    if os.path.exists(checkpoint_path):
+        start_epoch, train_loss_history, val_loss_history = load_checkpoint(checkpoint_path, model, optimizer)
+        print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
+
+    for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
+        train(model, epoch, train_loader, optimizer, device, train_loss_history)
+        validate(model, test_loader, device, val_loss_history)
+
+        save_checkpoint({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss_history': train_loss_history,
+            'val_loss_history': val_loss_history
+        }, checkpoint_path)
+
+    plot_loss(train_loss_history, val_loss_history)
+    visualize_latent_space(model, test_loader, device)
+    visualize_reconstructed_digits(model, device, latent_dim)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="VAE Training Script")
+    parser.add_argument("--batch_size", type=int, default=30000, help="Batch size for training")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")
+    args = parser.parse_args()
+    main(args)
