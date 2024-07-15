@@ -167,7 +167,7 @@ def visualize_reconstructed_digits(model, device, latent_dim):
     plt.savefig('reconstructed_digits.png')
     plt.show()
 
-def plot_loss(train_loss_history, val_loss_history):
+def plot_loss(train_loss_history, val_loss_history, title=None):
     plt.figure(figsize=(10, 5))
     plt.plot(train_loss_history, label='Train Loss', marker='o', alpha=0.5)
     plt.plot(val_loss_history, label='Validation Loss', marker='o', alpha=0.5)
@@ -176,7 +176,7 @@ def plot_loss(train_loss_history, val_loss_history):
     plt.title('Training and Validation Loss')
     plt.legend()
     plt.grid(True)
-    plt.savefig('loss_curve.png')
+    plt.savefig('loss_curve.png' if title is None else title)
     plt.show()
 
 def main(args):
