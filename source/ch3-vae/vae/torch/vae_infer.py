@@ -3,7 +3,7 @@ import torch
 import os
 import matplotlib.pyplot as plt
 from model import VariationalAutoencoder
-from vae_train import load_data
+from vae_train import load_data, DS_PATH_FASHION_MNIST
 from pathlib import Path
 
 torch.manual_seed(0)
@@ -90,6 +90,7 @@ def plot_histograms(latent_vectors, num_bins=30):
 def plot_latent_space(model, dataloader, data_name, device):
     model.eval()
     all_mean = []
+    all_logvar = []
     all_labels = []
     with torch.no_grad():
         for data, labels in dataloader:
@@ -97,9 +98,11 @@ def plot_latent_space(model, dataloader, data_name, device):
             mean, logvar = model.encoder(data)
             all_mean.append(mean.cpu())  # Move mean to CPU
             all_labels.append(labels.cpu())  # Move labels to CPU
+            all_logvar.append(logvar.cpu())  # Save log variances
 
     all_mean = torch.cat(all_mean)
     all_labels = torch.cat(all_labels)
+    all_logvar = torch.cat(all_logvar)  # Concatenate log variances
 
     plt.figure(figsize=(6, 4))
     x = all_mean[:, 0].numpy()
@@ -112,6 +115,38 @@ def plot_latent_space(model, dataloader, data_name, device):
     plt.title(f'{data_name.upper()} Data Latent Space Scatter Plot', fontsize=10)
     plt.grid(True, which='both')
     plt.savefig(os.path.join(here, f'latent_space_scatter_{data_name}.png'))
+    plt.show()
+
+    # Compute covariance matrix
+    # calculates a scaled version of the covariance matrix of the means. By multiplying each element in the covariance
+    # matrix by the corresponding mean variance, we're essentially adjusting for the scales of the different latent
+    # dimensions. This scaling doesn't directly give us the correlation matrix, but it does make the values in the
+    # matrix more comparable across dimensions.
+    all_var = torch.exp(all_logvar)  # 59904x10
+    cov_mean_ = torch.cov(all_mean.T)
+    mean_var_ = torch.mean(all_var, dim=0)
+    covariance_matrix = cov_mean_ * mean_var_
+    print(covariance_matrix)
+    correlation_matrix = torch.corrcoef(all_mean.T)
+    print(correlation_matrix)
+
+    import seaborn as sns
+
+    # Plot heatmap of covariance matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(covariance_matrix, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True)
+    plt.title(f"{data_name.upper()} Latent Space Covariance Matrix", fontsize=9)
+    plt.xlabel("Latent Dimension", fontsize=8)
+    plt.ylabel("Latent Dimension", fontsize=8)
+    plt.savefig(os.path.join(here, f'img/latent_space_covariance_{data_name}.png'))
+    plt.show()
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(covariance_matrix, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True)
+    plt.title(f"{data_name.upper()} Latent Space Correlation Coefficients Matrix", fontsize=9)
+    plt.xlabel("Latent Dimension", fontsize=8)
+    plt.ylabel("Latent Dimension", fontsize=8)
+    plt.savefig(os.path.join(here, f'img/latent_space_coefficient_{data_name}.png'))
     plt.show()
 
     return all_mean
@@ -174,8 +209,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate images with a trained Variational Autoencoder")
-    parser.add_argument('--checkpoint_path', type=str, default=f"{here}/models/vae_fashion_mnist.pth", help='Path to the model checkpoint')
-    parser.add_argument('--data_path', type=str, default='data', help='Path to dataset')
+    parser.add_argument('--checkpoint_path', type=str, default=f"{here}/mbin/best.pth", help='Path to the model checkpoint')
+    parser.add_argument('--data_path', type=str, default=DS_PATH_FASHION_MNIST, help='Path to dataset')
     parser.add_argument('--num_images', type=int, default=12, help='Number of images to generate')
     parser.add_argument('--num_steps', type=int, default=10, help='Number of interpolation steps')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for data loading')

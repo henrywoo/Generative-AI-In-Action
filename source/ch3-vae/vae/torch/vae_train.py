@@ -8,7 +8,7 @@ from pathlib import Path
 from torchvision import datasets, transforms
 import shutil
 from model import VariationalAutoencoder
-from hiq.cv_torch import get_cv_dataset
+from hiq.cv_torch import get_cv_dataset, DS_PATH_FASHION_MNIST
 
 
 # --- Data Handling ---
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     from hiq import deterministic
     parser = argparse.ArgumentParser(description="Variational Autoencoder for FashionMNIST")
     # fashion_mnist
-    parser.add_argument('--data_path', type=str, default="fashion_mnist", help='Path to dataset')
+    parser.add_argument('--data_path', type=str, default=DS_PATH_FASHION_MNIST, help='Path to dataset')
     parser.add_argument('--model_path', type=str, default='mbin', help='Path to save the model')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs to train')
