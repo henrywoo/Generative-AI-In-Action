@@ -123,7 +123,8 @@ def validate(model, test_loader, device, val_loss_history):
     val_loss_history.append(avg_val_loss)
     print(f'====> Test set loss: {avg_val_loss:.4f}')
 
-def visualize_latent_space(model, test_loader, device):
+
+def visualize_latent_space(model, test_loader, device, version=0):
     model.eval()
     with torch.no_grad():
         z_means = []
@@ -140,16 +141,23 @@ def visualize_latent_space(model, test_loader, device):
         z_means = torch.cat(z_means).cpu().numpy()
         labels = torch.cat(labels).cpu().numpy()
 
-    fig = plt.figure(figsize=(10, 10))  # Larger figure size
+    fig = plt.figure(figsize=(15, 15))  # Larger figure size
     ax = fig.add_subplot(111, projection='3d')
-    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='viridis', s=10)  # Smaller points
+    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='tab10', s=35)  # Smaller points
+
+    # Create legend
+    legend1 = ax.legend(*scatter.legend_elements(), title="Labels")
+    ax.add_artist(legend1)
+
     ax.set_xlabel('Z1')
     ax.set_ylabel('Z2')
     ax.set_zlabel('Z3')
+    plt.title('Latent Space Visualization')
+    plt.savefig(f"latent_space_v{version}.png")
     plt.show()
 
 
-def visualize_reconstructed_digits(model, device, latent_dim):
+def visualize_reconstructed_digits(model, device, latent_dim, version=0):
     with torch.no_grad():
         n = 15
         digit_size = 28
@@ -164,7 +172,8 @@ def visualize_reconstructed_digits(model, device, latent_dim):
 
     plt.figure(figsize=(10, 10))
     plt.imshow(figure, cmap='Greys_r')
-    plt.savefig('reconstructed_digits.png')
+    plt.title('Reconstructed Digits')
+    plt.savefig(f'reconstructed_digits_v{version}.png')
     plt.show()
 
 def plot_loss(train_loss_history, val_loss_history, title=None):
