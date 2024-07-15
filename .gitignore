@@ -40,7 +40,6 @@ source/ch7-diffusion/*
 source/ch6-llm/*
 source/ch5-transformer/*
 source/ch4-gan/*
-source/ch3-vae/*
 source/ch11-mm/*
 source/ch10-gen-video/*
 source/ch1-rnn/*
