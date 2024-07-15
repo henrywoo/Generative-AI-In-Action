@@ -521,6 +521,15 @@ While VQ-VAEs don't use the KL divergence in their main loss function, they migh
 
 Overall, the absence of the KL divergence term in VQ-VAEs is a deliberate design choice that simplifies the model and allows it to focus on accurate reconstruction and learning a discrete latent space.
 
+## sVAE
+
+![](img/svae.gif)
+
+### Sampling
+
+![](img/3d-vmf-sampling.gif)
+
+
 ## Explain RVQ To Kids
 
 Let's explain how RVQ (Residual Vector Quantization) works using the example of traveling to "600 Oracle Pkwy, Redwood City, CA 94065".
@@ -837,7 +846,7 @@ In an ideal scenario, each vector in the codebook would be used to represent a d
 A real-world example of codebook collapse was observed in the early versions of VQ-VAE-2, a model for generating high-resolution images. The researchers noticed that the model was only using a small portion of its codebook, leading to less diverse and lower quality images. They addressed this issue by introducing techniques like codebook reseeding and a diversity loss to encourage the model to use the full codebook.
 
 
-## DVAE vs VQ-VAE
+## dVAE vs VQ-VAE
 
 Both Discrete Variational Autoencoders (DVAEs) and Vector Quantized Variational Autoencoders (VQ-VAEs) are types of generative models that learn to encode data into discrete representations. However, they differ in their architecture and approach to discretization.
 
