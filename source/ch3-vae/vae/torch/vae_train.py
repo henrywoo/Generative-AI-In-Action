@@ -13,9 +13,7 @@ from hiq.cv_torch import get_cv_dataset, DS_PATH_FASHION_MNIST
 
 # --- Data Handling ---
 def load_data(data_path, batch_size):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-    ])
+    transform = transforms.Compose([transforms.ToTensor(),])
     loader_params = dict(
         shuffle=True,
         drop_last=True,
