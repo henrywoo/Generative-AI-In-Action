@@ -132,18 +132,19 @@ def plot_latent_space(model, dataloader, data_name, device):
 
     import seaborn as sns
 
+    sns.set(font_scale=0.8)
     # Plot heatmap of covariance matrix
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(covariance_matrix, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True)
-    plt.title(f"{data_name.upper()} Latent Space Covariance Matrix", fontsize=9)
+    plt.figure(figsize=(4.8, 4.2))
+    sns.heatmap(covariance_matrix, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True, annot_kws={"size": 8})
+    plt.title(f"Latent Space Covariance Matrix (Data:{data_name.upper()})", fontsize=9)
     plt.xlabel("Latent Dimension", fontsize=8)
     plt.ylabel("Latent Dimension", fontsize=8)
     plt.savefig(os.path.join(here, f'img/latent_space_covariance_{data_name}.png'))
     plt.show()
 
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(covariance_matrix, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True)
-    plt.title(f"{data_name.upper()} Latent Space Correlation Coefficients Matrix", fontsize=9)
+    plt.figure(figsize=(4.8, 4.2))
+    sns.heatmap(covariance_matrix, annot=True, fmt=".2f", cmap="YlGnBu", cbar=True, annot_kws={"size": 8})
+    plt.title(f"Latent Space Correlation Coefficients Matrix (Data:{data_name.upper()})", fontsize=9)
     plt.xlabel("Latent Dimension", fontsize=8)
     plt.ylabel("Latent Dimension", fontsize=8)
     plt.savefig(os.path.join(here, f'img/latent_space_coefficient_{data_name}.png'))

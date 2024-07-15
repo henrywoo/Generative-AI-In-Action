@@ -171,6 +171,8 @@ No, the KL divergence in a VAE does not force the output of each sample x to be 
     * **Promotes Smoothness in Latent Space:**  A smoother latent space makes interpolation and other operations in the latent space more meaningful.
     * **Improves Generation Quality:** When sampling from the standard normal distribution to generate new samples, the decoder can more accurately capture the distribution of the training data.
 
+![](vae/torch/img/latent_space_coefficient_train.png)
+
 * **Not Exact Equality:** The KL divergence term is an "encouragement" rather than a "force". In practice, p(z|x) doesn't usually exactly match N(0, I), but it maintains a certain degree of similarity. This similarity is sufficient for the VAE to learn meaningful latent representations and have good generative capabilities.
 
 **Example**
