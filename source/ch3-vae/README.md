@@ -529,6 +529,9 @@ Overall, the absence of the KL divergence term in VQ-VAEs is a deliberate design
 
 ![](img/3d-vmf-sampling.gif)
 
+### Implementations
+
+![](svae/z-in-3d-svae.gif)
 
 ## Explain RVQ To Kids
 
