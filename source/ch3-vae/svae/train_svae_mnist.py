@@ -78,9 +78,40 @@ class SVAE(nn.Module):
         z = self.reparameterize(mu)
         return self.decode(z), mu
 
-def loss_function(recon_x, x):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, original_dim), reduction='sum')
-    return BCE
+def loss_function(recon_x, x, vq_loss=0):
+    recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='sum')
+    return recon_loss + vq_loss, recon_loss
+
+
+def plot_recon_loss(recon_loss_history, version):
+    epochs = range(1, len(recon_loss_history) + 1)
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, recon_loss_history, label='Reconstruction Loss', marker='o', alpha=0.5)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title(f'Recon Loss vs. Epochs (v{version})')
+    plt.legend()
+    plt.grid(True)
+    filename = f"vq_svae_v{version}_loss_recon.png"
+    plt.savefig(filename)
+    plt.show()
+
+    # Save recon_loss_history to recon_loss.csv
+    save_recon_loss_history(recon_loss_history, version)
+
+
+def save_recon_loss_history(recon_loss_history, version):
+    if len(recon_loss_history)==0:
+        return
+    import pandas as pd
+    df = pd.DataFrame(recon_loss_history, columns=[f'v{version}'])
+    filename = 'recon_loss.csv'
+    try:
+        existing_df = pd.read_csv(filename)
+        existing_df[f'v{version}'] = recon_loss_history
+        existing_df.to_csv(filename, index=False)
+    except FileNotFoundError:
+        df.to_csv(filename, index=False)
 
 def save_checkpoint(state, filename):
     torch.save(state, filename)
@@ -94,22 +125,27 @@ def load_checkpoint(filename, model, optimizer):
     val_loss_history = checkpoint['val_loss_history']
     return start_epoch, train_loss_history, val_loss_history
 
-def train(model, epoch, train_loader, optimizer, device, train_loss_history):
+def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history):
     model.train()
     train_loss = 0
+    total_recon_loss = 0
     for batch_idx, (data, _) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}", leave=False)):
         data = data.view(-1, original_dim).to(device)
         optimizer.zero_grad()
         recon_batch, mu = model(data)
-        loss = loss_function(recon_batch, data)
+        loss, recon_loss = loss_function(recon_batch, data, 0)
         loss.backward()
         train_loss += loss.item()
+        total_recon_loss += recon_loss.item()
         optimizer.step()
         if batch_idx % 100 == 0:
             print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item() / len(data):.6f}')
     avg_train_loss = train_loss / len(train_loader.dataset)
+    avg_recon_loss = total_recon_loss / len(train_loader.dataset)
     train_loss_history.append(avg_train_loss)
+    recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}')
+    print(f'====> Epoch: {epoch} Average recon loss: {avg_recon_loss:.4f}')
 
 def validate(model, test_loader, device, val_loss_history):
     model.eval()
@@ -118,7 +154,8 @@ def validate(model, test_loader, device, val_loss_history):
         for data, _ in test_loader:
             data = data.view(-1, original_dim).to(device)
             recon_batch, mu = model(data)
-            test_loss += loss_function(recon_batch, data).item()
+            t, _ = loss_function(recon_batch, data, 0)
+            test_loss += t.item()
     avg_val_loss = test_loss / len(test_loader.dataset)
     val_loss_history.append(avg_val_loss)
     print(f'====> Test set loss: {avg_val_loss:.4f}')
@@ -176,7 +213,7 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0):
     plt.savefig(f'reconstructed_digits_v{version}.png')
     plt.show()
 
-def plot_loss(train_loss_history, val_loss_history, title=None):
+def plot_loss(train_loss_history, val_loss_history, version=0):
     plt.figure(figsize=(10, 5))
     plt.plot(train_loss_history, label='Train Loss', marker='o', alpha=0.5)
     plt.plot(val_loss_history, label='Validation Loss', marker='o', alpha=0.5)
@@ -185,8 +222,19 @@ def plot_loss(train_loss_history, val_loss_history, title=None):
     plt.title('Training and Validation Loss')
     plt.legend()
     plt.grid(True)
-    plt.savefig('loss_curve.png' if title is None else title)
+    plt.savefig(f"vq_svae_v{version}_loss_history.png")
     plt.show()
+
+def visualize_generated_images(model, num_samples, device, noise_scale=0.1, version=0):
+    model.eval()
+    with torch.no_grad():
+        samples = model.generate(num_samples, device, noise_scale)
+        fig, axes = plt.subplots(1, num_samples, figsize=(num_samples, 1))
+        for i in range(num_samples):
+            axes[i].imshow(samples[i].reshape(28, 28), cmap='gray')
+            axes[i].axis('off')
+        plt.savefig(f"generated_images_vq_svae_v{version}.png")
+        plt.show()
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -196,6 +244,7 @@ def main(args):
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
 
     train_loss_history = []
+    recon_loss_history = []
     val_loss_history = []
     start_epoch = 1
 
@@ -205,7 +254,7 @@ def main(args):
         print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
 
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
         validate(model, test_loader, device, val_loss_history)
 
         save_checkpoint({
@@ -216,6 +265,7 @@ def main(args):
             'val_loss_history': val_loss_history
         }, checkpoint_path)
 
+    plot_recon_loss(recon_loss_history, 1)
     plot_loss(train_loss_history, val_loss_history)
     visualize_latent_space(model, test_loader, device)
     visualize_reconstructed_digits(model, device, latent_dim)
@@ -223,7 +273,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SVAE Training Script")
-    parser.add_argument("--batch_size", type=int, default=30000, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")

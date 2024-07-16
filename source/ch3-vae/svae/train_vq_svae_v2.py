@@ -101,25 +101,30 @@ class VQ_SVAE(nn.Module):
 
 
 def loss_function(recon_x, x, vq_loss):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, original_dim), reduction='sum')
-    return BCE + vq_loss
+    recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='sum')
+    return recon_loss + vq_loss, recon_loss
 
-def train(model, epoch, train_loader, optimizer, device, train_loss_history):
+def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history):
     model.train()
     train_loss = 0
+    total_recon_loss = 0
     for batch_idx, (data, _) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}", leave=False)):
         data = data.view(-1, original_dim).to(device)
         optimizer.zero_grad()
         recon_batch, vq_loss = model(data)
-        loss = loss_function(recon_batch, data, vq_loss)
+        loss, recon_loss = loss_function(recon_batch, data, vq_loss)
         loss.backward()
         train_loss += loss.item()
+        total_recon_loss += recon_loss.item()
         optimizer.step()
         if batch_idx % 100 == 0:
             print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item() / len(data):.6f}')
     avg_train_loss = train_loss / len(train_loader.dataset)
+    avg_recon_loss = total_recon_loss / len(train_loader.dataset)
     train_loss_history.append(avg_train_loss)
+    recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}')
+    print(f'====> Epoch: {epoch} Average recon loss: {avg_recon_loss:.4f}')
 
 def validate(model, test_loader, device, val_loss_history):
     model.eval()
@@ -128,7 +133,8 @@ def validate(model, test_loader, device, val_loss_history):
         for data, _ in test_loader:
             data = data.view(-1, original_dim).to(device)
             recon_batch, vq_loss = model(data)
-            test_loss += loss_function(recon_batch, data, vq_loss).item()
+            t, _ = loss_function(recon_batch, data, vq_loss)
+            test_loss += t.item()
     avg_val_loss = test_loss / len(test_loader.dataset)
     val_loss_history.append(avg_val_loss)
     print(f'====> Test set loss: {avg_val_loss:.4f}')
@@ -153,6 +159,7 @@ def main(args):
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
 
     train_loss_history = []
+    recon_loss_history = []
     val_loss_history = []
     start_epoch = 1
 
@@ -162,7 +169,7 @@ def main(args):
         print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
 
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
         validate(model, test_loader, device, val_loss_history)
 
         save_checkpoint({
@@ -173,6 +180,7 @@ def main(args):
             'val_loss_history': val_loss_history
         }, checkpoint_path)
 
+    plot_recon_loss(recon_loss_history, 2)
     plot_loss(train_loss_history, val_loss_history, "vq_svae_v2_loss_history.png")
     visualize_latent_space(model, test_loader, device, version=2)
     visualize_reconstructed_digits(model, device, latent_dim, version=2)
@@ -181,11 +189,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=5e-4, help="Learning rate")
     parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")
     parser.add_argument("--use_cosine_distance", action="store_true", help="Use cosine distance for vector quantization")
-    parser.add_argument("--beta", type=float, default=15.0, help="Beta parameter for soft quantization")
+    parser.add_argument("--beta", type=float, default=10.0, help="Beta parameter for soft quantization")
     args = parser.parse_args()
     main(args)

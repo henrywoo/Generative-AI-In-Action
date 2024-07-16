@@ -1,5 +1,6 @@
 from train_svae_mnist import *
 from train_vq_svae_v3 import generate_spherical_points
+from train_vq_svae_v2 import loss_function, train, validate
 
 def plot_spherical_points(points):
     if points.shape[1] != 3:
@@ -130,51 +131,6 @@ class VQ_SVAE(nn.Module):
         return samples
 
 
-
-def loss_function(recon_x, x, vq_loss):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, original_dim), reduction='sum')
-    return BCE + vq_loss
-
-def train(model, epoch, train_loader, optimizer, device, train_loss_history):
-    model.train()
-    train_loss = 0
-    for batch_idx, (data, _) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}", leave=False)):
-        data = data.view(-1, original_dim).to(device)
-        optimizer.zero_grad()
-        recon_batch, vq_loss = model(data)
-        loss = loss_function(recon_batch, data, vq_loss)
-        loss.backward()
-        train_loss += loss.item()
-        optimizer.step()
-        if batch_idx % 100 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item() / len(data):.6f}')
-    avg_train_loss = train_loss / len(train_loader.dataset)
-    train_loss_history.append(avg_train_loss)
-    print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}')
-
-def validate(model, test_loader, device, val_loss_history):
-    model.eval()
-    test_loss = 0
-    with torch.no_grad():
-        for data, _ in test_loader:
-            data = data.view(-1, original_dim).to(device)
-            recon_batch, vq_loss = model(data)
-            test_loss += loss_function(recon_batch, data, vq_loss).item()
-    avg_val_loss = test_loss / len(test_loader.dataset)
-    val_loss_history.append(avg_val_loss)
-    print(f'====> Test set loss: {avg_val_loss:.4f}')
-
-def visualize_generated_images(model, num_samples, device, noise_scale=0.1):
-    model.eval()
-    with torch.no_grad():
-        samples = model.generate(num_samples, device, noise_scale)
-        fig, axes = plt.subplots(1, num_samples, figsize=(num_samples, 1))
-        for i in range(num_samples):
-            axes[i].imshow(samples[i].reshape(28, 28), cmap='gray')
-            axes[i].axis('off')
-        plt.savefig("generated_images_vq_svae_v4.png")
-        plt.show()
-
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, commitment_cost=0.25,
@@ -184,6 +140,7 @@ def main(args):
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
 
     train_loss_history = []
+    recon_loss_history = []
     val_loss_history = []
     start_epoch = 1
 
@@ -193,7 +150,7 @@ def main(args):
         print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
 
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
         validate(model, test_loader, device, val_loss_history)
 
         save_checkpoint({
@@ -204,6 +161,7 @@ def main(args):
             'val_loss_history': val_loss_history
         }, checkpoint_path)
 
+    plot_recon_loss(recon_loss_history, 4)
     plot_loss(train_loss_history, val_loss_history, "vq_svae_v4_loss_history.png")
     visualize_latent_space(model, test_loader, device, version=4)
     visualize_reconstructed_digits(model, device, latent_dim, version=4)
@@ -212,7 +170,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=5e-4, help="Learning rate")
     parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")
