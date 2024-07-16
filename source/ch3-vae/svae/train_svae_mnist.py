@@ -98,7 +98,9 @@ def loss_function(recon_x, x, vq_loss=0):
     return recon_loss + vq_loss, recon_loss
 
 
-def plot_recon_loss(recon_loss_history, version):
+def plot_recon_loss(recon_loss_history, replace_it, version):
+    if not recon_loss_history:
+        return
     epochs = range(1, len(recon_loss_history) + 1)
     plt.figure(figsize=(10, 5))
     plt.plot(epochs, recon_loss_history, label='Reconstruction Loss', marker='o', alpha=0.5)
@@ -112,21 +114,51 @@ def plot_recon_loss(recon_loss_history, version):
     plt.show()
 
     # Save recon_loss_history to recon_loss.csv
-    save_recon_loss_history(recon_loss_history, version)
+    try:
+        save_recon_loss_history(recon_loss_history, replace_it, version)
+    except:
+        pass
 
 
-def save_recon_loss_history(recon_loss_history, version):
-    if len(recon_loss_history)==0:
-        return
+def save_recon_loss_history(recon_loss_history, replace_it, version):
     import pandas as pd
+    if len(recon_loss_history) == 0:
+        return
+    
     df = pd.DataFrame(recon_loss_history, columns=[f'v{version}'])
     filename = 'recon_loss.csv'
+
     try:
         existing_df = pd.read_csv(filename)
-        existing_df[f'v{version}'] = recon_loss_history
+
+        if f'v{version}' in existing_df.columns:
+            existing_data = existing_df[f'v{version}'].dropna().tolist()
+            if len(existing_data) == len(recon_loss_history) or replace_it:
+                # Replace old data with new data
+                existing_df[f'v{version}'] = pd.Series(recon_loss_history)
+            else:
+                # Append new data to existing column
+                updated_data = existing_data + recon_loss_history
+                existing_df[f'v{version}'] = pd.Series(updated_data)
+        else:
+            # Add new column for current version
+            existing_df[f'v{version}'] = pd.Series(recon_loss_history)
+        
+        # Ensure all columns have the same length by padding with NaN
+        max_length = max(existing_df.shape[0], len(recon_loss_history))
+        for column in existing_df.columns:
+            if len(existing_df[column]) < max_length:
+                existing_df[column] = existing_df[column].tolist() + [float('nan')] * (max_length - len(existing_df[column]))
+        
+        # Ensure the new column also matches the max length
+        if len(existing_df[f'v{version}']) < max_length:
+            existing_df[f'v{version}'] = existing_df[f'v{version}'].tolist() + [float('nan')] * (max_length - len(existing_df[f'v{version}']))
+        
         existing_df.to_csv(filename, index=False)
     except FileNotFoundError:
         df.to_csv(filename, index=False)
+
+
 
 def save_checkpoint(state, filename):
     torch.save(state, filename)
@@ -144,23 +176,24 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     model.train()
     train_loss = 0
     total_recon_loss = 0
-    for batch_idx, (data, _) in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}", leave=False)):
-        data = data.view(-1, original_dim).to(device)
-        optimizer.zero_grad()
-        recon_batch, mu = model(data)
-        loss, recon_loss = loss_function(recon_batch, data, 0)
-        loss.backward()
-        train_loss += loss.item()
-        total_recon_loss += recon_loss.item()
-        optimizer.step()
-        if batch_idx % 100 == 0:
-            print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item() / len(data):.6f}')
+    with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
+        for batch_idx, (data, _) in enumerate(train_loader):
+            data = data.view(-1, original_dim).to(device)
+            optimizer.zero_grad()
+            recon_batch, mu = model(data)
+            loss, recon_loss = loss_function(recon_batch, data, 0)
+            loss.backward()
+            train_loss += loss.item()
+            total_recon_loss += recon_loss.item()
+            optimizer.step()
+            pbar.update(data.size(0))
+            pbar.set_postfix({'Loss': loss.item() / len(data), 'Recon Loss': recon_loss.item() / len(data)})
+
     avg_train_loss = train_loss / len(train_loader.dataset)
     avg_recon_loss = total_recon_loss / len(train_loader.dataset)
     train_loss_history.append(avg_train_loss)
     recon_loss_history.append(avg_recon_loss)
-    print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}')
-    print(f'====> Epoch: {epoch} Average recon loss: {avg_recon_loss:.4f}')
+    print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}, recon loss: {avg_recon_loss:.4f}')
 
 def validate(model, test_loader, device, val_loss_history):
     model.eval()
@@ -174,6 +207,7 @@ def validate(model, test_loader, device, val_loss_history):
     avg_val_loss = test_loss / len(test_loader.dataset)
     val_loss_history.append(avg_val_loss)
     print(f'====> Test set loss: {avg_val_loss:.4f}')
+    return avg_val_loss
 
 
 def visualize_latent_space(model, test_loader, device, version=0):
@@ -195,7 +229,7 @@ def visualize_latent_space(model, test_loader, device, version=0):
 
     fig = plt.figure(figsize=(15, 15))  # Larger figure size
     ax = fig.add_subplot(111, projection='3d')
-    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='tab10', s=35)  # Smaller points
+    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='tab10', s=10)  # Smaller points
 
     # Create legend
     legend1 = ax.legend(*scatter.legend_elements(), title="Labels")
@@ -229,6 +263,8 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0):
     plt.show()
 
 def plot_loss(train_loss_history, val_loss_history, version=0):
+    if not train_loss_history:
+        return
     plt.figure(figsize=(10, 5))
     plt.plot(train_loss_history, label='Train Loss', marker='o', alpha=0.5)
     plt.plot(val_loss_history, label='Validation Loss', marker='o', alpha=0.5)
@@ -251,6 +287,47 @@ def visualize_generated_images(model, num_samples, device, noise_scale=0.1, vers
         plt.savefig(f"generated_images_vq_svae_v{version}.png")
         plt.show()
 
+def generate_spherical_points(dim, num_points):
+    if dim != 3:
+        raise ValueError("This function currently only supports 3-dimensional points")
+
+    points = []
+    phi = (1 + np.sqrt(5)) / 2  # golden ratio
+    for i in range(num_points):
+        z = 1 - (i / float(num_points - 1)) * 2  # z goes from 1 to -1
+        radius = np.sqrt(1 - z * z)  # radius at z
+
+        theta = 2 * np.pi * i / phi
+
+        x = np.cos(theta) * radius
+        y = np.sin(theta) * radius
+
+        points.append([x, y, z])
+
+    points = np.array(points)
+    points = torch.tensor(points, dtype=torch.float)
+    return points
+
+def plot_spherical_points(points):
+    if points.shape[1] != 3:
+        raise ValueError("Can only plot 3-dimensional points")
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    xs = points[:, 0].numpy()
+    ys = points[:, 1].numpy()
+    zs = points[:, 2].numpy()
+
+    ax.scatter(xs, ys, zs)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.title("3D Spherical Points")
+    plt.show()
+
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = SVAE().to(device)
@@ -268,9 +345,23 @@ def main(args):
         start_epoch, train_loss_history, val_loss_history = load_checkpoint(checkpoint_path, model, optimizer)
         print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
 
+    best_val_loss = float('inf')
+    epochs_no_improve = 0
+    patience = 5
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
         train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
-        validate(model, test_loader, device, val_loss_history)
+        avg_val_loss = validate(model, test_loader, device, val_loss_history)
+        
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+
+        # Early stopping
+        if epochs_no_improve >= patience:
+            print(f'Early stopping at epoch {epoch}')
+            break
 
         save_checkpoint({
             'epoch': epoch,
@@ -280,7 +371,7 @@ def main(args):
             'val_loss_history': val_loss_history
         }, checkpoint_path)
 
-    plot_recon_loss(recon_loss_history, 0)
+    plot_recon_loss(recon_loss_history, start_epoch==1, version=0)
     plot_loss(train_loss_history, val_loss_history)
     visualize_latent_space(model, test_loader, device)
     visualize_reconstructed_digits(model, device, latent_dim)
@@ -289,6 +380,7 @@ def main(args):
 BATCH_SIZE = 64
 EPOCHS = 50
 LR = 5e-4
+BETA = 10.0
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SVAE Training Script")
