@@ -50,6 +50,11 @@ class SVAE(nn.Module):
             nn.Linear(intermediate_dim, original_dim),
             nn.Sigmoid()
         )
+        x = np.arange(-1 + epsilon, 1, epsilon)
+        y = kappa * x + np.log(1 - x ** 2) * (latent_dim - 3) / 2
+        y = np.cumsum(np.exp(y - y.max()))
+        y = y / y[-1]
+        self.W = torch.tensor(np.interp(np.random.random(10 ** 6), y, x), dtype=torch.float32)
 
     def encode(self, x):
         h = self.encoder(x)
@@ -58,13 +63,8 @@ class SVAE(nn.Module):
 
     def reparameterize(self, mu):
         dims = mu.size(-1)
-        x = np.arange(-1 + epsilon, 1, epsilon)
-        y = kappa * x + np.log(1 - x ** 2) * (dims - 3) / 2
-        y = np.cumsum(np.exp(y - y.max()))
-        y = y / y[-1]
-        W = torch.tensor(np.interp(np.random.random(10 ** 6), y, x), dtype=torch.float32, device=mu.device)
         idx = torch.randint(0, 10 ** 6, (mu.size(0), 1), dtype=torch.long, device=mu.device)
-        w = W[idx]
+        w = self.W.to(mu.device)[idx]
         eps = torch.randn_like(mu)
         nu = eps - (eps * mu).sum(dim=1, keepdim=True) * mu
         nu = F.normalize(nu, p=2, dim=-1)
@@ -77,6 +77,21 @@ class SVAE(nn.Module):
         mu = self.encode(x.view(-1, original_dim))
         z = self.reparameterize(mu)
         return self.decode(z), mu
+
+    def generate(self, num_samples, device, noise_scale=0.05):
+        with torch.no_grad():
+            dims = latent_dim
+            idx = torch.randint(0, 10 ** 6, (num_samples, 1), dtype=torch.long, device=device)
+            w = self.W.to(device)[idx]
+            mu = torch.randn(num_samples, latent_dim, device=device)
+            mu = F.normalize(mu, p=2, dim=-1)
+            eps = torch.randn_like(mu)
+            nu = eps - (eps * mu).sum(dim=1, keepdim=True) * mu
+            nu = F.normalize(nu, p=2, dim=-1)
+            z = w * mu + torch.sqrt(1 - w ** 2) * nu
+            z += noise_scale * torch.randn_like(z)
+            samples = self.decode(z).cpu()
+            return samples
 
 def loss_function(recon_x, x, vq_loss=0):
     recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='sum')
@@ -248,7 +263,7 @@ def main(args):
     val_loss_history = []
     start_epoch = 1
 
-    checkpoint_path = os.path.join(args.checkpoint_dir, 'vae_checkpoint.pth')
+    checkpoint_path = os.path.join(args.checkpoint_dir, 'svae_checkpoint_v0.pth')
     if os.path.exists(checkpoint_path):
         start_epoch, train_loss_history, val_loss_history = load_checkpoint(checkpoint_path, model, optimizer)
         print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
@@ -265,17 +280,21 @@ def main(args):
             'val_loss_history': val_loss_history
         }, checkpoint_path)
 
-    plot_recon_loss(recon_loss_history, 1)
+    plot_recon_loss(recon_loss_history, 0)
     plot_loss(train_loss_history, val_loss_history)
     visualize_latent_space(model, test_loader, device)
     visualize_reconstructed_digits(model, device, latent_dim)
+    visualize_generated_images(model, num_samples=10, device=device, noise_scale=0.1, version=0)
 
+BATCH_SIZE = 64
+EPOCHS = 50
+LR = 5e-4
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SVAE Training Script")
-    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
-    parser.add_argument("--epochs", type=int, default=50, help="Number of epochs to train")
-    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    parser.add_argument("--batch_size", type=int, default=BATCH_SIZE, help="Batch size for training")
+    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs to train")
+    parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")
     args = parser.parse_args()
     main(args)
