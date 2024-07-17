@@ -108,7 +108,7 @@ class VQ_SVAE(nn.Module):
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, commitment_cost=10,
+    model = VQ_SVAE(num_embeddings=BOOK_SIZE//4, embedding_dim=latent_dim, commitment_cost=10,
                     use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -126,7 +126,7 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 6
+    patience = 3
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
         train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
         avg_val_loss = validate(model, test_loader, device, val_loss_history)

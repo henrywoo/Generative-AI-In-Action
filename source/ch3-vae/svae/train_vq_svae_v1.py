@@ -1,22 +1,33 @@
 from train_svae_mnist import *
 
+VQ_LOSS_WEIGHT = 1
+intermediate_dim = 256
+CONTRASTIVE = True
 
 class VectorQuantizer(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False):
+    def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False,
+                 enable_statistics=False):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.num_embeddings = num_embeddings
         self.commitment_cost = commitment_cost
         self.use_cosine_distance = use_cosine_distance
+        self.enable_statistics = enable_statistics
 
         self.embeddings = nn.Embedding(self.num_embeddings, self.embedding_dim)
         self.embeddings.weight.data.uniform_(-1 / self.num_embeddings, 1 / self.num_embeddings)
-        self.embeddings.weight.data = F.normalize(self.embeddings.weight.data, p=2, dim=1)  # Normalize on initialization
+        self.embeddings.weight.data = F.normalize(self.embeddings.weight.data, p=2, dim=1)
+
+        # Buffer to track usage of each embedding
+        self.register_buffer('embedding_usage', torch.zeros(self.num_embeddings))
 
     def forward(self, inputs):
         # Normalize embeddings to lie on unit sphere (ensure they remain normalized)
         with torch.no_grad():
             self.embeddings.weight.data = F.normalize(self.embeddings.weight.data, p=2, dim=1)
+
+        # Normalize inputs
+        inputs = F.normalize(inputs, p=2, dim=-1)
 
         # Convert inputs from BCHW -> BHWC
         inputs = inputs.permute(0, 2, 3, 1).contiguous()
@@ -32,24 +43,52 @@ class VectorQuantizer(nn.Module):
             distances = 1 - torch.matmul(flat_input, self.embeddings.weight.t())
         else:
             # Compute Euclidean distance
-            distances = (torch.sum(flat_input**2, dim=1, keepdim=True)
-                         + torch.sum(self.embeddings.weight**2, dim=1)
+            distances = (torch.sum(flat_input ** 2, dim=1, keepdim=True)
+                         + torch.sum(self.embeddings.weight ** 2, dim=1)
                          - 2 * torch.matmul(flat_input, self.embeddings.weight.t()))
 
         # Get encoding indices
         encoding_indices = torch.argmin(distances, dim=1)
+
+        # Update embedding usage if statistics are enabled
+        if self.enable_statistics:
+            self.update_embedding_usage(encoding_indices)
+
         quantized = self.embeddings(encoding_indices).view(input_shape)
 
         # Straight Through Estimator
         quantized = inputs + (quantized - inputs).detach()
 
         # Loss
-        e_latent_loss = F.mse_loss(quantized.detach(), inputs)
-        q_latent_loss = F.mse_loss(quantized, inputs.detach())
+        e_latent_loss = F.mse_loss(quantized.detach(), inputs, reduction='sum')
+        q_latent_loss = F.mse_loss(quantized, inputs.detach(), reduction='sum')
         loss = q_latent_loss + self.commitment_cost * e_latent_loss
 
         # Convert quantized from BHWC -> BCHW
         return loss, quantized.permute(0, 3, 1, 2).contiguous(), encoding_indices
+
+    def update_embedding_usage(self, encoding_indices):
+        unique_indices, counts = torch.unique(encoding_indices, return_counts=True)
+        self.embedding_usage.index_add_(0, unique_indices, counts.float())
+
+    def get_codebook_statistics(self):
+        used_entries = torch.sum(self.embedding_usage > 0).item()
+        usage_rate = used_entries / self.num_embeddings
+
+        # Calculate the probabilities of each codebook entry
+        probabilities = self.embedding_usage / self.embedding_usage.sum()
+        # Calculate the entropy, avoiding log(0) by using only non-zero probabilities
+        entropy = -torch.sum(probabilities * torch.log(probabilities + 1e-10)).item()
+
+        return {
+            'usage_rate': usage_rate,
+            'used_entries': used_entries,
+            'entropy': entropy
+        }
+
+    def reset_statistics(self):
+        self.embedding_usage.zero_()
+
 
 class VQ_SVAE(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False, beta=1.0):
@@ -57,11 +96,15 @@ class VQ_SVAE(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(original_dim, intermediate_dim),
             nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
+            nn.ReLU(),
             nn.Linear(intermediate_dim, latent_dim)
         )
         self.vq_layer = VectorQuantizer(num_embeddings, latent_dim, commitment_cost, use_cosine_distance)
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, intermediate_dim),
+            nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
             nn.ReLU(),
             nn.Linear(intermediate_dim, original_dim),
             nn.Sigmoid()
@@ -102,7 +145,7 @@ class VQ_SVAE(nn.Module):
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, commitment_cost=0.25,
+    model = VQ_SVAE(num_embeddings=BOOK_SIZE, embedding_dim=latent_dim, commitment_cost=COMMITMENT_COST,
                    use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -120,10 +163,12 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 3
+    patience = PATIENCE
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
-        avg_val_loss = validate(model, test_loader, device, val_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
+              vq_loss_weight=VQ_LOSS_WEIGHT, contrastive=CONTRASTIVE)
+        avg_val_loss = validate(model, test_loader, device, val_loss_history, True,
+                                vq_loss_weight=VQ_LOSS_WEIGHT, contrastive=CONTRASTIVE)
         
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -151,6 +196,25 @@ def main(args):
 
 
 if __name__ == "__main__":
+    wandb.init(
+        project="vq_svae_v1",
+        config={
+            "learning_rate": LR,
+            "book_size": BOOK_SIZE,
+            "commitment_cost": COMMITMENT_COST,
+            "latent_dim": latent_dim,
+            "intermediate_dim": intermediate_dim,
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
+            "beta": BETA,
+            "vq_loss_weight": VQ_LOSS_WEIGHT,
+            "linear_layer": 3,
+            "cnn_layer": 0,
+            "patience": PATIENCE,
+            "contrastive": CONTRASTIVE,
+            "vq_loss_type": "mse_sum",
+        }
+    )
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs to train")

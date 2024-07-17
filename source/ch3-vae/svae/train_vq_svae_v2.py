@@ -107,7 +107,7 @@ class VQ_SVAE(nn.Module):
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, commitment_cost=0.25,
+    model = VQ_SVAE(num_embeddings=BOOK_SIZE//2, embedding_dim=latent_dim, commitment_cost=10,
                     use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 

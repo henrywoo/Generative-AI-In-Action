@@ -30,3 +30,6 @@
 - Entropy loss
 
 
+## Conclusion
+
+- Soft quantization is good for using less Q points

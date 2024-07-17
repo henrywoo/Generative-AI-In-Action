@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from hiq.cv_torch import get_cv_dataset, DS_PATH_MNIST
 from hiq import deterministic
+import wandb
 
 # 基本参数
 original_dim = 784
@@ -18,6 +19,15 @@ intermediate_dim = 256
 kappa = 20
 epsilon = 1e-7
 NUM_CLASSES = 10
+BATCH_SIZE = 64
+EPOCHS = 200
+LR = 5e-4
+BETA = 10.0
+BOOK_SIZE = 2048
+COMMITMENT_COST = 0.25
+VQ_LOSS_WEIGHT = 50
+PATIENCE = 6
+CONTRASTIVE = False
 
 def load_data(data_path, batch_size):
     transform = transforms.Compose([transforms.ToTensor()])
@@ -187,10 +197,10 @@ def contrastive_loss_cosine(z, labels, margin=0.05):
     negative_loss = (1 - label_matrix) * F.relu(sim_matrix - margin)
     # Calculate the total contrastive loss
     # 5000
-    contrastive_loss_value = 0.5 * (positive_loss + negative_loss).mean()
+    contrastive_loss_value = 500 * (positive_loss + negative_loss).mean()
     return contrastive_loss_value
 
-def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history):
+def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1, contrastive=False):
     model.train()
     train_loss = 0
     total_recon_loss = 0
@@ -203,9 +213,10 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
             optimizer.zero_grad()
             recon_batch, vq_loss, quantized = model(data)
 
-            #z = quantized.view(quantized.size(0), -1)
-            #contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
-            # vq_loss *= 5
+            if contrastive:
+                z = quantized.view(quantized.size(0), -1)
+                contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+            vq_loss *= vq_loss_weight
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
             loss += contrastive_loss_value
             loss.backward()
@@ -227,22 +238,34 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f},'
           f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f}, contra: {avg_contrastive_loss:.4f}')
+    wandb.log({"avg_train_loss": avg_train_loss,
+               "avg_recon_loss": avg_recon_loss,
+               "avg_vq_loss": avg_vq_loss,
+               "avg_contrastive_loss": avg_contrastive_loss})
 
-def validate(model, test_loader, device, val_loss_history):
+def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False):
     model.eval()
     test_loss = 0
+    contrastive_loss_value = torch.tensor(0.0, device=device)
     with torch.no_grad():
+        if enable_statistics:
+            model.vq_layer.enable_statistics = True
         for data, labels in test_loader:
             data = data.view(-1, original_dim).to(device)
             recon_batch, vq_loss, quantized = model(data)
-            vq_loss *= 5
-            z = quantized.view(quantized.size(0), -1)
-            contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+            vq_loss *= vq_loss_weight
+            if contrastive:
+                z = quantized.view(quantized.size(0), -1)
+                contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
             t, recon_loss = loss_function(recon_batch, data, vq_loss)
             t += contrastive_loss_value
             test_loss += t.item()
     avg_val_loss = test_loss / len(test_loader.dataset)
     val_loss_history.append(avg_val_loss)
+    if enable_statistics:
+        print(model.vq_layer.get_codebook_statistics())
+        model.vq_layer.reset_statistics()
+        model.vq_layer.enable_statistics = False
     print(f'====> Total Test loss: {avg_val_loss:.4f}')
     return avg_val_loss
 
@@ -414,12 +437,15 @@ def main(args):
     visualize_reconstructed_digits(model, device, latent_dim)
     visualize_generated_images(model, num_samples=10, device=device, noise_scale=0.1, version=0)
 
-BATCH_SIZE = 64
-EPOCHS = 200
-LR = 5e-4
-BETA = 10.0
+
 
 if __name__ == "__main__":
+    wandb.init(
+        project="svae_mnist",
+        config={
+            "learning_rate": LR,
+        }
+    )
     parser = argparse.ArgumentParser(description="SVAE Training Script")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs to train")
