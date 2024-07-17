@@ -32,4 +32,7 @@
 
 ## Conclusion
 
-- Soft quantization is good for using less Q points
+- Soft quantization is good for using less Q points; More Quant points are worse sometimes.
+- Add one more linear layer improved the performance obviously (better feature extraction)
+- Add contrastive loss is good for reconstruction perf too
+- Simple Linear Model seems better than 3-layer CNN for simple dataset MNIST
