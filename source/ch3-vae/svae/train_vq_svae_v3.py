@@ -90,7 +90,7 @@ class VQ_SVAE(nn.Module):
         h = self.encode(x.view(-1, original_dim))
         vq_loss, quantized = self.quant(h)
         recon_x = self.decode(quantized)
-        return recon_x, vq_loss
+        return recon_x, vq_loss, quantized
 
     def generate(self, num_samples, device, noise_scale=0.05):
         # Sample random indices from the codebook
@@ -108,7 +108,7 @@ class VQ_SVAE(nn.Module):
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, commitment_cost=0.25,
+    model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, commitment_cost=10,
                     use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -126,7 +126,7 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 3
+    patience = 6
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
         train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
         avg_val_loss = validate(model, test_loader, device, val_loss_history)
@@ -148,8 +148,6 @@ def main(args):
         if epochs_no_improve >= patience:
             print(f'Early stopping at epoch {epoch}')
             break
-
-
 
     plot_recon_loss(recon_loss_history, start_epoch==1, version=3)
     plot_loss(train_loss_history, val_loss_history, 3)

@@ -17,6 +17,7 @@ latent_dim = 3
 intermediate_dim = 256
 kappa = 20
 epsilon = 1e-7
+NUM_CLASSES = 10
 
 def load_data(data_path, batch_size):
     transform = transforms.Compose([transforms.ToTensor()])
@@ -172,41 +173,77 @@ def load_checkpoint(filename, model, optimizer):
     val_loss_history = checkpoint['val_loss_history']
     return start_epoch, train_loss_history, val_loss_history
 
+
+def contrastive_loss_cosine(z, labels, margin=0.05):
+    """Computes the contrastive loss using cosine similarity."""
+    # Normalize the latent vectors
+    z = F.normalize(z, p=2, dim=1)
+    # Compute pairwise cosine similarity
+    sim_matrix = torch.matmul(z, z.t())
+    # Create label matrix
+    label_matrix = (labels.unsqueeze(1) == labels.unsqueeze(0)).float()
+    # Positive and negative loss
+    positive_loss = label_matrix * (1 - sim_matrix)
+    negative_loss = (1 - label_matrix) * F.relu(sim_matrix - margin)
+    # Calculate the total contrastive loss
+    # 5000
+    contrastive_loss_value = 0.5 * (positive_loss + negative_loss).mean()
+    return contrastive_loss_value
+
 def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history):
     model.train()
     train_loss = 0
     total_recon_loss = 0
+    total_vq_loss = 0  # Initialize total VQ loss
+    total_contrastive_loss = 0  # Initialize total contrastive loss
+    contrastive_loss_value = torch.tensor(0.0, device=device)
     with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
-        for batch_idx, (data, _) in enumerate(train_loader):
+        for batch_idx, (data, labels) in enumerate(train_loader):
             data = data.view(-1, original_dim).to(device)
             optimizer.zero_grad()
-            recon_batch, mu = model(data)
-            loss, recon_loss = loss_function(recon_batch, data, 0)
+            recon_batch, vq_loss, quantized = model(data)
+
+            #z = quantized.view(quantized.size(0), -1)
+            #contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+            # vq_loss *= 5
+            loss, recon_loss = loss_function(recon_batch, data, vq_loss)
+            loss += contrastive_loss_value
             loss.backward()
             train_loss += loss.item()
             total_recon_loss += recon_loss.item()
+            total_vq_loss += vq_loss.item()  # Accumulate VQ loss
+            total_contrastive_loss += contrastive_loss_value.item()  # Accumulate contrastive loss
             optimizer.step()
             pbar.update(data.size(0))
-            pbar.set_postfix({'Loss': loss.item() / len(data), 'Recon Loss': recon_loss.item() / len(data)})
+            pbar.set_postfix({'Total_Loss': loss.item() / len(data), 'Recon': recon_loss.item() / len(data),
+                              'VQ': vq_loss.item() / len(data),
+                              'Contra': contrastive_loss_value.item() / len(data)})
 
     avg_train_loss = train_loss / len(train_loader.dataset)
     avg_recon_loss = total_recon_loss / len(train_loader.dataset)
+    avg_vq_loss = total_vq_loss / len(train_loader.dataset)  # Compute average VQ loss
+    avg_contrastive_loss = total_contrastive_loss / len(train_loader.dataset)
     train_loss_history.append(avg_train_loss)
     recon_loss_history.append(avg_recon_loss)
-    print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}, recon loss: {avg_recon_loss:.4f}')
+    print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f},'
+          f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f}, contra: {avg_contrastive_loss:.4f}')
 
 def validate(model, test_loader, device, val_loss_history):
     model.eval()
     test_loss = 0
     with torch.no_grad():
-        for data, _ in test_loader:
+        for data, labels in test_loader:
             data = data.view(-1, original_dim).to(device)
-            recon_batch, mu = model(data)
-            t, _ = loss_function(recon_batch, data, 0)
+            recon_batch, vq_loss, quantized = model(data)
+            vq_loss *= 5
+            z = quantized.view(quantized.size(0), -1)
+            contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+            t, recon_loss = loss_function(recon_batch, data, vq_loss)
+            t += contrastive_loss_value
             test_loss += t.item()
     avg_val_loss = test_loss / len(test_loader.dataset)
     val_loss_history.append(avg_val_loss)
-    print(f'====> Test set loss: {avg_val_loss:.4f}')
+    print(f'====> Total Test loss: {avg_val_loss:.4f}')
     return avg_val_loss
 
 
@@ -347,7 +384,7 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 5
+    patience = 3
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
         train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
         avg_val_loss = validate(model, test_loader, device, val_loss_history)
@@ -378,7 +415,7 @@ def main(args):
     visualize_generated_images(model, num_samples=10, device=device, noise_scale=0.1, version=0)
 
 BATCH_SIZE = 64
-EPOCHS = 50
+EPOCHS = 200
 LR = 5e-4
 BETA = 10.0
 

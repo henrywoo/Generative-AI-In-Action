@@ -89,7 +89,7 @@ class VQ_SVAE(nn.Module):
         h = self.encode(x.view(-1, original_dim))
         vq_loss, quantized = self.quant(h)
         recon_x = self.decode(quantized)
-        return recon_x, vq_loss
+        return recon_x, vq_loss, quantized
 
     def generate(self, num_samples, device, noise_scale=0.05):
         # Sample random indices from the codebook
