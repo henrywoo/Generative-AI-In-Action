@@ -85,7 +85,8 @@ class CVAE(nn.Module):
 
 
 def loss_function(x, x_reconstructed, z_mean, z_log_var, yh):
-    xent_loss = F.binary_cross_entropy(x_reconstructed, x, reduction='sum')
+    #xent_loss = F.binary_cross_entropy(x_reconstructed, x, reduction='sum')
+    xent_loss = F.mse_loss(x_reconstructed, x, reduction='sum')
     kl_loss = -0.5 * torch.sum(1 + z_log_var - torch.pow(z_mean - yh, 2) - torch.exp(z_log_var))
     return xent_loss + kl_loss
 
@@ -178,7 +179,8 @@ def generate_digits(model, device, output_digit=9, n=15, digit_size=28):
     figure = np.zeros((digit_size * n, digit_size * n))
 
     with torch.no_grad():
-        yh = model.encoder.fc3(torch.eye(num_classes)[output_digit].to(device)).cpu().numpy()
+        t = torch.eye(num_classes)[output_digit].to(device)
+        yh = model.encoder.fc3(t).cpu().numpy()
         grid_x = norm.ppf(np.linspace(0.05, 0.95, n)) + yh[1]
         grid_y = norm.ppf(np.linspace(0.05, 0.95, n)) + yh[0]
 
@@ -187,8 +189,7 @@ def generate_digits(model, device, output_digit=9, n=15, digit_size=28):
                 z_sample = torch.tensor([[xi, yi, yh[2]]], device=device).float()
                 x_decoded = model.decoder(z_sample).cpu().numpy()
                 digit = x_decoded[0].reshape(digit_size, digit_size)
-                figure[i * digit_size: (i + 1) * digit_size,
-                j * digit_size: (j + 1) * digit_size] = digit
+                figure[i * digit_size: (i + 1) * digit_size, j * digit_size: (j + 1) * digit_size] = digit
 
     plt.figure(figsize=(10, 10))
     plt.imshow(figure, cmap='Greys_r')
@@ -197,6 +198,7 @@ def generate_digits(model, device, output_digit=9, n=15, digit_size=28):
 
 
 def main(args):
+    from hiq import print_model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     cvae = CVAE().to(device)
     optimizer = optim.Adam(cvae.parameters(), lr=1e-3)
@@ -211,11 +213,14 @@ def main(args):
 
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
 
-    train_loss_history += train(cvae, train_loader, optimizer, device, start_epoch, args.epochs, checkpoint_path)
+    if start_epoch < args.epochs:
+        train_loss_history += train(cvae, train_loader, optimizer, device, start_epoch, args.epochs, checkpoint_path)
+        visualize_training_curve(train_loss_history, "training_curve.png")
 
-    visualize_training_curve(train_loss_history, "training_curve.png")
+    print_model(cvae)
+
     visualize_latent_space(cvae, test_loader, device)
-    generate_digits(cvae, device, output_digit=9, n=15, digit_size=28)
+    generate_digits(cvae, device, output_digit=8, n=15, digit_size=28)
 
 
 if __name__ == "__main__":
@@ -227,5 +232,5 @@ if __name__ == "__main__":
     main(args)
 
 """
-python train_cvae.py --batch_size 30000 --epochs 30 --checkpoint_dir mbin
+python train_cvae.py --batch_size 64 --epochs 30 --checkpoint_dir mbin
 """

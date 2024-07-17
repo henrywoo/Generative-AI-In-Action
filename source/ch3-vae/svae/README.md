@@ -5,7 +5,7 @@
 
 ### 1. Hard Traditional Vector Quantization
 
-- Uniformally select 512 super points in hyperball and doing k-means like clustering. The super points moves as the training goes.
+- Randomly select 512 super points in hyperball and doing k-means like clustering. The super points moves as the training goes.
 - Hard quantization
 - STE
 
