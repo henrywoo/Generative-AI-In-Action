@@ -11,16 +11,18 @@
 - VQGAN-LC LDM
 - VQGAN-LC DiT
 
-### Masked Visual BERT
+### Masked Visual BERT (Non-AR, NMP)
 
 - MaskGIT
 - Titok
+- BSQ
 
-### GPT-style AR
+### GPT-style AR (NTP)
 
 - VQGAN-LC GPT
+- LlamaGen
 
-### Progressive AR
+### Progressive AR (NSP)
 
 - VAR
 
