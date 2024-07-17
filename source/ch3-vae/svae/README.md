@@ -36,3 +36,4 @@
 - Add one more linear layer improved the performance obviously (better feature extraction)
 - Add contrastive loss is good for reconstruction perf too
 - Simple Linear Model seems better than 3-layer CNN for simple dataset MNIST
+- [VQ loss should be optimized and it boost recon loss perf](https://wandb.ai/henrywu/vq_svae_v2/runs/f34lkbot?nw=nwuserhenrywu)

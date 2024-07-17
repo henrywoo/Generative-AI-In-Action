@@ -1,5 +1,11 @@
 from train_svae_mnist import *
 
+VQ_LOSS_WEIGHT = 10
+intermediate_dim = 256
+CONTRASTIVE = True
+CNN_NETWORK = False
+BOOK_SIZE = 1024
+PATIENCE = 6
 
 class SoftVectorQuantizer(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False, beta=1.0):
@@ -49,8 +55,8 @@ class SoftVectorQuantizer(nn.Module):
         quantized = torch.matmul(soft_assignments, self.embeddings.weight).view(input_shape)
 
         # Loss
-        e_latent_loss = F.mse_loss(quantized.detach(), inputs)
-        q_latent_loss = F.mse_loss(quantized, inputs.detach())
+        e_latent_loss = F.mse_loss(quantized.detach(), inputs, reduction='sum')
+        q_latent_loss = F.mse_loss(quantized, inputs.detach(), reduction='sum')
         loss = q_latent_loss + self.commitment_cost * e_latent_loss
 
         # Convert quantized from BHWC -> BCHW
@@ -62,11 +68,15 @@ class VQ_SVAE(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(original_dim, intermediate_dim),
             nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
+            nn.ReLU(),
             nn.Linear(intermediate_dim, latent_dim)
         )
         self.vq_layer = SoftVectorQuantizer(num_embeddings, latent_dim, commitment_cost, use_cosine_distance, beta)
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, intermediate_dim),
+            nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
             nn.ReLU(),
             nn.Linear(intermediate_dim, original_dim),
             nn.Sigmoid()
@@ -107,7 +117,7 @@ class VQ_SVAE(nn.Module):
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=BOOK_SIZE//2, embedding_dim=latent_dim, commitment_cost=10,
+    model = VQ_SVAE(num_embeddings=BOOK_SIZE, embedding_dim=latent_dim, commitment_cost=COMMITMENT_COST,
                     use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -125,10 +135,12 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 3
+    patience = PATIENCE
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
-        avg_val_loss = validate(model, test_loader, device, val_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
+              vq_loss_weight=VQ_LOSS_WEIGHT, contrastive=CONTRASTIVE)
+        avg_val_loss = validate(model, test_loader, device, val_loss_history, False,
+                                vq_loss_weight=VQ_LOSS_WEIGHT, contrastive=CONTRASTIVE)
         
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -156,6 +168,24 @@ def main(args):
 
 
 if __name__ == "__main__":
+    wandb.init(
+        project="vq_svae_v2",
+        config={
+            "learning_rate": LR,
+            "book_size": BOOK_SIZE,
+            "commitment_cost": COMMITMENT_COST,
+            "latent_dim": latent_dim,
+            "intermediate_dim": intermediate_dim,
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
+            "beta": BETA,
+            "vq_loss_weight": VQ_LOSS_WEIGHT,
+            "use_cnn": CNN_NETWORK,
+            "patience": PATIENCE,
+            "contrastive": CONTRASTIVE,
+            "vq_loss_type": "mse_sum",
+        }
+    )
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs to train")
@@ -165,3 +195,4 @@ if __name__ == "__main__":
     parser.add_argument("--beta", type=float, default=BETA, help="Beta parameter for soft quantization")
     args = parser.parse_args()
     main(args)
+

@@ -292,6 +292,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
 
-"""
-python train_vq_svae.py --use_cosine_distance
-"""
