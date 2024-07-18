@@ -35,5 +35,5 @@
 - Soft quantization is good for using less Q points; More Quant points are worse sometimes.
 - Add one more linear layer improved the performance obviously (better feature extraction)
 - Add contrastive loss is good for reconstruction perf too
-- Simple Linear Model seems better than 3-layer CNN for simple dataset MNIST
-- [VQ loss should be optimized and it boost recon loss perf](https://wandb.ai/henrywu/vq_svae_v2/runs/f34lkbot?nw=nwuserhenrywu)
+- Simple Linear Model seems better than 3-layer CNN for simple dataset MNIST(for v1, [LeNet5 is better though](https://wandb.ai/henrywu/vq_svae_v1/runs/tn4lgmhn?nw=nwuserhenrywu))
+- [VQ loss should be optimized and it boosts recon loss perf](https://wandb.ai/henrywu/vq_svae_v2/runs/f34lkbot?nw=nwuserhenrywu)
