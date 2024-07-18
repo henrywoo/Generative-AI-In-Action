@@ -1,11 +1,13 @@
 from train_svae_mnist import *
 
-VQ_LOSS_WEIGHT = 1
+VQ_LOSS_WEIGHT = 10
 intermediate_dim = 256
 CONTRASTIVE = True
-CNN_NETWORK = False
+CNN_NETWORK = True
+#BOOK_SIZE = 1024
 
-class VectorQuantizer(nn.Module):
+
+class HardVectorQuantizer(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False,
                  enable_statistics=False):
         super().__init__()
@@ -101,7 +103,6 @@ class VQ_SVAE(nn.Module):
             nn.ReLU(),
             nn.Linear(intermediate_dim, latent_dim)
         )
-        self.vq_layer = VectorQuantizer(num_embeddings, latent_dim, commitment_cost, use_cosine_distance)
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, intermediate_dim),
             nn.ReLU(),
@@ -110,6 +111,7 @@ class VQ_SVAE(nn.Module):
             nn.Linear(intermediate_dim, original_dim),
             nn.Sigmoid()
         )
+        self.vq_layer = HardVectorQuantizer(num_embeddings, latent_dim, commitment_cost, use_cosine_distance)
 
     def encode(self, x):
         h = self.encoder(x)
@@ -148,17 +150,19 @@ class VQ_SVAE_CNN(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False, beta=1.0):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 32, 4, stride=2, padding=1),  # 1x28x28 -> 32x14x14
+            nn.Conv2d(1, 6, 5),  # 1x28x28 -> 6x24x24
             nn.ReLU(),
-            nn.Conv2d(32, 64, 4, stride=2, padding=1),  # 32x14x14 -> 64x7x7
+            nn.AvgPool2d(2, stride=2),  # 6x24x24 -> 6x12x12
+            nn.Conv2d(6, 16, 5),  # 6x12x12 -> 16x8x8
             nn.ReLU(),
-            nn.Conv2d(64, 128, 4, stride=2, padding=1),  # 64x7x7 -> 128x3x3
+            nn.AvgPool2d(2, stride=2),  # 16x8x8 -> 16x4x4
+            nn.Conv2d(16, 120, 4),  # 16x4x4 -> 120x1x1
             nn.ReLU(),
-            nn.Conv2d(128, embedding_dim, 3, stride=1),  # 128x3x3 -> embedding_dimx1x1
             nn.Flatten(),  # Flatten the tensor
-            nn.Linear(embedding_dim * 1 * 1, 3)  # Map to 3D point
+            nn.Linear(120, 84),  # 120 -> 84
+            nn.ReLU(),
+            nn.Linear(84, 3)  # Map to 3D point
         )
-        self.vq_layer = VectorQuantizer(num_embeddings, 3, commitment_cost, use_cosine_distance)
         self.decoder = nn.Sequential(
             nn.Linear(3, embedding_dim),  # Map from 3D point to embedding_dim
             nn.ReLU(),
@@ -172,6 +176,7 @@ class VQ_SVAE_CNN(nn.Module):
             nn.ConvTranspose2d(32, 1, 3, stride=1, padding=1),  # 32x28x28 -> 1x28x28
             nn.Sigmoid()  # Use Sigmoid if output values need to be in the range [0, 1]
         )
+        self.vq_layer = HardVectorQuantizer(num_embeddings, latent_dim, commitment_cost, use_cosine_distance)
 
     def encode(self, x):
         x = x.view(-1, 1, 28, 28)
@@ -194,7 +199,6 @@ class VQ_SVAE_CNN(nn.Module):
         return recon_x, vq_loss, quantized
 
     def generate(self, num_samples, device, noise_scale=0.05):
-        # Sample random indices from the codebook
         embedding_indices = torch.randint(0, self.vq_layer.num_embeddings, (num_samples,), device=device)
         embeddings = self.vq_layer.embeddings(embedding_indices)
 
@@ -280,6 +284,8 @@ if __name__ == "__main__":
             "patience": PATIENCE,
             "contrastive": CONTRASTIVE,
             "vq_loss_type": "mse_sum",
+            "hard": True,
+            "margin": MARGIN
         }
     )
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")

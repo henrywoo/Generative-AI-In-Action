@@ -2,6 +2,15 @@ from train_svae_mnist import *
 from train_vq_svae_v4 import HardVectorQuantizer
 from train_vq_svae_v3 import SoftVectorQuantizer
 
+VQ_LOSS_WEIGHT = 10
+intermediate_dim = 256
+CONTRASTIVE = True
+CNN_NETWORK = False
+LR = 5e-4
+#BOOK_SIZE = 1024
+#BOOK_SIZE = 512
+#BETA = 10
+
 class VQ_SVAE(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, num_classes, commitment_cost, use_cosine_distance=False, beta=1.0):
         super().__init__()
@@ -11,12 +20,16 @@ class VQ_SVAE(nn.Module):
         self.encoder = nn.Sequential(
             nn.Linear(original_dim + num_classes, intermediate_dim),
             nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
+            nn.ReLU(),
             nn.Linear(intermediate_dim, self.latent_dim)
         )
-        #self.vq_layer = HardVectorQuantizer(num_embeddings, self.latent_dim, commitment_cost, use_cosine_distance, beta)
-        self.vq_layer = SoftVectorQuantizer(num_embeddings, self.latent_dim, commitment_cost, use_cosine_distance, beta)
+        self.vq_layer = HardVectorQuantizer(num_embeddings, self.latent_dim, commitment_cost, use_cosine_distance, beta)
+        #self.vq_layer = SoftVectorQuantizer(num_embeddings, self.latent_dim, commitment_cost, use_cosine_distance, beta)
         self.decoder = nn.Sequential(
             nn.Linear(self.latent_dim + num_classes, intermediate_dim),
+            nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
             nn.ReLU(),
             nn.Linear(intermediate_dim, original_dim),
             nn.Sigmoid()
@@ -86,10 +99,11 @@ def contrastive_loss_eu(z, labels, margin=0.05):
     contrastive_loss_value = 5 * (positive_loss + negative_loss).sum() / (batch_size * (batch_size - 1) / 2)
     return contrastive_loss_value
 
-def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, margin=0.1):
+def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1, contrastive=False, margin=0.1):
     model.train()
     train_loss = 0
     total_recon_loss = 0
+    total_vq_loss = 0  # Initialize total VQ loss
     total_contrastive_loss = 0  # Initialize total contrastive loss
     contrastive_loss_value = torch.tensor(0.0, device=device)
     bss = (BATCH_SIZE * (BATCH_SIZE - 1) / 2)
@@ -102,9 +116,11 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
             recon_batch, vq_loss, mu = model(data, one_hot_labels)
 
             # Calculate contrastive loss
-            z = mu.view(mu.size(0), -1)
-            contrastive_loss_value = contrastive_loss_cosine(z, labels, margin)
+            if contrastive:
+                z = mu.view(mu.size(0), -1)
+                contrastive_loss_value = contrastive_loss_cosine(z, labels, margin)
             vq_loss *= 5
+            total_vq_loss += vq_loss.item()  # Accumulate VQ loss
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
             loss += contrastive_loss_value
             loss.backward()
@@ -117,12 +133,17 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
 
     avg_train_loss = train_loss / len(train_loader.dataset)
     avg_recon_loss = total_recon_loss / len(train_loader.dataset)
+    avg_vq_loss = total_vq_loss / len(train_loader.dataset)  # Compute average VQ loss
     avg_contrastive_loss = total_contrastive_loss / len(train_loader.dataset)  # Compute average contrastive loss
     train_loss_history.append(avg_train_loss)
     recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f}, recon loss: {avg_recon_loss:.4f}, contrastive loss: {avg_contrastive_loss:.4f}')
+    wandb.log({"avg_train_loss": avg_train_loss,
+               "avg_recon_loss": avg_recon_loss,
+               "avg_vq_loss": avg_vq_loss,
+               "avg_contrastive_loss": avg_contrastive_loss})
 
-def validate(model, test_loader, device, val_loss_history):
+def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False):
     model.eval()
     test_loss = 0
     margin = 0.1
@@ -135,10 +156,11 @@ def validate(model, test_loader, device, val_loss_history):
             recon_batch, vq_loss, mu = model(data, one_hot_labels)
 
             # Calculate contrastive loss
-            # Reshape mu from (Batch, 1, 1, latent_dim) to (Batch, latent_dim)
-            z = mu.view(mu.size(0), -1)
-            contrastive_loss_value = contrastive_loss_cosine(z, labels, margin)
-            vq_loss *= 50
+            if contrastive:
+                # Reshape mu from (Batch, 1, 1, latent_dim) to (Batch, latent_dim)
+                z = mu.view(mu.size(0), -1)
+                contrastive_loss_value = contrastive_loss_cosine(z, labels, margin)
+            vq_loss *= vq_loss_weight
 
             t, _ = loss_function(recon_batch, data, vq_loss)
             t += contrastive_loss_value
@@ -237,7 +259,7 @@ def visualize_generated_images(model, num_samples_per_class, device, num_classes
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=512, embedding_dim=latent_dim, num_classes=NUM_CLASSES, commitment_cost=0.25,
+    model = VQ_SVAE(num_embeddings=BOOK_SIZE, embedding_dim=latent_dim, num_classes=NUM_CLASSES, commitment_cost=COMMITMENT_COST,
                     use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -255,10 +277,12 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 3
+    patience = PATIENCE
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, margin=.08)
-        avg_val_loss = validate(model, test_loader, device, val_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
+              vq_loss_weight=VQ_LOSS_WEIGHT, contrastive=CONTRASTIVE, margin=MARGIN)
+        avg_val_loss = validate(model, test_loader, device, val_loss_history, False,
+                                vq_loss_weight=VQ_LOSS_WEIGHT, contrastive=CONTRASTIVE)
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -286,13 +310,32 @@ def main(args):
 
 
 if __name__ == "__main__":
+    wandb.init(
+        project="vq_svae_v5",
+        config={
+            "learning_rate": LR,
+            "book_size": BOOK_SIZE,
+            "commitment_cost": COMMITMENT_COST,
+            "latent_dim": latent_dim,
+            "intermediate_dim": intermediate_dim,
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
+            "beta": BETA,
+            "vq_loss_weight": VQ_LOSS_WEIGHT,
+            "use_cnn": CNN_NETWORK,
+            "patience": PATIENCE,
+            "contrastive": CONTRASTIVE,
+            "vq_loss_type": "mse_sum",
+            "hard": True,
+            "margin": MARGIN
+        }
+    )
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")
-    parser.add_argument("--use_cosine_distance", action="store_true",
-                        help="Use cosine distance for vector quantization")
+    parser.add_argument("--use_cosine_distance", action="store_true", help="Use cosine distance for vector quantization")
     parser.add_argument("--beta", type=float, default=BETA, help="Beta parameter for soft quantization")
     args = parser.parse_args()
     main(args)

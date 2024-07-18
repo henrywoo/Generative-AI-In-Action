@@ -5,7 +5,6 @@ intermediate_dim = 256
 CONTRASTIVE = True
 CNN_NETWORK = False
 BOOK_SIZE = 1024
-PATIENCE = 6
 
 class SoftVectorQuantizer(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False, beta=1.0):
@@ -114,11 +113,78 @@ class VQ_SVAE(nn.Module):
         samples = self.decode(noisy_embeddings).cpu().data.numpy()
         return samples
 
+class VQ_SVAE_CNN(nn.Module):
+    def __init__(self, num_embeddings, embedding_dim, commitment_cost, use_cosine_distance=False, beta=1.0):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 6, 5),  # 1x28x28 -> 6x24x24
+            nn.ReLU(),
+            nn.AvgPool2d(2, stride=2),  # 6x24x24 -> 6x12x12
+            nn.Conv2d(6, 16, 5),  # 6x12x12 -> 16x8x8
+            nn.ReLU(),
+            nn.AvgPool2d(2, stride=2),  # 16x8x8 -> 16x4x4
+            nn.Conv2d(16, 120, 4),  # 16x4x4 -> 120x1x1
+            nn.ReLU(),
+            nn.Flatten(),  # Flatten the tensor
+            nn.Linear(120, 84),  # 120 -> 84
+            nn.ReLU(),
+            nn.Linear(84, 3)  # Map to 3D point
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(3, embedding_dim),  # Map from 3D point to embedding_dim
+            nn.ReLU(),
+            nn.Linear(embedding_dim, 128 * 7 * 7),  # Map to 128 channels with 7x7 feature maps
+            nn.ReLU(),
+            nn.Unflatten(1, (128, 7, 7)),  # Unflatten to match ConvTranspose2d input shape
+            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1),  # 128x7x7 -> 64x14x14
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),  # 64x14x14 -> 32x28x28
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 1, 3, stride=1, padding=1),  # 32x28x28 -> 1x28x28
+            nn.Sigmoid()  # Use Sigmoid if output values need to be in the range [0, 1]
+        )
+        self.vq_layer = SoftVectorQuantizer(num_embeddings, latent_dim, commitment_cost, use_cosine_distance)
+
+    def encode(self, x):
+        x = x.view(-1, 1, 28, 28)
+        h = self.encoder(x)
+        return h
+
+    def decode(self, z):
+        return self.decoder(z)
+
+    def quant(self, h):
+        h = h.view(-1, 1, 1, 3)  # Reshape for VQ layer
+        vq_loss, quantized, _ = self.vq_layer(h)
+        return vq_loss, quantized
+
+    def forward(self, x):
+        h = self.encode(x)
+        vq_loss, quantized = self.quant(h)
+        recon_x = self.decode(quantized.view(-1, 3))  # Flatten for decoder
+        recon_x = recon_x.view(x.shape[0], -1)
+        return recon_x, vq_loss, quantized
+
+    def generate(self, num_samples, device, noise_scale=0.05):
+        embedding_indices = torch.randint(0, self.vq_layer.num_embeddings, (num_samples,), device=device)
+        embeddings = self.vq_layer.embeddings[embedding_indices]
+
+        # Add Gaussian noise to the embeddings
+        noise = noise_scale * torch.randn_like(embeddings)
+        noisy_embeddings = embeddings + noise
+
+        # Decode the noisy embeddings to generate new images
+        samples = self.decode(noisy_embeddings).cpu().data.numpy()
+        return samples
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VQ_SVAE(num_embeddings=BOOK_SIZE, embedding_dim=latent_dim, commitment_cost=COMMITMENT_COST,
-                    use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
+    if CNN_NETWORK:
+        model = VQ_SVAE_CNN(num_embeddings=BOOK_SIZE, embedding_dim=latent_dim, commitment_cost=COMMITMENT_COST,
+                            use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
+    else:
+        model = VQ_SVAE(num_embeddings=BOOK_SIZE, embedding_dim=latent_dim, commitment_cost=COMMITMENT_COST,
+                       use_cosine_distance=args.use_cosine_distance, beta=args.beta).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
@@ -184,6 +250,8 @@ if __name__ == "__main__":
             "patience": PATIENCE,
             "contrastive": CONTRASTIVE,
             "vq_loss_type": "mse_sum",
+            "hard": False,
+            "margin": MARGIN
         }
     )
     parser = argparse.ArgumentParser(description="VQ-VAE Training Script")

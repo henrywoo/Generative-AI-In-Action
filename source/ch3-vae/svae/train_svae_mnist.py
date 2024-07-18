@@ -29,6 +29,7 @@ VQ_LOSS_WEIGHT = 50
 PATIENCE = 6
 CONTRASTIVE = False
 CNN_NETWORK = False
+MARGIN = 0.08
 
 def load_data(data_path, batch_size):
     transform = transforms.Compose([transforms.ToTensor()])
