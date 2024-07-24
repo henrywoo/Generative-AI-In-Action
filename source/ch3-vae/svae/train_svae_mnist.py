@@ -21,14 +21,15 @@ kappa = 20
 epsilon = 1e-7
 NUM_CLASSES = 10
 BATCH_SIZE = 64
-EPOCHS = 200
-LR = 5e-4
+EPOCHS = 150
+LR = 1e-4
 BETA = 10.0
 BOOK_SIZE = 2048
 COMMITMENT_COST = 0.25
 VQ_LOSS_WEIGHT = 50
-PATIENCE = 8
+PATIENCE = 20
 CONTRASTIVE = False
+CONTR_MUL = 0.3
 CNN_NETWORK = False
 MARGIN = 0.08
 T_MAX = EPOCHS
@@ -53,20 +54,61 @@ def load_data(data_path, batch_size):
                                 **loader_params)
     return dataloader['train'], dataloader['test']
 
-class SVAE(nn.Module):
+class SVAE_CNN(nn.Module):
+    def __init__(self, embedding_dim=84):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 6, 5),  # 1x28x28 -> 6x24x24
+            nn.ReLU(),
+            nn.AvgPool2d(2, stride=2),  # 6x24x24 -> 6x12x12
+            nn.Conv2d(6, 16, 5),  # 6x12x12 -> 16x8x8
+            nn.ReLU(),
+            nn.AvgPool2d(2, stride=2),  # 16x8x8 -> 16x4x4
+            nn.Conv2d(16, 120, 4),  # 16x4x4 -> 120x1x1
+            nn.ReLU(),
+            nn.Flatten(),  # Flatten the tensor
+            nn.Linear(120, 84),  # 120 -> 84
+            nn.ReLU(),
+            nn.Linear(84, 3)  # Map to 3D point
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(3, embedding_dim),  # Map from 3D point to embedding_dim
+            nn.ReLU(),
+            nn.Linear(embedding_dim, 128 * 7 * 7),  # Map to 128 channels with 7x7 feature maps
+            nn.ReLU(),
+            nn.Unflatten(1, (128, 7, 7)),  # Unflatten to match ConvTranspose2d input shape
+            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1),  # 128x7x7 -> 64x14x14
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, 4, stride=2, padding=1),  # 64x14x14 -> 32x28x28
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 1, 3, stride=1, padding=1),  # 32x28x28 -> 1x28x28
+            nn.Tanh()
+        )
+        self.mode = 'cnn'
+
+class SVAE_Linear(nn.Module):
     def __init__(self):
-        super(SVAE, self).__init__()
+        super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(original_dim, intermediate_dim),
+            nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
             nn.ReLU(),
             nn.Linear(intermediate_dim, latent_dim)
         )
         self.decoder = nn.Sequential(
             nn.Linear(latent_dim, intermediate_dim),
             nn.ReLU(),
+            nn.Linear(intermediate_dim, intermediate_dim),
+            nn.ReLU(),
             nn.Linear(intermediate_dim, original_dim),
-            #nn.Sigmoid()
+            nn.Tanh()
         )
+        self.mode = 'linear'
+
+class SVAE(SVAE_Linear):
+    def __init__(self):
+        super().__init__()
         x = np.arange(-1 + epsilon, 1, epsilon)
         y = kappa * x + np.log(1 - x ** 2) * (latent_dim - 3) / 2
         y = np.cumsum(np.exp(y - y.max()))
@@ -74,6 +116,8 @@ class SVAE(nn.Module):
         self.W = torch.tensor(np.interp(np.random.random(10 ** 6), y, x), dtype=torch.float32)
 
     def encode(self, x):
+        if self.mode == 'cnn':
+            x = x.view(-1, 1, 28, 28)
         h = self.encoder(x)
         mu = F.normalize(h, p=2, dim=-1)
         return mu
@@ -95,6 +139,8 @@ class SVAE(nn.Module):
         mu = self.encode(x.view(-1, original_dim))
         z = self.reparameterize(mu)
         r = self.decode(z)
+        if self.mode == 'cnn':
+            r = r.view(r.shape[0], -1)
         return r, None, mu
 
     def generate(self, num_samples, device, noise_scale=0.05):
@@ -192,7 +238,7 @@ def load_checkpoint(filename, model, optimizer):
     return start_epoch, train_loss_history, val_loss_history
 
 
-def contrastive_loss_cosine(z, labels, margin=0.05, multiplier=500):
+def contrastive_loss_cosine(z, labels, margin=0.05, multiplier=500.):
     """Computes the contrastive loss using cosine similarity."""
     # Normalize the latent vectors
     z = F.normalize(z, p=2, dim=1)
@@ -213,8 +259,10 @@ def none_as_0(x):
         return x
     else:
         return 0 if x is None else x.item()
+
+from torchvision.utils import make_grid
 def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1,
-          contrastive=False, scheduler=None):
+          contrastive=False, scheduler=None, original_dim=784):
     model.train()
     train_loss = 0
     total_recon_loss = 0
@@ -223,15 +271,15 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     contrastive_loss_value = torch.tensor(0.0, device=device)
     batch_idx = 1
     with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
-        for batch_idx, (data, labels) in enumerate(train_loader):
-            data = data.view(-1, original_dim).to(device)
+        for batch_idx, (images, labels) in enumerate(train_loader):
+            data = images.to(device).view(-1, original_dim)
             optimizer.zero_grad()
             recon_batch, vq_loss, quantized = model(data)
             if vq_loss is not None:
-                if contrastive:
-                    z = quantized.view(quantized.size(0), -1)
-                    contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
                 vq_loss *= vq_loss_weight
+            if contrastive:
+                z = quantized.view(quantized.size(0), -1)
+                contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device), multiplier=CONTR_MUL)
 
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
             loss += contrastive_loss_value
@@ -241,7 +289,8 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
             total_vq_loss += none_as_0(vq_loss)  # Accumulate VQ loss
             total_contrastive_loss += contrastive_loss_value.item()  # Accumulate contrastive loss
             optimizer.step()
-            scheduler or scheduler.step()
+            if scheduler:
+                scheduler.step()
             pbar.update(data.size(0))
             pbar.set_postfix({'Recon': recon_loss.item(),
                               'VQ': none_as_0(vq_loss),
@@ -255,11 +304,21 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f},'
           f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f}, contra: {avg_contrastive_loss:.4f}')
+
+    # Log metrics to wandb
     wandb.log({"t/avg_train_loss": avg_train_loss,
                "t/avg_recon_loss": avg_recon_loss,
                "t/avg_vq_loss": avg_vq_loss,
                "t/avg_contrastive_loss": avg_contrastive_loss,
-               "t/lr": scheduler.get_last_lr()[0]})
+               "t/lr": scheduler.get_last_lr()[0] if scheduler else None})
+
+    # Log images to wandb
+    n = 8  # Number of images to log
+    original_images = data[:n].view(-1, 1, 28, 28).cpu()
+    reconstructed_images = recon_batch[:n].view(-1, 1, 28, 28).cpu()
+    comparison = torch.cat([original_images, reconstructed_images])
+    grid = make_grid(comparison, nrow=n)
+    wandb.log({"Reconstructions": [wandb.Image(grid, caption="Top: Original images, Bottom: Reconstructed images")]})
 
 def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False):
     model.eval()
@@ -275,9 +334,9 @@ def validate(model, test_loader, device, val_loss_history, enable_statistics=Fal
             recon_batch, vq_loss, quantized = model(data)
             if vq_loss is not None:
                 vq_loss *= vq_loss_weight
-                if contrastive:
-                    z = quantized.view(quantized.size(0), -1)
-                    contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+            if contrastive:
+                z = quantized.view(quantized.size(0), -1)
+                contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device), multiplier=CONTR_MUL)
             t, recon_loss = loss_function(recon_batch, data, vq_loss)
             t += contrastive_loss_value
             test_loss += t.item()
@@ -295,6 +354,8 @@ def validate(model, test_loader, device, val_loss_history, enable_statistics=Fal
 
 
 def visualize_latent_space(model, test_loader, device, version=0):
+    if latent_dim != 3:
+        return
     model.eval()
     with torch.no_grad():
         z_means = []
@@ -313,7 +374,7 @@ def visualize_latent_space(model, test_loader, device, version=0):
 
     fig = plt.figure(figsize=(15, 15))  # Larger figure size
     ax = fig.add_subplot(111, projection='3d')
-    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='tab10', s=10)  # Smaller points
+    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='tab10', s=5)  # Smaller points
 
     # Create legend
     legend1 = ax.legend(*scatter.legend_elements(), title="Labels")
@@ -334,6 +395,7 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0):
         figure = np.zeros((digit_size * n, digit_size * n))
         for i in range(n):
             for j in range(n):
+                # TODO - 采样的时候去中心点采样
                 z_sample = torch.randn(1, latent_dim, device=device)
                 z_sample /= z_sample.norm()
                 x_decoded = model.decode(z_sample).view(digit_size, digit_size).cpu()
@@ -408,7 +470,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = SVAE().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    scheduler = CosineAnnealingLR(optimizer, T_max=T_MAX//4, eta_min=ETA_MIN)
+    scheduler = CosineAnnealingLR(optimizer, T_max=T_MAX, eta_min=ETA_MIN)
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
     train_loss_history = []
     recon_loss_history = []
@@ -423,7 +485,9 @@ def main(args):
     epochs_no_improve = 0
     patience = PATIENCE
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, scheduler=scheduler)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
+              contrastive=True,
+              scheduler=scheduler)
         avg_val_loss = validate(model, test_loader, device, val_loss_history)
         
         if avg_val_loss < best_val_loss:
