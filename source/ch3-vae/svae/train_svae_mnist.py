@@ -27,8 +27,8 @@ BETA = 10.0
 BOOK_SIZE = 2048
 COMMITMENT_COST = 0.25
 VQ_LOSS_WEIGHT = 50
-PATIENCE = 20
-CONTRASTIVE = False
+PATIENCE = 6
+CONTRASTIVE = True
 CONTR_MUL = 0.3
 CNN_NETWORK = False
 MARGIN = 0.08
@@ -239,18 +239,11 @@ def load_checkpoint(filename, model, optimizer):
 
 
 def contrastive_loss_cosine(z, labels, margin=0.05, multiplier=500.):
-    """Computes the contrastive loss using cosine similarity."""
-    # Normalize the latent vectors
     z = F.normalize(z, p=2, dim=1)
-    # Compute pairwise cosine similarity
     sim_matrix = torch.matmul(z, z.t())
-    # Create label matrix
     label_matrix = (labels.unsqueeze(1) == labels.unsqueeze(0)).float()
-    # Positive and negative loss
     positive_loss = label_matrix * (1 - sim_matrix)
     negative_loss = (1 - label_matrix) * F.relu(sim_matrix - margin)
-    # Calculate the total contrastive loss
-    # 5000
     contrastive_loss_value = multiplier * (positive_loss + negative_loss).mean()
     return contrastive_loss_value
 
@@ -268,8 +261,11 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     total_recon_loss = 0
     total_vq_loss = 0  # Initialize total VQ loss
     total_contrastive_loss = 0  # Initialize total contrastive loss
-    contrastive_loss_value = torch.tensor(0.0, device=device)
+    contrastive_loss_value, kld = torch.tensor(0.0, device=device), torch.tensor(0.0, device=device)
     batch_idx = 1
+    kappa = 10
+    num_classes = 10  # Number of classes for MNIST
+    small_constant = 1e-8
     with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
         for batch_idx, (images, labels) in enumerate(train_loader):
             data = images.to(device).view(-1, original_dim)
@@ -281,8 +277,18 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
                 z = quantized.view(quantized.size(0), -1)
                 contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device), multiplier=CONTR_MUL)
 
+                '''kld = torch.tensor(0.0, device=device)
+                for class_id in range(num_classes):
+                    class_mask = (labels == class_id).unsqueeze(-1).expand_as(quantized)
+                    class_mu = quantized[class_mask].view(-1, quantized.size(-1))
+                    if class_mu.size(0) > 0:
+                        norm = torch.norm(class_mu, dim=-1, keepdim=True) + small_constant
+                        class_kld = kappa * (norm - torch.log(torch.sinh(norm) / norm + small_constant)).sum()
+                        kld += class_kld / (num_classes * 50)'''
+
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
             loss += contrastive_loss_value
+            loss += kld
             loss.backward()
             train_loss += loss.item()
             total_recon_loss += recon_loss.item()
@@ -294,7 +300,8 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
             pbar.update(data.size(0))
             pbar.set_postfix({'Recon': recon_loss.item(),
                               'VQ': none_as_0(vq_loss),
-                              'Contra': contrastive_loss_value.item()})
+                              'Contra': contrastive_loss_value.item(),
+                              'kld': kld.item()})
 
     avg_train_loss = train_loss / batch_idx
     avg_recon_loss = total_recon_loss / batch_idx
@@ -304,6 +311,7 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f},'
           f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f}, contra: {avg_contrastive_loss:.4f}')
+
 
     # Log metrics to wandb
     wandb.log({"t/avg_train_loss": avg_train_loss,
@@ -486,9 +494,9 @@ def main(args):
     patience = PATIENCE
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
         train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
-              contrastive=True,
+              contrastive=CONTRASTIVE,
               scheduler=scheduler)
-        avg_val_loss = validate(model, test_loader, device, val_loss_history)
+        avg_val_loss = validate(model, test_loader, device, val_loss_history, contrastive=CONTRASTIVE)
         
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
