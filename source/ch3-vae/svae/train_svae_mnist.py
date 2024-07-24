@@ -11,6 +11,7 @@ from tqdm import tqdm
 from hiq.cv_torch import get_cv_dataset, DS_PATH_MNIST
 from hiq import deterministic
 import wandb
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 # 基本参数
 original_dim = 784
@@ -26,13 +27,16 @@ BETA = 10.0
 BOOK_SIZE = 2048
 COMMITMENT_COST = 0.25
 VQ_LOSS_WEIGHT = 50
-PATIENCE = 6
+PATIENCE = 8
 CONTRASTIVE = False
 CNN_NETWORK = False
 MARGIN = 0.08
+T_MAX = EPOCHS
+ETA_MIN = LR/100
 
 def load_data(data_path, batch_size):
-    transform = transforms.Compose([transforms.ToTensor()])
+    channel = 1
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,)*channel, (0.5,)*channel)])
     loader_params = dict(
         shuffle=True,
         drop_last=False,
@@ -61,7 +65,7 @@ class SVAE(nn.Module):
             nn.Linear(latent_dim, intermediate_dim),
             nn.ReLU(),
             nn.Linear(intermediate_dim, original_dim),
-            nn.Sigmoid()
+            #nn.Sigmoid()
         )
         x = np.arange(-1 + epsilon, 1, epsilon)
         y = kappa * x + np.log(1 - x ** 2) * (latent_dim - 3) / 2
@@ -87,9 +91,11 @@ class SVAE(nn.Module):
         return self.decoder(z)
 
     def forward(self, x):
+        """return recon_batch, vq_loss, quantized"""
         mu = self.encode(x.view(-1, original_dim))
         z = self.reparameterize(mu)
-        return self.decode(z), mu
+        r = self.decode(z)
+        return r, None, mu
 
     def generate(self, num_samples, device, noise_scale=0.05):
         with torch.no_grad():
@@ -107,8 +113,8 @@ class SVAE(nn.Module):
             return samples
 
 def loss_function(recon_x, x, vq_loss=0):
-    recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='sum')
-    return recon_loss + vq_loss, recon_loss
+    recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='mean')
+    return recon_loss + none_as_0(vq_loss), recon_loss
 
 
 def plot_recon_loss(recon_loss_history, replace_it, version):
@@ -122,7 +128,7 @@ def plot_recon_loss(recon_loss_history, replace_it, version):
     plt.title(f'Recon Loss vs. Epochs (v{version})')
     plt.legend()
     plt.grid(True)
-    filename = f"vq_svae_v{version}_loss_recon.png"
+    filename = f"img/vq_svae_v{version}_loss_recon.png"
     plt.savefig(filename)
     plt.show()
 
@@ -186,7 +192,7 @@ def load_checkpoint(filename, model, optimizer):
     return start_epoch, train_loss_history, val_loss_history
 
 
-def contrastive_loss_cosine(z, labels, margin=0.05):
+def contrastive_loss_cosine(z, labels, margin=0.05, multiplier=500):
     """Computes the contrastive loss using cosine similarity."""
     # Normalize the latent vectors
     z = F.normalize(z, p=2, dim=1)
@@ -199,76 +205,92 @@ def contrastive_loss_cosine(z, labels, margin=0.05):
     negative_loss = (1 - label_matrix) * F.relu(sim_matrix - margin)
     # Calculate the total contrastive loss
     # 5000
-    contrastive_loss_value = 500 * (positive_loss + negative_loss).mean()
+    contrastive_loss_value = multiplier * (positive_loss + negative_loss).mean()
     return contrastive_loss_value
 
-def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1, contrastive=False):
+def none_as_0(x):
+    if isinstance(x, int):
+        return x
+    else:
+        return 0 if x is None else x.item()
+def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1,
+          contrastive=False, scheduler=None):
     model.train()
     train_loss = 0
     total_recon_loss = 0
     total_vq_loss = 0  # Initialize total VQ loss
     total_contrastive_loss = 0  # Initialize total contrastive loss
     contrastive_loss_value = torch.tensor(0.0, device=device)
+    batch_idx = 1
     with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
         for batch_idx, (data, labels) in enumerate(train_loader):
             data = data.view(-1, original_dim).to(device)
             optimizer.zero_grad()
             recon_batch, vq_loss, quantized = model(data)
+            if vq_loss is not None:
+                if contrastive:
+                    z = quantized.view(quantized.size(0), -1)
+                    contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+                vq_loss *= vq_loss_weight
 
-            if contrastive:
-                z = quantized.view(quantized.size(0), -1)
-                contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
-            vq_loss *= vq_loss_weight
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
             loss += contrastive_loss_value
             loss.backward()
             train_loss += loss.item()
             total_recon_loss += recon_loss.item()
-            total_vq_loss += vq_loss.item()  # Accumulate VQ loss
+            total_vq_loss += none_as_0(vq_loss)  # Accumulate VQ loss
             total_contrastive_loss += contrastive_loss_value.item()  # Accumulate contrastive loss
             optimizer.step()
+            scheduler or scheduler.step()
             pbar.update(data.size(0))
-            pbar.set_postfix({'Total_Loss': loss.item() / len(data), 'Recon': recon_loss.item() / len(data),
-                              'VQ': vq_loss.item() / len(data),
-                              'Contra': contrastive_loss_value.item() / len(data)})
+            pbar.set_postfix({'Recon': recon_loss.item(),
+                              'VQ': none_as_0(vq_loss),
+                              'Contra': contrastive_loss_value.item()})
 
-    avg_train_loss = train_loss / len(train_loader.dataset)
-    avg_recon_loss = total_recon_loss / len(train_loader.dataset)
-    avg_vq_loss = total_vq_loss / len(train_loader.dataset)  # Compute average VQ loss
-    avg_contrastive_loss = total_contrastive_loss / len(train_loader.dataset)
+    avg_train_loss = train_loss / batch_idx
+    avg_recon_loss = total_recon_loss / batch_idx
+    avg_vq_loss = total_vq_loss / batch_idx  # Compute average VQ loss
+    avg_contrastive_loss = total_contrastive_loss / batch_idx
     train_loss_history.append(avg_train_loss)
     recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f},'
           f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f}, contra: {avg_contrastive_loss:.4f}')
-    wandb.log({"avg_train_loss": avg_train_loss,
-               "avg_recon_loss": avg_recon_loss,
-               "avg_vq_loss": avg_vq_loss,
-               "avg_contrastive_loss": avg_contrastive_loss})
+    wandb.log({"t/avg_train_loss": avg_train_loss,
+               "t/avg_recon_loss": avg_recon_loss,
+               "t/avg_vq_loss": avg_vq_loss,
+               "t/avg_contrastive_loss": avg_contrastive_loss,
+               "t/lr": scheduler.get_last_lr()[0]})
 
 def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False):
     model.eval()
     test_loss = 0
+    total_recon_loss = 0
     contrastive_loss_value = torch.tensor(0.0, device=device)
     with torch.no_grad():
         if enable_statistics:
             model.vq_layer.enable_statistics = True
-        for data, labels in test_loader:
+        batch_idx = 1
+        for batch_idx, (data, labels) in enumerate(test_loader):
             data = data.view(-1, original_dim).to(device)
             recon_batch, vq_loss, quantized = model(data)
-            vq_loss *= vq_loss_weight
-            if contrastive:
-                z = quantized.view(quantized.size(0), -1)
-                contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
+            if vq_loss is not None:
+                vq_loss *= vq_loss_weight
+                if contrastive:
+                    z = quantized.view(quantized.size(0), -1)
+                    contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device))
             t, recon_loss = loss_function(recon_batch, data, vq_loss)
             t += contrastive_loss_value
             test_loss += t.item()
-    avg_val_loss = test_loss / len(test_loader.dataset)
+            total_recon_loss += recon_loss.item()
+    avg_val_loss = test_loss / batch_idx
     val_loss_history.append(avg_val_loss)
     if enable_statistics:
         print(model.vq_layer.get_codebook_statistics())
         model.vq_layer.reset_statistics()
         model.vq_layer.enable_statistics = False
     print(f'====> Total Test loss: {avg_val_loss:.4f}')
+    wandb.log({"v/avg_val_loss": avg_val_loss,
+               "v/avg_recon_loss": total_recon_loss / batch_idx})
     return avg_val_loss
 
 
@@ -301,7 +323,7 @@ def visualize_latent_space(model, test_loader, device, version=0):
     ax.set_ylabel('Z2')
     ax.set_zlabel('Z3')
     plt.title('Latent Space Visualization')
-    plt.savefig(f"latent_space_v{version}.png")
+    plt.savefig(f"img/latent_space_v{version}.png")
     plt.show()
 
 
@@ -335,7 +357,7 @@ def plot_loss(train_loss_history, val_loss_history, version=0):
     plt.title('Training and Validation Loss')
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"vq_svae_v{version}_loss_history.png")
+    plt.savefig(f"img/vq_svae_v{version}_loss_history.png")
     plt.show()
 
 def visualize_generated_images(model, num_samples, device, noise_scale=0.1, version=0):
@@ -346,7 +368,7 @@ def visualize_generated_images(model, num_samples, device, noise_scale=0.1, vers
         for i in range(num_samples):
             axes[i].imshow(samples[i].reshape(28, 28), cmap='gray')
             axes[i].axis('off')
-        plt.savefig(f"generated_images_vq_svae_v{version}.png")
+        plt.savefig(f"img/generated_images_vq_svae_v{version}.png")
         plt.show()
 
 def generate_spherical_points(dim, num_points):
@@ -358,14 +380,10 @@ def generate_spherical_points(dim, num_points):
     for i in range(num_points):
         z = 1 - (i / float(num_points - 1)) * 2  # z goes from 1 to -1
         radius = np.sqrt(1 - z * z)  # radius at z
-
         theta = 2 * np.pi * i / phi
-
         x = np.cos(theta) * radius
         y = np.sin(theta) * radius
-
         points.append([x, y, z])
-
     points = np.array(points)
     points = torch.tensor(points, dtype=torch.float)
     return points
@@ -373,16 +391,12 @@ def generate_spherical_points(dim, num_points):
 def plot_spherical_points(points):
     if points.shape[1] != 3:
         raise ValueError("Can only plot 3-dimensional points")
-
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
     xs = points[:, 0].numpy()
     ys = points[:, 1].numpy()
     zs = points[:, 2].numpy()
-
     ax.scatter(xs, ys, zs)
-
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
@@ -394,14 +408,12 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = SVAE().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-
+    scheduler = CosineAnnealingLR(optimizer, T_max=T_MAX//4, eta_min=ETA_MIN)
     train_loader, test_loader = load_data(DS_PATH_MNIST, args.batch_size)
-
     train_loss_history = []
     recon_loss_history = []
     val_loss_history = []
     start_epoch = 1
-
     checkpoint_path = os.path.join(args.checkpoint_dir, 'svae_checkpoint_v0.pth')
     if os.path.exists(checkpoint_path):
         start_epoch, train_loss_history, val_loss_history = load_checkpoint(checkpoint_path, model, optimizer)
@@ -409,9 +421,9 @@ def main(args):
 
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    patience = 3
+    patience = PATIENCE
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history)
+        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, scheduler=scheduler)
         avg_val_loss = validate(model, test_loader, device, val_loss_history)
         
         if avg_val_loss < best_val_loss:
