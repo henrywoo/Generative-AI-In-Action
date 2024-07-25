@@ -27,8 +27,9 @@ BETA = 10.0
 BOOK_SIZE = 2048
 COMMITMENT_COST = 0.25
 VQ_LOSS_WEIGHT = 50
-PATIENCE = 6
-CONTRASTIVE = True
+PATIENCE = 20
+CONTRASTIVE = False
+vMFLoss = True
 CONTR_MUL = 0.3
 CNN_NETWORK = False
 MARGIN = 0.08
@@ -106,7 +107,7 @@ class SVAE_Linear(nn.Module):
         )
         self.mode = 'linear'
 
-class SVAE(SVAE_Linear):
+class SVAE(SVAE_CNN):
     def __init__(self):
         super().__init__()
         x = np.arange(-1 + epsilon, 1, epsilon)
@@ -253,18 +254,59 @@ def none_as_0(x):
     else:
         return 0 if x is None else x.item()
 
+def vmfml_loss(z, labels, kappa=100, num_classes=10):
+    z = F.normalize(z, p=2, dim=1)
+    batch_size = z.size(0)
+    # Compute class means
+    class_means = torch.zeros(num_classes, z.size(1), device=z.device)
+    for c in range(num_classes):
+        class_indices = (labels == c)
+        if class_indices.sum() > 0:
+            class_means[c] = F.normalize(z[class_indices].mean(dim=0), p=2, dim=0)
+    # Compute the loss
+    loss = 0
+    for i in range(batch_size):
+        label = labels[i]
+        mean = class_means[label]
+        loss += -kappa * torch.dot(z[i], mean)
+    loss = loss / batch_size
+    return loss * 0.05
+
+
+def vmfml_loss_v2(z, labels, kappa=100, num_classes=10):
+    z = F.normalize(z, p=2, dim=1)
+    batch_size = z.size(0)
+
+    # Compute class means
+    class_means = torch.zeros(num_classes, z.size(1), device=z.device)
+    for c in range(num_classes):
+        class_indices = (labels == c)
+        if class_indices.sum() > 0:
+            class_means[c] = F.normalize(z[class_indices].mean(dim=0), p=2, dim=0)
+
+    # Compute posterior probabilities
+    logits = kappa * torch.mm(z, class_means.t())
+    log_probs = F.log_softmax(logits, dim=1)
+
+    # Create one-hot encoding of labels
+    labels_one_hot = F.one_hot(labels, num_classes).float()
+
+    # Compute the vMFML loss as the negative log likelihood
+    loss = -torch.sum(labels_one_hot * log_probs) / batch_size
+
+    return loss
+
 from torchvision.utils import make_grid
 def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1,
-          contrastive=False, scheduler=None, original_dim=784):
+          use_vmfml=False, scheduler=None, original_dim=784, kappa=10, num_classes=10, contrastive=False):
     model.train()
     train_loss = 0
     total_recon_loss = 0
     total_vq_loss = 0  # Initialize total VQ loss
+    total_vmfml_loss = 0  # Initialize total vMFML loss
     total_contrastive_loss = 0  # Initialize total contrastive loss
-    contrastive_loss_value, kld = torch.tensor(0.0, device=device), torch.tensor(0.0, device=device)
+    contrastive_loss_value, vmfml_loss_value, kld = [torch.tensor(0.0, device=device)]*3
     batch_idx = 1
-    kappa = 10
-    num_classes = 10  # Number of classes for MNIST
     small_constant = 1e-8
     with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
         for batch_idx, (images, labels) in enumerate(train_loader):
@@ -276,23 +318,17 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
             if contrastive:
                 z = quantized.view(quantized.size(0), -1)
                 contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device), multiplier=CONTR_MUL)
-
-                '''kld = torch.tensor(0.0, device=device)
-                for class_id in range(num_classes):
-                    class_mask = (labels == class_id).unsqueeze(-1).expand_as(quantized)
-                    class_mu = quantized[class_mask].view(-1, quantized.size(-1))
-                    if class_mu.size(0) > 0:
-                        norm = torch.norm(class_mu, dim=-1, keepdim=True) + small_constant
-                        class_kld = kappa * (norm - torch.log(torch.sinh(norm) / norm + small_constant)).sum()
-                        kld += class_kld / (num_classes * 50)'''
+            if use_vmfml:
+                z = quantized.view(quantized.size(0), -1)
+                vmfml_loss_value = vmfml_loss_v2(z, labels.to(device), kappa=kappa, num_classes=num_classes)
 
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
-            loss += contrastive_loss_value
-            loss += kld
+            loss += vmfml_loss_value + contrastive_loss_value + kld
             loss.backward()
             train_loss += loss.item()
             total_recon_loss += recon_loss.item()
             total_vq_loss += none_as_0(vq_loss)  # Accumulate VQ loss
+            total_vmfml_loss += vmfml_loss_value.item()  # Accumulate vMFML loss
             total_contrastive_loss += contrastive_loss_value.item()  # Accumulate contrastive loss
             optimizer.step()
             if scheduler:
@@ -301,16 +337,19 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
             pbar.set_postfix({'Recon': recon_loss.item(),
                               'VQ': none_as_0(vq_loss),
                               'Contra': contrastive_loss_value.item(),
+                              'vMFML': vmfml_loss_value.item(),
                               'kld': kld.item()})
 
     avg_train_loss = train_loss / batch_idx
     avg_recon_loss = total_recon_loss / batch_idx
     avg_vq_loss = total_vq_loss / batch_idx  # Compute average VQ loss
+    avg_vmfml_loss = total_vmfml_loss / batch_idx
     avg_contrastive_loss = total_contrastive_loss / batch_idx
     train_loss_history.append(avg_train_loss)
     recon_loss_history.append(avg_recon_loss)
     print(f'====> Epoch: {epoch} Average train loss: {avg_train_loss:.4f},'
-          f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f}, contra: {avg_contrastive_loss:.4f}')
+          f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f},'
+          f' contra: {avg_contrastive_loss:.4f}, vMFML: {avg_vmfml_loss:.4f}')
 
 
     # Log metrics to wandb
@@ -318,6 +357,7 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
                "t/avg_recon_loss": avg_recon_loss,
                "t/avg_vq_loss": avg_vq_loss,
                "t/avg_contrastive_loss": avg_contrastive_loss,
+               "t/avg_vmfml_loss": avg_vmfml_loss,
                "t/lr": scheduler.get_last_lr()[0] if scheduler else None})
 
     # Log images to wandb
@@ -328,11 +368,16 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     grid = make_grid(comparison, nrow=n)
     wandb.log({"Reconstructions": [wandb.Image(grid, caption="Top: Original images, Bottom: Reconstructed images")]})
 
-def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False):
+def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False,
+             use_vmfml=False, kappa=10, num_classes=10):
     model.eval()
     test_loss = 0
     total_recon_loss = 0
+    total_vmfml_loss = 0  # Initialize total vMFML loss
+    total_contrastive_loss = 0  # Initialize total contrastive loss
     contrastive_loss_value = torch.tensor(0.0, device=device)
+    vmfml_loss_value = torch.tensor(0.0, device=device)
+
     with torch.no_grad():
         if enable_statistics:
             model.vq_layer.enable_statistics = True
@@ -345,10 +390,17 @@ def validate(model, test_loader, device, val_loss_history, enable_statistics=Fal
             if contrastive:
                 z = quantized.view(quantized.size(0), -1)
                 contrastive_loss_value = contrastive_loss_cosine(z, labels.to(device), multiplier=CONTR_MUL)
+            if use_vmfml:
+                z = quantized.view(quantized.size(0), -1)
+                vmfml_loss_value = vmfml_loss_v2(z, labels.to(device), kappa=kappa, num_classes=num_classes)
+
             t, recon_loss = loss_function(recon_batch, data, vq_loss)
-            t += contrastive_loss_value
+            t += contrastive_loss_value + vmfml_loss_value
             test_loss += t.item()
             total_recon_loss += recon_loss.item()
+            total_vmfml_loss += vmfml_loss_value.item()  # Accumulate vMFML loss
+            total_contrastive_loss += contrastive_loss_value.item()  # Accumulate contrastive loss
+
     avg_val_loss = test_loss / batch_idx
     val_loss_history.append(avg_val_loss)
     if enable_statistics:
@@ -356,8 +408,12 @@ def validate(model, test_loader, device, val_loss_history, enable_statistics=Fal
         model.vq_layer.reset_statistics()
         model.vq_layer.enable_statistics = False
     print(f'====> Total Test loss: {avg_val_loss:.4f}')
+
     wandb.log({"v/avg_val_loss": avg_val_loss,
-               "v/avg_recon_loss": total_recon_loss / batch_idx})
+               "v/avg_recon_loss": total_recon_loss / batch_idx,
+               "v/avg_vmfml_loss": total_vmfml_loss / batch_idx,
+               "v/avg_contrastive_loss": total_contrastive_loss / batch_idx})
+
     return avg_val_loss
 
 
@@ -495,8 +551,11 @@ def main(args):
     for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
         train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
               contrastive=CONTRASTIVE,
+              use_vmfml=vMFLoss,
               scheduler=scheduler)
-        avg_val_loss = validate(model, test_loader, device, val_loss_history, contrastive=CONTRASTIVE)
+        avg_val_loss = validate(model, test_loader, device, val_loss_history,
+                                contrastive=CONTRASTIVE,
+                                use_vmfml=vMFLoss)
         
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -528,6 +587,7 @@ def main(args):
 if __name__ == "__main__":
     wandb.init(
         project="svae_mnist",
+        name="vmfloss-v2-cnn",
         config={
             "learning_rate": LR,
         }
