@@ -132,7 +132,7 @@ class VQ_SVAE(nn.Module):
         recon_x = self.decode(quantized)
         return recon_x, vq_loss, quantized
 
-    def generate(self, num_samples, device, noise_scale=0.05):
+    def generate(self, num_samples, device, noise_scale=0.05, class_means=None):
         # Sample random indices from the codebook
         embedding_indices = torch.randint(0, self.vq_layer.num_embeddings, (num_samples,), device=device)
         embeddings = self.vq_layer.embeddings(embedding_indices)
