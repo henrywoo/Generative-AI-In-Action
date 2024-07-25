@@ -31,6 +31,7 @@ VQ_LOSS_WEIGHT = 50
 PATIENCE = 20
 CONTRASTIVE = False
 vMFLoss = True
+vMFLossWeight = 1.0
 CONTR_MUL = 0.3
 CNN_NETWORK = False
 MARGIN = 0.08
@@ -149,7 +150,13 @@ class SVAE(SVAE_CNN):
             r = r.view(r.shape[0], -1)
         return r, None, mu
 
-    def generate(self, num_samples, device, noise_scale=0.05):
+    def generate(self, num_samples, device, noise_scale=0.05, class_means=None):
+        if class_means is None:
+            return self.generate_rand(num_samples, device, noise_scale)
+        else:
+            return self.generate_with_guidance(num_samples, device, noise_scale, class_means)
+
+    def generate_rand(self, num_samples, device, noise_scale=0.05):
         with torch.no_grad():
             dims = latent_dim
             idx = torch.randint(0, 10 ** 6, (num_samples, 1), dtype=torch.long, device=device)
@@ -164,6 +171,14 @@ class SVAE(SVAE_CNN):
             samples = self.decode(z).cpu()
             return samples
 
+    def generate_with_guidance(self, num_samples, device, noise_scale, class_means):
+        with torch.inference_mode():
+            dims = latent_dim
+            selected_means = class_means[torch.randint(0, class_means.shape[0], (num_samples,))]
+            noise = torch.randn(num_samples, dims, device=device) * noise_scale
+            z = selected_means.to(device) + noise
+            samples = self.decode(z).cpu()
+            return samples
 
 def loss_function(recon_x, x, vq_loss=0):
     recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='mean')
@@ -221,12 +236,12 @@ def save_recon_loss_history(recon_loss_history, replace_it, version):
         for column in existing_df.columns:
             if len(existing_df[column]) < max_length:
                 existing_df[column] = existing_df[column].tolist() + [float('nan')] * (
-                            max_length - len(existing_df[column]))
+                        max_length - len(existing_df[column]))
 
         # Ensure the new column also matches the max length
         if len(existing_df[f'v{version}']) < max_length:
             existing_df[f'v{version}'] = existing_df[f'v{version}'].tolist() + [float('nan')] * (
-                        max_length - len(existing_df[f'v{version}']))
+                    max_length - len(existing_df[f'v{version}']))
 
         existing_df.to_csv(filename, index=False)
     except FileNotFoundError:
@@ -282,6 +297,7 @@ def vmfml_loss(z, labels, kappa=100, num_classes=10):
     loss = loss / batch_size
     return loss * 0.05
 
+
 def compute_class_means(z, labels, num_classes):
     class_means = torch.zeros(num_classes, z.shape[1])
     for c in range(num_classes):
@@ -289,6 +305,7 @@ def compute_class_means(z, labels, num_classes):
         if class_indices.sum() > 0:
             class_means[c] = F.normalize(z[class_indices].mean(dim=0), p=2, dim=0)
     return class_means
+
 
 def vmfml_loss_v2(z, labels, kappa=100, num_classes=10):
     z = F.normalize(z, p=2, dim=1)
@@ -335,7 +352,7 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
                 vmfml_loss_value = vmfml_loss_v2(z, labels.to(device), kappa=kappa, num_classes=num_classes)
 
             loss, recon_loss = loss_function(recon_batch, data, vq_loss)
-            loss += vmfml_loss_value + contrastive_loss_value + kld
+            loss += vmfml_loss_value * vMFLossWeight + contrastive_loss_value + kld
             loss.backward()
             train_loss += loss.item()
             total_recon_loss += recon_loss.item()
@@ -407,7 +424,7 @@ def validate(model, test_loader, device, val_loss_history, enable_statistics=Fal
                 vmfml_loss_value = vmfml_loss_v2(z, labels.to(device), kappa=kappa, num_classes=num_classes)
 
             t, recon_loss = loss_function(recon_batch, data, vq_loss)
-            t += contrastive_loss_value + vmfml_loss_value
+            t += contrastive_loss_value + vmfml_loss_value * vMFLossWeight
             test_loss += t.item()
             total_recon_loss += recon_loss.item()
             total_vmfml_loss += vmfml_loss_value.item()  # Accumulate vMFML loss
@@ -461,10 +478,11 @@ def visualize_latent_space(model, test_loader, device, num_classes=NUM_CLASSES, 
     ax.set_ylabel('Z2')
     ax.set_zlabel('Z3')
     plt.title('Latent Space Visualization')
-    plt.savefig(f"latent_space_v{version}.png")
+    plt.savefig(f"img/latent_space_v{version}.png")
     plt.show()
 
     return class_means
+
 
 def visualize_reconstructed_digits(model, device, latent_dim, version=0, class_means=None):
     import random
@@ -487,7 +505,7 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0, class_m
     plt.figure(figsize=(10, 10))
     plt.imshow(figure, cmap='Greys_r')
     plt.title('Reconstructed Digits')
-    plt.savefig(f'reconstructed_digits_v{version}.png')
+    plt.savefig(f'img/reconstructed_digits_v{version}.png')
     plt.show()
 
 
@@ -506,10 +524,10 @@ def plot_loss(train_loss_history, val_loss_history, version=0):
     plt.show()
 
 
-def visualize_generated_images(model, num_samples, device, noise_scale=0.1, version=0):
+def visualize_generated_images(model, num_samples, device, noise_scale=0.1, class_means=None, version=0):
     model.eval()
     with torch.no_grad():
-        samples = model.generate(num_samples, device, noise_scale)
+        samples = model.generate(num_samples, device, noise_scale, class_means)
         fig, axes = plt.subplots(1, num_samples, figsize=(num_samples, 1))
         for i in range(num_samples):
             axes[i].imshow(samples[i].reshape(28, 28), cmap='gray')
@@ -604,7 +622,8 @@ def main(args):
         plot_loss(train_loss_history, val_loss_history)
     class_means = visualize_latent_space(model, test_loader, device, version=0)
     visualize_reconstructed_digits(model, device, latent_dim, class_means=class_means, version=0)
-    visualize_generated_images(model, num_samples=10, device=device, noise_scale=0.1, version=0)
+    visualize_generated_images(model, num_samples=10, device=device, noise_scale=0.1,
+                               class_means=class_means, version=0)
 
 
 if __name__ == "__main__":
@@ -618,7 +637,7 @@ if __name__ == "__main__":
     if args.mode == 'train':
         wandb.init(
             project="svae_mnist",
-            name="vmfloss-v2-cnn",
+            name="vmfloss-beta-sVAE",
             config={
                 "learning_rate": LR,
             }
