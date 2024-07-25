@@ -12,6 +12,7 @@ from hiq.cv_torch import get_cv_dataset, DS_PATH_MNIST
 from hiq import deterministic
 import wandb
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torchvision.utils import make_grid
 
 # 基本参数
 original_dim = 784
@@ -34,11 +35,12 @@ CONTR_MUL = 0.3
 CNN_NETWORK = False
 MARGIN = 0.08
 T_MAX = EPOCHS
-ETA_MIN = LR/100
+ETA_MIN = LR / 100
+
 
 def load_data(data_path, batch_size):
     channel = 1
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,)*channel, (0.5,)*channel)])
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,) * channel, (0.5,) * channel)])
     loader_params = dict(
         shuffle=True,
         drop_last=False,
@@ -54,6 +56,7 @@ def load_data(data_path, batch_size):
                                 convert_rgb=False,
                                 **loader_params)
     return dataloader['train'], dataloader['test']
+
 
 class SVAE_CNN(nn.Module):
     def __init__(self, embedding_dim=84):
@@ -87,6 +90,7 @@ class SVAE_CNN(nn.Module):
         )
         self.mode = 'cnn'
 
+
 class SVAE_Linear(nn.Module):
     def __init__(self):
         super().__init__()
@@ -106,6 +110,7 @@ class SVAE_Linear(nn.Module):
             nn.Tanh()
         )
         self.mode = 'linear'
+
 
 class SVAE(SVAE_CNN):
     def __init__(self):
@@ -159,6 +164,7 @@ class SVAE(SVAE_CNN):
             samples = self.decode(z).cpu()
             return samples
 
+
 def loss_function(recon_x, x, vq_loss=0):
     recon_loss = F.mse_loss(recon_x, x.view(-1, original_dim), reduction='mean')
     return recon_loss + none_as_0(vq_loss), recon_loss
@@ -190,7 +196,7 @@ def save_recon_loss_history(recon_loss_history, replace_it, version):
     import pandas as pd
     if len(recon_loss_history) == 0:
         return
-    
+
     df = pd.DataFrame(recon_loss_history, columns=[f'v{version}'])
     filename = 'recon_loss.csv'
 
@@ -209,25 +215,27 @@ def save_recon_loss_history(recon_loss_history, replace_it, version):
         else:
             # Add new column for current version
             existing_df[f'v{version}'] = pd.Series(recon_loss_history)
-        
+
         # Ensure all columns have the same length by padding with NaN
         max_length = max(existing_df.shape[0], len(recon_loss_history))
         for column in existing_df.columns:
             if len(existing_df[column]) < max_length:
-                existing_df[column] = existing_df[column].tolist() + [float('nan')] * (max_length - len(existing_df[column]))
-        
+                existing_df[column] = existing_df[column].tolist() + [float('nan')] * (
+                            max_length - len(existing_df[column]))
+
         # Ensure the new column also matches the max length
         if len(existing_df[f'v{version}']) < max_length:
-            existing_df[f'v{version}'] = existing_df[f'v{version}'].tolist() + [float('nan')] * (max_length - len(existing_df[f'v{version}']))
-        
+            existing_df[f'v{version}'] = existing_df[f'v{version}'].tolist() + [float('nan')] * (
+                        max_length - len(existing_df[f'v{version}']))
+
         existing_df.to_csv(filename, index=False)
     except FileNotFoundError:
         df.to_csv(filename, index=False)
 
 
-
 def save_checkpoint(state, filename):
     torch.save(state, filename)
+
 
 def load_checkpoint(filename, model, optimizer):
     checkpoint = torch.load(filename)
@@ -248,11 +256,13 @@ def contrastive_loss_cosine(z, labels, margin=0.05, multiplier=500.):
     contrastive_loss_value = multiplier * (positive_loss + negative_loss).mean()
     return contrastive_loss_value
 
+
 def none_as_0(x):
     if isinstance(x, int):
         return x
     else:
         return 0 if x is None else x.item()
+
 
 def vmfml_loss(z, labels, kappa=100, num_classes=10):
     z = F.normalize(z, p=2, dim=1)
@@ -272,31 +282,33 @@ def vmfml_loss(z, labels, kappa=100, num_classes=10):
     loss = loss / batch_size
     return loss * 0.05
 
+def compute_class_means(z, labels, num_classes):
+    class_means = torch.zeros(num_classes, z.shape[1])
+    for c in range(num_classes):
+        class_indices = (labels == c)
+        if class_indices.sum() > 0:
+            class_means[c] = F.normalize(z[class_indices].mean(dim=0), p=2, dim=0)
+    return class_means
 
 def vmfml_loss_v2(z, labels, kappa=100, num_classes=10):
     z = F.normalize(z, p=2, dim=1)
     batch_size = z.size(0)
-
     # Compute class means
     class_means = torch.zeros(num_classes, z.size(1), device=z.device)
     for c in range(num_classes):
         class_indices = (labels == c)
         if class_indices.sum() > 0:
             class_means[c] = F.normalize(z[class_indices].mean(dim=0), p=2, dim=0)
-
     # Compute posterior probabilities
     logits = kappa * torch.mm(z, class_means.t())
     log_probs = F.log_softmax(logits, dim=1)
-
     # Create one-hot encoding of labels
     labels_one_hot = F.one_hot(labels, num_classes).float()
-
     # Compute the vMFML loss as the negative log likelihood
     loss = -torch.sum(labels_one_hot * log_probs) / batch_size
-
     return loss
 
-from torchvision.utils import make_grid
+
 def train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history, vq_loss_weight=1,
           use_vmfml=False, scheduler=None, original_dim=784, kappa=10, num_classes=10, contrastive=False):
     model.train()
@@ -305,7 +317,7 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     total_vq_loss = 0  # Initialize total VQ loss
     total_vmfml_loss = 0  # Initialize total vMFML loss
     total_contrastive_loss = 0  # Initialize total contrastive loss
-    contrastive_loss_value, vmfml_loss_value, kld = [torch.tensor(0.0, device=device)]*3
+    contrastive_loss_value, vmfml_loss_value, kld = [torch.tensor(0.0, device=device)] * 3
     batch_idx = 1
     small_constant = 1e-8
     with tqdm(total=len(train_loader.dataset), desc=f"Train Epoch {epoch}", unit='samples') as pbar:
@@ -351,7 +363,6 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
           f' recon: {avg_recon_loss:.4f}, vq: {avg_vq_loss:.4f},'
           f' contra: {avg_contrastive_loss:.4f}, vMFML: {avg_vmfml_loss:.4f}')
 
-
     # Log metrics to wandb
     wandb.log({"t/avg_train_loss": avg_train_loss,
                "t/avg_recon_loss": avg_recon_loss,
@@ -367,6 +378,7 @@ def train(model, epoch, train_loader, optimizer, device, train_loss_history, rec
     comparison = torch.cat([original_images, reconstructed_images])
     grid = make_grid(comparison, nrow=n)
     wandb.log({"Reconstructions": [wandb.Image(grid, caption="Top: Original images, Bottom: Reconstructed images")]})
+
 
 def validate(model, test_loader, device, val_loss_history, enable_statistics=False, vq_loss_weight=1, contrastive=False,
              use_vmfml=False, kappa=10, num_classes=10):
@@ -417,7 +429,7 @@ def validate(model, test_loader, device, val_loss_history, enable_statistics=Fal
     return avg_val_loss
 
 
-def visualize_latent_space(model, test_loader, device, version=0):
+def visualize_latent_space(model, test_loader, device, num_classes=NUM_CLASSES, version=0):
     if latent_dim != 3:
         return
     model.eval()
@@ -433,26 +445,29 @@ def visualize_latent_space(model, test_loader, device, version=0):
                 z_mean = z_mean.view(z_mean.shape[0], latent_dim)
             z_means.append(z_mean)
             labels.append(label)
-        z_means = torch.cat(z_means).cpu().numpy()
-        labels = torch.cat(labels).cpu().numpy()
-
+        z_means = torch.cat(z_means)
+        labels = torch.cat(labels)
+        z_means_cpu = z_means.cpu().numpy()
+        labels_cpu = labels.cpu().numpy()
+        class_means = compute_class_means(z_means, labels, num_classes).to(device)
     fig = plt.figure(figsize=(15, 15))  # Larger figure size
     ax = fig.add_subplot(111, projection='3d')
-    scatter = ax.scatter(z_means[:, 0], z_means[:, 1], z_means[:, 2], c=labels, cmap='tab10', s=5)  # Smaller points
-
+    scatter = ax.scatter(z_means_cpu[:, 0], z_means_cpu[:, 1], z_means_cpu[:, 2], c=labels_cpu, cmap='tab10',
+                         s=5)  # Smaller points
     # Create legend
     legend1 = ax.legend(*scatter.legend_elements(), title="Labels")
     ax.add_artist(legend1)
-
     ax.set_xlabel('Z1')
     ax.set_ylabel('Z2')
     ax.set_zlabel('Z3')
     plt.title('Latent Space Visualization')
-    plt.savefig(f"img/latent_space_v{version}.png")
+    plt.savefig(f"latent_space_v{version}.png")
     plt.show()
 
+    return class_means
 
-def visualize_reconstructed_digits(model, device, latent_dim, version=0):
+def visualize_reconstructed_digits(model, device, latent_dim, version=0, class_means=None):
+    import random
     with torch.no_grad():
         n = 15
         digit_size = 28
@@ -460,7 +475,10 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0):
         for i in range(n):
             for j in range(n):
                 # TODO - 采样的时候去中心点采样
-                z_sample = torch.randn(1, latent_dim, device=device)
+                if class_means is None:
+                    z_sample = torch.randn(1, latent_dim, device=device)
+                else:
+                    z_sample = torch.randn(1, latent_dim, device=device) / 10 + class_means[random.randint(0, 9)]
                 z_sample /= z_sample.norm()
                 x_decoded = model.decode(z_sample).view(digit_size, digit_size).cpu()
                 digit = x_decoded.numpy()
@@ -471,6 +489,7 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0):
     plt.title('Reconstructed Digits')
     plt.savefig(f'reconstructed_digits_v{version}.png')
     plt.show()
+
 
 def plot_loss(train_loss_history, val_loss_history, version=0):
     if not train_loss_history:
@@ -486,6 +505,7 @@ def plot_loss(train_loss_history, val_loss_history, version=0):
     plt.savefig(f"img/vq_svae_v{version}_loss_history.png")
     plt.show()
 
+
 def visualize_generated_images(model, num_samples, device, noise_scale=0.1, version=0):
     model.eval()
     with torch.no_grad():
@@ -496,6 +516,7 @@ def visualize_generated_images(model, num_samples, device, noise_scale=0.1, vers
             axes[i].axis('off')
         plt.savefig(f"img/generated_images_vq_svae_v{version}.png")
         plt.show()
+
 
 def generate_spherical_points(dim, num_points):
     if dim != 3:
@@ -514,6 +535,7 @@ def generate_spherical_points(dim, num_points):
     points = torch.tensor(points, dtype=torch.float)
     return points
 
+
 def plot_spherical_points(points):
     if points.shape[1] != 3:
         raise ValueError("Can only plot 3-dimensional points")
@@ -530,6 +552,7 @@ def plot_spherical_points(points):
     plt.title("3D Spherical Points")
     plt.show()
 
+
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = SVAE().to(device)
@@ -545,57 +568,59 @@ def main(args):
         start_epoch, train_loss_history, val_loss_history = load_checkpoint(checkpoint_path, model, optimizer)
         print(f'Checkpoint loaded, resuming training from epoch {start_epoch}')
 
-    best_val_loss = float('inf')
-    epochs_no_improve = 0
-    patience = PATIENCE
-    for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
-        train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
-              contrastive=CONTRASTIVE,
-              use_vmfml=vMFLoss,
-              scheduler=scheduler)
-        avg_val_loss = validate(model, test_loader, device, val_loss_history,
-                                contrastive=CONTRASTIVE,
-                                use_vmfml=vMFLoss)
-        
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
+    if args.mode == "train":
+        best_val_loss = float('inf')
+        epochs_no_improve = 0
+        patience = PATIENCE
+        for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs"):
+            train(model, epoch, train_loader, optimizer, device, train_loss_history, recon_loss_history,
+                  contrastive=CONTRASTIVE,
+                  use_vmfml=vMFLoss,
+                  scheduler=scheduler)
+            avg_val_loss = validate(model, test_loader, device, val_loss_history,
+                                    contrastive=CONTRASTIVE,
+                                    use_vmfml=vMFLoss)
 
-        # Early stopping
-        if epochs_no_improve >= patience:
-            print(f'Early stopping at epoch {epoch}')
-            break
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
 
-        save_checkpoint({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'train_loss_history': train_loss_history,
-            'val_loss_history': val_loss_history
-        }, checkpoint_path)
+            # Early stopping
+            if epochs_no_improve >= patience:
+                print(f'Early stopping at epoch {epoch}')
+                break
 
-    plot_recon_loss(recon_loss_history, start_epoch==1, version=0)
-    plot_loss(train_loss_history, val_loss_history)
-    visualize_latent_space(model, test_loader, device)
-    visualize_reconstructed_digits(model, device, latent_dim)
+            save_checkpoint({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'train_loss_history': train_loss_history,
+                'val_loss_history': val_loss_history
+            }, checkpoint_path)
+
+        plot_recon_loss(recon_loss_history, start_epoch == 1, version=0)
+        plot_loss(train_loss_history, val_loss_history)
+    class_means = visualize_latent_space(model, test_loader, device, version=0)
+    visualize_reconstructed_digits(model, device, latent_dim, class_means=class_means, version=0)
     visualize_generated_images(model, num_samples=10, device=device, noise_scale=0.1, version=0)
 
 
-
 if __name__ == "__main__":
-    wandb.init(
-        project="svae_mnist",
-        name="vmfloss-v2-cnn",
-        config={
-            "learning_rate": LR,
-        }
-    )
     parser = argparse.ArgumentParser(description="SVAE Training Script")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of epochs to train")
     parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument("--checkpoint_dir", type=str, default='mbin', help="Directory to save checkpoints")
+    parser.add_argument("--mode", type=str, default='train', help="train or infer")
     args = parser.parse_args()
+    if args.mode == 'train':
+        wandb.init(
+            project="svae_mnist",
+            name="vmfloss-v2-cnn",
+            config={
+                "learning_rate": LR,
+            }
+        )
     main(args)
