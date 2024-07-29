@@ -483,7 +483,10 @@ def visualize_latent_space(model, test_loader, device, num_classes=NUM_CLASSES, 
 
     return class_means
 
-
+# 因为训练之后的3D点的分布不是高斯的，是很不规整的，我们不知道真实的分布，所以如何在多样性和保真度之间平衡是个问题
+# 如果训练的结果让所有的点集都是vMF分布，那么采样就是很完美，可以同时控制多样性和保真度之间平衡.
+# 目前的问题是取到10，保真度很高，但是多样性不足，全是一样的东西，如果取2，保真度又很差，因为采样分布和真实分布不一致
+TEMPERATURE = 6
 def visualize_reconstructed_digits(model, device, latent_dim, version=0, class_means=None):
     import random
     with torch.no_grad():
@@ -496,7 +499,7 @@ def visualize_reconstructed_digits(model, device, latent_dim, version=0, class_m
                 if class_means is None:
                     z_sample = torch.randn(1, latent_dim, device=device)
                 else:
-                    z_sample = torch.randn(1, latent_dim, device=device) / 10 + class_means[random.randint(0, 9)]
+                    z_sample = torch.randn(1, latent_dim, device=device) / TEMPERATURE + class_means[random.randint(0, 9)]
                 z_sample /= z_sample.norm()
                 x_decoded = model.decode(z_sample).view(digit_size, digit_size).cpu()
                 digit = x_decoded.numpy()
