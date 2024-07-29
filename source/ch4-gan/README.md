@@ -177,7 +177,6 @@ While common in supervised learning, using a separate validation set in GANs is 
 
 ![](vanilla/output/epoch_150/fid_inception_scores_vs_epochs.png)
 
-
 ![](vanilla/output/epoch_150/image.png)
 
 **Epoch 500**
@@ -187,6 +186,72 @@ While common in supervised learning, using a separate validation set in GANs is 
 ![](vanilla/output/epoch_500/fid_inception_scores_vs_epochs.png)
 
 ![](vanilla/output/epoch_500/image.png)
+
+The generated image is more real, but becomes less and less diverse(all become 1).
+
+## Pattern in Loss Curves of Generator and Discriminator
+
+The pattern in GAN's generator and discriminator's loss is partly because the discriminator is generally easier to train than the generator, especially at the beginning of GAN training.
+
+### Reasons Why the Discriminator Trains Faster
+
+1. **Task Complexity**:
+   - **Discriminator**: The discriminator’s task is a binary classification problem where it needs to distinguish between real and fake samples. This is typically an easier task, especially when the fake samples are very different from the real ones, which is often the case at the beginning of training.
+   - **Generator**: The generator’s task is more complex; it needs to learn to produce realistic data from random noise. This involves learning a mapping from the latent space to the data space, which is a more challenging problem.
+
+2. **Feedback Loop**:
+   - **Discriminator**: Receives immediate and clear feedback about whether its predictions are correct or not. This direct feedback helps it to quickly adjust its parameters to improve its performance.
+   - **Generator**: Receives feedback through the discriminator’s gradients, which are less direct. The generator has to learn to produce data that fools the discriminator, a more indirect and complex objective.
+
+### Impact on Loss Patterns
+
+#### Initial Training Phase
+- **Discriminator**: Quickly learns to distinguish between the real and fake samples because the fake samples produced by the generator are initially very different from the real ones. This results in a rapid decrease in the discriminator’s loss.
+- **Generator**: Struggles initially as it produces poor-quality samples. As it receives gradients from the discriminator, it slowly starts to improve, but this process is gradual.
+
+#### Middle Training Phase
+- **Generator Improvement**: As the generator starts to produce better-quality samples, the discriminator finds it harder to distinguish between real and fake samples. This leads to an increase in the discriminator’s loss temporarily.
+- **Discriminator Adjustment**: The discriminator then adapts to the improved fake samples by further adjusting its parameters, leading to another decrease in its loss.
+
+#### Later Training Phase
+- **Equilibrium**: Ideally, both the generator and discriminator reach a sort of equilibrium where they both improve at a balanced rate. The losses for both models stabilize and fluctuate within a certain range.
+
+
+### Typical Pattern in GAN Training
+
+The following is a typical loss pattern in GAN training. There could be others but all share large fluctuation at the beginning and smaller ones at later stage.
+
+**Discriminator Loss**:
+```
+Discriminator Loss:
+^
+|   \        _ _ _ _ _ _ Fluctuation _ _ _ _ _
+|    \____/ - - - - - -               - - - -
+|---------------------------------------------------> Time
+  (Rapid decrease)  (Fluctuation)
+```
+
+**Generator Loss**:
+```
+Generator Loss:
+^      |
+|     / \        _ _ _ _ _ _ Fluctuation _ _ _ _ _
+|    /   \____/ - - - - - -               - - - -
+|--------------------------------------------------> Time
+  (Initial increase)  (Fluctuation)
+```
+
+- **Discriminator Loss**: 
+  - Starts with a rapid decrease as it quickly learns to distinguish between real and fake data.
+  - Eventually stabilizes and fluctuates within a certain range as the generator starts producing more realistic samples.
+
+- **Generator Loss**:
+  - Initially increases as the discriminator quickly improves and can easily detect the generator's outputs as fake.
+  - After the initial phase, as the generator improves, its loss starts to decrease and eventually stabilizes, fluctuating within a certain range as it learns to produce more convincing fake samples.
+
+### A Real Example
+
+![](images/magvit2_vqgan_curve.png)
 
 
 ## In GAN training, should we train discriminator(D) or generator(G) first?
@@ -256,6 +321,7 @@ class Generator(nn.Module):
 ```
 
 ### Discriminator
+
 In the `Discriminator` class:
 - Labels are embedded and concatenated with the flattened image vector.
 - The concatenated vector is passed through the network to determine if the image is real or fake.
@@ -295,7 +361,6 @@ We can generate images conditional by class label as below:
 By conditioning the generation and discrimination processes on the class labels, the CGAN can generate images that belong to specific categories and more effectively differentiate between real and fake images within those categories.
 
 ## Classifier-Free Guidance(CFG)
-
 
 ## VQGAN
 

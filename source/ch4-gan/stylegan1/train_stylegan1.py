@@ -1,5 +1,6 @@
 # https://blog.paperspace.com/implementation-stylegan-from-scratch/
 # https://www.kaggle.com/code/tauilabdelilah/stylegan-implementation-from-scratch-pytorch/input
+# https://www.kaggle.com/datasets/tauilabdelilah/women-clothes
 import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
@@ -159,7 +160,7 @@ class ConvBlock(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self, in_channels, img_channels=3):
-        super(Discriminator, self).__init__()
+        super().__init__()
         self.prog_blocks, self.rgb_layers = nn.ModuleList([]), nn.ModuleList([])
         self.leaky = nn.LeakyReLU(0.2)
 
@@ -261,7 +262,7 @@ class GenBlock(nn.Module):
 
 class Generator(nn.Module):
     def __init__(self, z_dim, w_dim, in_channels, img_channels=3):
-        super(Generator, self).__init__()
+        super().__init__()
         self.starting_constant = nn.Parameter(torch.ones((1, in_channels, 4, 4)))
         self.map = MappingNetwork(z_dim, w_dim)
         self.initial_adain1 = AdaIN(in_channels, w_dim)
