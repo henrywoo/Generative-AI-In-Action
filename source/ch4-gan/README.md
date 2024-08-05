@@ -59,40 +59,90 @@ The minimax loss is derived from the idea of a zero-sum game between the generat
 
 ## How hinge loss is used in GAN?
 
-Hinge loss is a type of loss function commonly used in machine learning, particularly for training classifiers like Support Vector Machines (SVMs). It's designed to find the optimal decision boundary that maximizes the margin between different classes in your data.
+Hinge Loss is commonly associated with Support Vector Machines (SVMs) to find the optimal decision boundary that maximizes the margin between different classes in your data. It is particularly used in the context of binary classification. For multiclass classification, variations of the Hinge Loss are used, such as the multiclass SVM loss (also known as the **Crammer-Singer loss**).
+
+### Hinge Loss in Binary Classification
 
 ![](hinge.png)
 
+In binary classification with SVMs, the Hinge Loss is defined as:
+
+\[ \mathcal{L}(y, f(x)) = \max(0, 1 - y \cdot f(x)) \]
+
+Here:
+- \( y \) is the true label, which takes values \(\{-1, +1\}\).
+- \( f(x) \) is the output of the decision function for the input \( x \).
+
+The goal is to ensure that the margin between the decision boundary and the closest data points is maximized.
+
+### Multiclass Hinge Loss (Crammer-Singer Loss)
+
 ![](hinge_2.png)
+
+For multiclass classification, the standard Hinge Loss can be extended. The multiclass SVM loss, proposed by Crammer and Singer, is one such extension. It aims to ensure that the score of the correct class is greater than the score of any other class by a margin.
+
+The Crammer-Singer loss for an input \( x_i \) with label \( y_i \) is defined as:
+
+\[ \mathcal{L}(i) = \sum_{j \neq y_i} \max(0, s_j - s_{y_i} + \Delta) \]
+
+Here:
+- \( s_j \) is the score for class \( j \).
+- \( s_{y_i} \) is the score for the true class \( y_i \).
+- \( \Delta \) is a margin parameter (often set to 1).
+
+#### Example of Multiclass Hinge Loss
+
+Suppose we have a three-class classification problem, and for a given input, the scores are \( s = [13, -7, 11] \), and the true class is the first class (\( y_i = 0 \)). Using a margin \( \Delta = 1 \), the multiclass Hinge Loss is computed as follows:
+
+\[ \mathcal{L}(i) = \max(0, s_1 - s_0 + \Delta) + \max(0, s_2 - s_0 + \Delta) \]
+\[ \mathcal{L}(i) = \max(0, -7 - 13 + 1) + \max(0, 11 - 13 + 1) \]
+\[ \mathcal{L}(i) = \max(0, -19) + \max(0, -1) \]
+\[ \mathcal{L}(i) = 0 + 0 = 0 \]
+
+![](hinge_vs_ce.png)
+
+In this example, the true class has a score significantly higher than the other classes, resulting in zero loss.
+
+### Hinge Loss in GANs
+
+In GANs, the use of Hinge Loss is slightly different. The discriminator in a GAN is performing **binary classification**, distinguishing between real and fake images. Hinge Loss is used to stabilize training by providing strong gradients.
+
+
+#### Generator Hinge Loss
+
+`logits_fake` represents the discriminator's raw, unactivated output for the fake (generated) images. The generator wants logits_fake to be as high as possible because this means the discriminator is more likely to classify the fake images as real. Essentially, the generator is trying to **maximize logits_fake** to fool the discriminator into thinking the fake images are real. Therefore, we negate logits_fake as a loss.
+
+```python
+def hinge_g_loss(logits_fake):
+    gen_loss = -torch.mean(logits_fake)
+    return gen_loss
+```
+
+#### Discriminator Hinge Loss
+
+`logits_real` represents the discriminator's raw, unactivated output for the real images. The discriminator wants logits_real to be as high as possible, **ideally greater than or equal to 1**, to confidently classify real images as real, while logits_fake to be as low as possible (close to or less than -1).
+
+```python
+def hinge_d_loss(logits_real, logits_fake):
+    loss_real = torch.mean(F.relu(1.0 - logits_real))
+    loss_fake = torch.mean(F.relu(1.0 + logits_fake))
+    d_loss = 0.5 * (loss_real + loss_fake)
+    return d_loss
+```
+
+Hinge Loss helps stabilize the training of GANs by providing strong and meaningful gradients for both the discriminator and the generator.
 
 **How it works:**
 
 * **Binary Classification:** In binary classification (where you have two classes), hinge loss calculates a penalty based on the distance between a data point and the decision boundary. 
-* **Margin:** Ideally, you want a large margin, which means the data points are far away from the decision boundary, making the classifier more confident in its predictions.
+* **Max Margin:** Ideally, you want a large margin, which means the data points are far away from the decision boundary, making the classifier more confident in its predictions.
 * **Penalty:** Hinge loss penalizes misclassified points and also those that are correctly classified but fall within the margin. This encourages the model to find a boundary that maximizes the margin while still correctly classifying most points.
-
-**Mathematical Definition:**
-
-For a single data point, the hinge loss is defined as:
-
-```
-L(y, f(x)) = max(0, 1 - y * f(x))
-```
-
-where:
-
-* `y` is the true label (-1 or 1 for binary classification)
-* `f(x)` is the predicted value (output of the classifier)
-
-**Key Properties:**
-
-* **Max-margin:** Hinge loss is designed to find a decision boundary that maximizes the margin between classes.
 * **Robustness:** It's relatively robust to outliers compared to some other loss functions.
 * **Non-differentiable at zero:** This can pose challenges for some optimization algorithms, but it's usually not a major issue in practice.
 
 **Comparison with Other Loss Functions:**
 
-* **Logistic Loss:** While both are used for classification, logistic loss focuses more on the probability of a correct classification. Hinge loss focuses on maximizing the margin.
+* **Logistic/BCE Loss:** While both are used for classification, logistic loss focuses more on the probability of a correct classification. Hinge loss focuses on maximizing the margin.
 * **Squared Loss:**  Squared loss penalizes errors more harshly than hinge loss, which can make it more sensitive to outliers.
 
 
