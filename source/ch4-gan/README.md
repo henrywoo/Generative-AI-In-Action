@@ -67,11 +67,14 @@ Hinge Loss is commonly associated with Support Vector Machines (SVMs) to find th
 
 In binary classification with SVMs, the Hinge Loss is defined as:
 
-\[ \mathcal{L}(y, f(x)) = \max(0, 1 - y \cdot f(x)) \]
+```
+L(y, f(x)) = max(0, 1 - y * f(x))
+```
 
 Here:
-- \( y \) is the true label, which takes values \(\{-1, +1\}\).
-- \( f(x) \) is the output of the decision function for the input \( x \).
+
+*   _y_ is the true label, which takes values {-1, +1}.
+*   _f(x)_ is the output of the decision function for the input _x_.
 
 The goal is to ensure that the margin between the decision boundary and the closest data points is maximized.
 
@@ -81,36 +84,39 @@ The goal is to ensure that the margin between the decision boundary and the clos
 
 For multiclass classification, the standard Hinge Loss can be extended. The multiclass SVM loss, proposed by Crammer and Singer, is one such extension. It aims to ensure that the score of the correct class is greater than the score of any other class by a margin.
 
-The Crammer-Singer loss for an input \( x_i \) with label \( y_i \) is defined as:
+The Crammer-Singer loss for an input _x<sub>i</sub>_ with label _y<sub>i</sub>_ is defined as:
 
-\[ \mathcal{L}(i) = \sum_{j \neq y_i} \max(0, s_j - s_{y_i} + \Delta) \]
+```
+L(i) = sum_{j != y_i} max(0, s_j - s_{y_i} + Δ)
+```
 
 Here:
-- \( s_j \) is the score for class \( j \).
-- \( s_{y_i} \) is the score for the true class \( y_i \).
-- \( \Delta \) is a margin parameter (often set to 1).
+
+*   _s<sub>j</sub>_ is the score for class _j_.
+*   _s<sub>y<sub>i</sub></sub>_ is the score for the true class _y<sub>i</sub>_.
+*   _Δ_ is a margin parameter (often set to 1).
 
 #### Example of Multiclass Hinge Loss
 
-Suppose we have a three-class classification problem, and for a given input, the scores are \( s = [13, -7, 11] \), and the true class is the first class (\( y_i = 0 \)). Using a margin \( \Delta = 1 \), the multiclass Hinge Loss is computed as follows:
+Suppose we have a three-class classification problem, and for a given input, the scores are _s_ = [-2.85, 0.86, 0.28], and the true class is the third class (_y<sub>i</sub>_ = 2). Using a margin _Δ_ = 1, the multiclass Hinge Loss is computed as follows:
 
-\[ \mathcal{L}(i) = \max(0, s_1 - s_0 + \Delta) + \max(0, s_2 - s_0 + \Delta) \]
-\[ \mathcal{L}(i) = \max(0, -7 - 13 + 1) + \max(0, 11 - 13 + 1) \]
-\[ \mathcal{L}(i) = \max(0, -19) + \max(0, -1) \]
-\[ \mathcal{L}(i) = 0 + 0 = 0 \]
+```
+L(i) = max(0, s_0 - s_2 + Δ) + max(0, s_1 - s_2 + Δ)
+     = max(0, -2.85 - 0.28 + 1) + max(0, 0.86 - 0.28 + 1)
+     = 1.58
+```
 
 ![](hinge_vs_ce.png)
 
-In this example, the true class has a score significantly higher than the other classes, resulting in zero loss.
 
-### Hinge Loss in GANs
+### 🐵 Hinge Loss in GANs
 
 In GANs, the use of Hinge Loss is slightly different. The discriminator in a GAN is performing **binary classification**, distinguishing between real and fake images. Hinge Loss is used to stabilize training by providing strong gradients.
 
 
 #### Generator Hinge Loss
 
-`logits_fake` represents the discriminator's raw, unactivated output for the fake (generated) images. The generator wants logits_fake to be as high as possible because this means the discriminator is more likely to classify the fake images as real. Essentially, the generator is trying to **maximize logits_fake** to fool the discriminator into thinking the fake images are real. Therefore, we negate logits_fake as a loss.
+`logits_fake` represents the discriminator's raw, unactivated output for the fake (generated) images. We can think of it as the probability of the input being real. The generator wants logits_fake to be as high as possible because this means the discriminator is more likely to classify the fake images as real. Essentially, the generator is trying to **maximize logits_fake** to fool the discriminator into thinking the fake inputs are real. Therefore, we negate logits_fake as a loss function since `loss means lower is better`.
 
 ```python
 def hinge_g_loss(logits_fake):
@@ -144,6 +150,14 @@ Hinge Loss helps stabilize the training of GANs by providing strong and meaningf
 
 * **Logistic/BCE Loss:** While both are used for classification, logistic loss focuses more on the probability of a correct classification. Hinge loss focuses on maximizing the margin.
 * **Squared Loss:**  Squared loss penalizes errors more harshly than hinge loss, which can make it more sensitive to outliers.
+
+**🦉 Why there is a margin(1.0) in hinge_d_loss but not in hinge_g_loss?**
+
+The roles of the discriminator and generator are **asymmetric** in GAN training.
+
+Discriminator needs to maintain a clear boundary between real and fake images. **The margin ensures this boundary is robust.** The margin enforces a stricter criterion for the discriminator, encouraging it to be more confident in its classifications. Removing the margin could result in a weaker training signal, potentially making the discriminator less effective.
+
+Generator focuses solely on maximizing the score for fake images, trying to make them appear as real as possible to the discriminator, so a direct maximization objective suffices. The margin (1.0) is unnecessary because the generator's objective does not involve a separation constraint; it simply aims for higher scores.
 
 
 ## What is Wasserstein Loss?
