@@ -57,9 +57,13 @@ The minimax loss is derived from the idea of a zero-sum game between the generat
 > - Understanding GAN Loss Functions https://neptune.ai/blog/gan-loss-functions
 
 
-## Hinge loss
+## How hinge loss is used in GAN?
 
 Hinge loss is a type of loss function commonly used in machine learning, particularly for training classifiers like Support Vector Machines (SVMs). It's designed to find the optimal decision boundary that maximizes the margin between different classes in your data.
+
+![](hinge.png)
+
+![](hinge_2.png)
 
 **How it works:**
 

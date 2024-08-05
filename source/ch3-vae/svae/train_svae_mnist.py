@@ -136,7 +136,8 @@ class SVAE(SVAE_CNN):
         eps = torch.randn_like(mu)
         nu = eps - (eps * mu).sum(dim=1, keepdim=True) * mu
         nu = F.normalize(nu, p=2, dim=-1)
-        return w * mu + torch.sqrt(1 - w ** 2) * nu
+        r = w * mu + torch.sqrt(1 - w ** 2) * nu
+        return r
 
     def decode(self, z):
         return self.decoder(z)

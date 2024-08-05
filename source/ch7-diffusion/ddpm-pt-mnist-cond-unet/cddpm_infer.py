@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--num_images', type=int, default=1, help='Number of images to generate.')
     parser.add_argument('--class_label', type=int, default=0, help='Class label to guide image generation.')
     parser.add_argument('--use_lora', action='store_true', help='Use LoRA for inference.')
-    parser.add_argument('--sampling_method', type=str, default='ddpm', choices=['ddpm', 'ddim'], help='Sampling method to use (ddpm or ddim).')
+    parser.add_argument('--sampling_method', type=str, default='ddim', choices=['ddpm', 'ddim'], help='Sampling method to use (ddpm or ddim).')
     return parser.parse_args()
 
 
@@ -161,9 +161,10 @@ def generate_images(model_path, num_images, class_label, output_dir, use_lora, s
                 steps = backward_denoise_ddim(model, noise, class_tensor)
 
             generated_image = (steps[-1].to('cpu') + 1) / 2
-            save_image(generated_image, os.path.join(output_dir, f"{sampling_method}_{i + 1}.png"))
+            f = os.path.join(output_dir, f"{sampling_method}_{i + 1}.png")
+            save_image(generated_image, f)
 
-            print(f"Generated image {i + 1} saved to {output_dir}")
+            print(f"Generated image: {f} saved to {output_dir}")
 
 
 def main():
