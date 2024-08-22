@@ -107,7 +107,7 @@ class Attention(nn.Module):
         return self.wo(output)
 ```
 
-Consider Llama 7B(n_local_heads=32, head_dim=128, hidden_dim=4096) and prompt: `I believe the meaning of life is`. In the first iteration, there are 8 tokens, including `SOS`, so we have:
+Consider Llama 7B(n_local_heads=32, head_dim=128, hidden_dim=4096, max_len=1024) and prompt: `I believe the meaning of life is`. In the first iteration, there are 8 tokens, including `SOS`, so we have:
 - x.shape: (1,8,32,128)
 - shape of q, k, v, and output: (1,8,32,128)
 - shape of scores: (1,32,8,8)
@@ -120,7 +120,8 @@ For the rest iterations, the input is 1 token, so we have:
 
 where L is [9,10,11....]
 
-The problem with Naive KV-Cache Algorithm are:
+### The problems of `Naive KV-Cache Algorithm`
+
 - reserved memory waste
 - internal fragmentation
 - external fragmentation
@@ -129,9 +130,15 @@ The problem with Naive KV-Cache Algorithm are:
 
 ## PagedAttention
 
+![](pa_1.png)
+
+### Multiple Requests
+
+![](pa_3.png)
 
 ### Parallel Sampling
 
+![](pa_ps.png)
 
 ### Reference
 
