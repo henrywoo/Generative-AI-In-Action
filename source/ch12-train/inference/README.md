@@ -20,19 +20,19 @@ Scenario: Given Prompt "It"
    - The figure starts with the input token "It". This input is used to generate the query (Q1), key (K1), and value (V1) vectors through linear transformations.
 
 2. **Q1 and K1 Multiplication (Attention Score Calculation):**
-   - **Q1 (Query Vector for "It"):** This represents the query vector for the input token "It". It is a projection of the input token "It" after being processed by the query linear layer (`wq`).
-   - **K1 (Key Vector for "It"):** This represents the key vector for the input token "It". It is a projection of the input token "It" after being processed by the key linear layer (`wk`).
-   - The query vector Q1 is multiplied with the key vector K1. This operation gives a single attention score/weight (`W11`), which reflects the relevance of the token "It" with itself. Since "It" is the only token at this stage, this score essentially measures the importance of "It" in predicting the next word.
+   - **Q1 (Query Vector for "It"):** This represents the query vector for the input token "It". It is a projection of the input token "It" after being processed by the query linear layer.
+   - **K1 (Key Vector for "It"):** This represents the key vector for the input token "It". It is a projection of the input token "It" after being processed by the key linear layer.
+   - The query vector Q1 is multiplied with the key vector K1. This operation gives a single attention score/weight (`W1`), which reflects the relevance of the token "It" with itself. Since "It" is the only token at this stage, this score essentially measures the importance of "It" in predicting the next word.
 
 3. **Application of the Attention Weight:**
-   - **W11 (Attention Weight):** The resulting attention score is then used as a weight to scale the value vector V1. This scaling operation adjusts the importance of the information stored in V1, based on the relevance determined by W11.
+   - **W1 (Attention Weight):** The resulting attention score is then used as a weight to scale the value vector V1. This scaling operation adjusts the importance of the information stored in V1, based on the relevance determined by W1.
    - **V1 (Value Vector for "It"):** This represents the value vector for the input token "It". It is a projection of the input token "It" after being processed by the value linear layer (`wv`).
 
 4. **A1 (Aggregated Output):**
    - The scaled value vector V1 is then summed (or in this case, directly used since it's the only token) to produce the aggregated output A1. This output encapsulates the information about the input token "It" after being processed by the attention mechanism.
 
 5. **Output: "is":**
-   - The aggregated output A1 is passed through a final linear transformation (not shown in the figure) and a softmax function to predict the next token in the sequence. Given the context provided by A1, the model predicts the next token as "is".
+   - The aggregated output A1 is passed through other blocks in the model to predict the next token in the sequence. Given the context provided by A1, the model predicts the next token as "is".
 
 ![](kv_cache_2.png)
 
@@ -47,18 +47,15 @@ Scenario: Given Prompt "It"
    - **Q2 (Query Vector for "is"):** This represents the query vector generated from the input token "is". It is computed using a linear transformation from the embedding of "is".
    - **K1 (Key Vector for "It") & K2 (Key Vector for "is"):** These are the key vectors generated from the previous tokens "It" and "is". `K1` was cached from the previous step, and `K2` is generated from the current input "is".
    - The query vector `Q2` is multiplied with both `K1` and `K2` to compute attention scores. The result is a matrix of attention scores:
-     - `W11`: The attention score between `Q2` and `K1` (how much "is" should focus on "It").
-     - `W12`: The attention score between `Q2` and `K2` (how much "is" should focus on itself).
-     - `W21` and `W22`: These scores are symmetric because they are related to the interaction between the same pairs of vectors (`Q2` with `K1` and `K2`).
+     - `W1`: The attention score between `Q2` and `K1` (how much "is" should focus on "It").
+     - `W2`: The attention score between `Q2` and `K2` (how much "is" should focus on itself).
 
 3. **Application of Attention Weights:**
    - **V1 (Value Vector for "It") & V2 (Value Vector for "is"):** The value vectors associated with the keys. `V1` comes from the previous token "It", and `V2` comes from the current token "is".
-   - The attention scores (W11, W12, W21, W22) are applied to the corresponding value vectors:
-     - `A1 = W11 * V1 + W12 * V2`: Weighted sum, also scaled V1 considering its attentions to itself and V2.
-     - `A2 = W21 * V1 + W22 * V2`: Another scaled V2 considering its attentions to V1 and itself.
+   - The attention scores (W1, W2) are applied to the corresponding value vectors as a weighted sum:`A1 = W1 * V1 + W2 * V2`
 
 4. **Output: "Monday"**
-   - The combined outputs `A1` and `A2` are then passed through a softmax function to produce a probability distribution over the vocabulary, and the model predicts the next token "Monday" based on this distribution.
+   - The output `A1` is then passed through the rest of the model. It predicts the next token is "Monday".
 
 ### Step 3: Predicting the next token "." given the input "Monday"
 
@@ -66,7 +63,9 @@ Scenario: Given Prompt "It"
 
 ![](kv_cache_3.png)
 
-The same as step 2.
+Step 3 is very similar to step 2.
+
+The KV cache is used to store the key (K) and value (V) tensors from each previous token in the sequence. By caching these vectors, the model does not need to recompute them for each new token in the sequence. **This is crucial in autoregressive models where each new token relies on the entire context of previously generated tokens.**
 
 
 ## Naive KV-Cache Implementation
@@ -108,7 +107,23 @@ class Attention(nn.Module):
         return self.wo(output)
 ```
 
-The problem with Naive KV-Cache Algorithm.
+Consider Llama 7B(n_local_heads=32, head_dim=128, hidden_dim=4096) and prompt: `I believe the meaning of life is`. In the first iteration, there are 8 tokens, including `SOS`, so we have:
+- x.shape: (1,8,32,128)
+- shape of q, k, v, and output: (1,8,32,128)
+- shape of scores: (1,32,8,8)
+
+For the rest iterations, the input is 1 token, so we have:
+- x.shape: (1,1,32,128)
+- shape of q and output: (1,1,32,128)
+- shape of k, v: (1,L,32,128)
+- shape of scores: (1,32,1,L)
+
+where L is [9,10,11....]
+
+The problem with Naive KV-Cache Algorithm are:
+- reserved memory waste
+- internal fragmentation
+- external fragmentation
 
 ![](kv_cache_4.png)
 
