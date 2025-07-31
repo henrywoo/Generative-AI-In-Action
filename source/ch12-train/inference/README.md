@@ -78,10 +78,7 @@ class Attention(nn.Module):
         super().__init__()
         self.n_local_heads = args.n_heads // 1
         self.head_dim = args.dim // args.n_heads
-        self.wq = nn.Linear(...)
-        self.wk = nn.Linear(...)
-        self.wv = nn.Linear(...)
-        self.wo = nn.Linear(...)
+        self.wq, self.wk, self.wv, self.wo = [nn.Linear(...)...]
         self.cache_k = torch.zeros((args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim))
         self.cache_v = torch.zeros((args.max_batch_size, args.max_seq_len, self.n_local_heads, self.head_dim))
 
@@ -99,10 +96,8 @@ class Attention(nn.Module):
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
         scores = torch.matmul(xq, keys.transpose(2, 3)) / math.sqrt(self.head_dim)
-        if mask is not None:
-            scores = scores + mask  # (bs, n_local_heads, slen, cache_len + slen)
         scores = F.softmax(scores.float(), dim=-1).type_as(xq)
-        output = torch.matmul(scores, values)  # (bs, n_local_heads, slen, head_dim)
+        output = torch.matmul(scores, values)
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
 ```

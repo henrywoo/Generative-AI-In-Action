@@ -29,5 +29,5 @@ wavs = chat.infer(texts)
 #Audio(wavs[0], rate=24_000, autoplay=True)
 
 # Save the generated audio
-torchaudio.save("output_2.wav", torch.from_numpy(wavs[0]), 24000)
+torchaudio.save("chinese.wav", torch.from_numpy(wavs[0]), 24000)
 

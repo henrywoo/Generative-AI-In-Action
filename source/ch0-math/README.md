@@ -1,30 +1,34 @@
-# AI Math
+# Mathematics in AI
 
 ![](euler.png)
 
 > https://www.youtube.com/watch?v=-dhHrg-KbJ0
 
+> Three elements of AI: Data, Model, and Loss.
+
+In AI and machine learning, the loss function is one of the most fundamental concepts. It measures how well or poorly a model performs based on its predictions versus the actual values. Essentially, it is the compass that guides an AI model during training.
 
 ## Common Loss Functions
 
 The following table outlines the common loss functions:
 
-| Model                                | Loss Function                                                                                                  |
-|--------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| Linear Regression                    | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`                                                           |
-| Logistic Regression                  | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))`                                    |
-| Neural Network (ANN)                 | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`                                                           |
-|                                      | Binary Cross-Entropy(BCE): `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))`                               |
-|                                      | Categorical Cross-Entropy(CCE): `-sum(sum(yic * log(ŷic)))`                                                    |
-| Convolutional Neural Network (CNN)   | CCE; Focal Loss; Dice Loss; Multi-task Loss                                                                    |
-| Recurrent Neural Network (RNN)       | MSE; MAE; CCE; BCE...                                                                                          |
-| Generative Adversarial Network (GAN) | Generator: `-(1/N) * sum(log(D(G(zi))))` <br> Discriminator: `-(1/N) * sum(log(D(xi)) + log(1 - D(G(zi))))`    |
-| Variational Autoencoder (VAE)        | Reconstruction Loss + KL Divergence: (1/N) * sum(Dis(xi - x̂i)^2)                                               |
+| Model                                | Loss Function                                                                                             |
+|--------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| Linear Regression                    | Mean Squared Error (MSE): `sum((yi - ŷi)^2) / N`                                                          |
+| Linear Regression                    | Mean Absolute Error (MAE): `sum(\|yi - ŷi\|) / N`                                                         |
+| Logistic Regression                  | Binary Cross-Entropy: `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))`                               |
+| Neural Network (ANN)                 | Mean Squared Error (MSE): `(1/N) * sum((yi - ŷi)^2)`                                                      |
+|                                      | Binary Cross-Entropy(BCE): `-(1/N) * sum(yi * log(ŷi) + (1 - yi) * log(1 - ŷi))`                          |
+|                                      | Categorical Cross-Entropy(CCE): `-sum(sum(yic * log(ŷic)))`                                               |
+| Convolutional Neural Network (CNN)   | CCE; Focal Loss; Dice Loss; Multi-task Loss                                                               |
+| Recurrent Neural Network (RNN)       | MSE; MAE; CCE; BCE...                                                                                     |
+| Generative Adversarial Network (GAN) | Generator: `-(1/N) * sum(log(D(G(zi))))` <br> Discriminator: `-(1/N) * sum(log(D(xi)) + log(1 - D(G(zi))))` |
+| Variational Autoencoder (VAE)        | Reconstruction Loss + KL Divergence: (1/N) * sum(Dis(xi - x̂i)^2)                                         |
 
 **Key:**
 
-* `yi`: True label
-* `ŷi`: Predicted label
+* `yi`: True label/value
+* `ŷi`: Predicted label/value
 * `N`: Number of samples
 * `C`: Number of classes
 * `yic`: True label for sample i and class c
@@ -448,12 +452,13 @@ We can quantify information in an **event**. Those events that are rare (low pro
 
 Rare events are more uncertain or more surprising and require more information to represent them than common events.
 
-The calculation of information is often written as below:
+The calculation of information is often written as below, where log is the base-2 logarithm and p(x) is the probability of the event x:
 ```
 h(x) = -log( p(x) )
 ```
 
-The negative sign ensures that the result is always positive or zero.
+The negative sign ensures that the result is always positive or zero. The choice of the base-2 logarithm means that the units of the information measure is in bits (binary digits). This can be directly interpreted in the information processing sense as the number of bits required to represent the event.
+
 
 ### Entropy
 

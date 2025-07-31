@@ -74,14 +74,6 @@ def plot_transformations(transformations, titles):
     plt.savefig('matrix_transformations.png')
     plt.show()
 
-transformations = [
-    scaling_matrix(k),
-    unequal_scaling_matrix(k1, k2),
-    rotation_matrix(theta),
-    shear_matrix(shear_factor),
-    vertical_shear_matrix(vertical_shear_factor),
-    hyperbolic_rotation_matrix(phi)
-]
 
 titles = [
     'Scaling',
