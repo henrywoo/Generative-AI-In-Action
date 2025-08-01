@@ -30,6 +30,8 @@ This guide documents a low-level, manual method to build and run `vLLM` from sou
 ```
 conda create -n vllm-dev python=3.11
 conda activate vllm-dev
+git clone https://github.com/vllm-project/vllm.git
+cd vllm
 pip install -r requirements/build.txt
 pip install -r requirements/common.txt
 ```
