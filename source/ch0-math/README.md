@@ -478,7 +478,7 @@ That is the negative of the sum of the probability of each event multiplied by t
 
 ![](info_entropy.png)
 
-In the case where one event dominates, such as a skewed probability distribution, then there is less surprise and the distribution will have a lower entropy. In the case where no event dominates another, such as equal or approximately equal probability distribution, then we would expect larger or maximum entropy.
+In another word, entropy is the expected information (a.k.a. “surprise”) from a random variable. In the case where one event dominates, such as a skewed probability distribution, then there is less surprise and the distribution will have a lower entropy. In the case where no event dominates another, such as equal or approximately equal probability distribution, then we would expect larger or maximum entropy.
 
 - **Skewed Probability Distribution**: Low entropy (unsurprising).
 - **Balanced Probability Distribution**: High entropy (surprising).
@@ -487,9 +487,20 @@ In the case where one event dominates, such as a skewed probability distribution
 
 ### Cross Entropy
 
+Cross entropy is the expected number of bits needed to encode samples from p using a distribution q. So it's like: If I think the world is distributed like q, but it’s actually p, how surprised am I (on average)?"
+
+```
+CE(X) = -sum(p(k) * log(q(k)) for each k in K)
+```
+
 ![](cross_entropy_bce.png)
 
 ![](cross_entropy_cce.png)
+
+
+KL Divergence is extra bits wasted when using q to encode p.
+
+
 
 Perplexity measures the confusion (or lack of confidence) a model has in the content it generates during a generation task. The more powerful the model, the lower the perplexity. It's similar to humans: the more knowledgeable and intelligent they are, the more confident they will be in predicting the future, and the less confused they will be.
 
