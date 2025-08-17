@@ -488,7 +488,20 @@ for i, msg in enumerate(memory_manager.get_chat_history('default').messages):
     print(f"  {i+1}. {role}: {msg.content[:100]}{'...' if len(msg.content) > 100 else ''}")
 
 def chat(message, history):
-    result = conversation_chain.invoke({"question": message})
+    # Convert Gradio history format to LangChain message format
+    chat_history = []
+    for human, ai in history:
+        if human:
+            chat_history.append(HumanMessage(content=human))
+        if ai:
+            chat_history.append(AIMessage(content=ai))
+    
+    # Call the conversation chain with both question and chat_history
+    result = conversation_chain.invoke({
+        "question": message,
+        "chat_history": chat_history
+    })
+    
     return result["answer"]
 
 view = gr.ChatInterface(chat).launch(inbrowser=True)
