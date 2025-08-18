@@ -31,7 +31,9 @@ from langchain_community.document_loaders import (
     TextLoader, 
     UnstructuredWordDocumentLoader, 
     UnstructuredExcelLoader,
-    UnstructuredFileLoader
+    UnstructuredFileLoader,
+    PyPDFLoader,
+    UnstructuredHTMLLoader
 )
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_deepseek import ChatDeepSeek
@@ -53,43 +55,161 @@ load_dotenv(override=True)
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', 'sk-584f60334377408a9b2b5dd83c838142')
 db_name = "vector_db"
 
-base = Path("/home/wukong/markdown")
+base = Path("/home/wukong/Zotero/storage")
 
 
 def get_files_info():
-    """获取所有markdown文件的详细信息，用于增量检测"""
+    """获取所有markdown、PDF和HTML文件的详细信息，用于增量检测"""
     files_info = {}
-    for path in base.rglob("*.md"):
+    
+    def safe_search_files(pattern, file_type):
+        """安全地搜索文件，跳过有问题的目录"""
+        found_files = []
         try:
-            mtime = os.path.getmtime(path)
-            size = os.path.getsize(path)
-            files_info[str(path)] = {"mtime": mtime, "size": size, "path": str(path)}
-        except:
-            continue
+            # 使用os.walk而不是rglob，这样可以更好地控制错误处理
+            for root, dirs, files in os.walk(base):
+                # 跳过有问题的目录
+                dirs[:] = [d for d in dirs if d not in ['ZV57IZ8F', 'YNWF5S9T', 'Q3EW7QZM', '5M8QRA2Y', '2TBX76BP', 'K8VLV9BV']]
+                
+                for file in files:
+                    if file.endswith(pattern):
+                        try:
+                            file_path = os.path.join(root, file)
+                            mtime = os.path.getmtime(file_path)
+                            size = os.path.getsize(file_path)
+                            files_info[file_path] = {"mtime": mtime, "size": size, "path": file_path, "type": file_type}
+                            found_files.append(file_path)
+                        except OSError:
+                            continue
+        except Exception as e:
+            print(f"⚠️ 搜索{file_type}文件时遇到错误: {e}")
+        
+        return found_files
+    
+    # 搜索各种文件类型
+    md_files = safe_search_files(".md", "markdown")
+    pdf_files = safe_search_files(".pdf", "pdf")
+    html_files = safe_search_files(".html", "html")
+    
+    print(f"🔍 文件搜索完成:")
+    print(f"   📄 Markdown: {len(md_files)}")
+    print(f"   📕 PDF: {len(pdf_files)}")
+    print(f"   🌐 HTML: {len(html_files)}")
+    print(f"   📚 总计: {len(files_info)}")
+    
     return files_info
 
 def create_chunks_from_files(file_paths):
     """从指定文件列表创建chunks"""
     documents = []
     text_loader_kwargs = {"encoding": "utf-8"}
+    
     for file_path in file_paths:
         try:
-            docs = TextLoader(file_path, **text_loader_kwargs).load()
-            for d in docs:
-                d.metadata["doc_type"] = Path(file_path).parent.name
-            documents.extend(docs)
+            file_path = Path(file_path)
+            file_extension = file_path.suffix.lower()
+            
+            if file_extension == '.md':
+                # 处理markdown文件
+                docs = TextLoader(str(file_path), **text_loader_kwargs).load()
+                for d in docs:
+                    d.metadata["doc_type"] = file_path.parent.name
+                    d.metadata["file_type"] = "markdown"
+                documents.extend(docs)
+                
+            elif file_extension == '.pdf':
+                # 处理PDF文件
+                try:
+                    docs = PyPDFLoader(str(file_path)).load()
+                    for d in docs:
+                        d.metadata["doc_type"] = file_path.parent.name
+                        d.metadata["file_type"] = "pdf"
+                        d.metadata["page_number"] = d.metadata.get("page", "unknown")
+                    documents.extend(docs)
+                    print(f"✅ Successfully processed PDF: {file_path.name}")
+                except Exception as pdf_error:
+                    print(f"❌ Error processing PDF {file_path}: {pdf_error}")
+                    # 尝试使用UnstructuredFileLoader作为备用方案
+                    try:
+                        docs = UnstructuredFileLoader(str(file_path)).load()
+                        for d in docs:
+                            d.metadata["doc_type"] = file_path.parent.name
+                            d.metadata["file_type"] = "pdf"
+                        documents.extend(docs)
+                        print(f"✅ PDF processed with UnstructuredFileLoader: {file_path.name}")
+                    except Exception as unstructured_error:
+                        print(f"❌ UnstructuredFileLoader also failed for {file_path}: {unstructured_error}")
+                        
+            elif file_extension == '.html':
+                # 处理HTML文件
+                try:
+                    docs = UnstructuredHTMLLoader(str(file_path)).load()
+                    for d in docs:
+                        d.metadata["doc_type"] = file_path.parent.name
+                        d.metadata["file_type"] = "html"
+                    documents.extend(docs)
+                    print(f"✅ Successfully processed HTML: {file_path.name}")
+                except Exception as html_error:
+                    print(f"❌ Error processing HTML {file_path}: {html_error}")
+                    # 尝试使用UnstructuredFileLoader作为备用方案
+                    try:
+                        docs = UnstructuredFileLoader(str(file_path)).load()
+                        for d in docs:
+                            d.metadata["doc_type"] = file_path.parent.name
+                            d.metadata["file_type"] = "html"
+                        documents.extend(docs)
+                        print(f"✅ HTML processed with UnstructuredFileLoader: {file_path.name}")
+                    except Exception as unstructured_error:
+                        print(f"❌ UnstructuredFileLoader also failed for {file_path}: {unstructured_error}")
+                        
+            else:
+                print(f"⚠️ Unsupported file type: {file_path}")
+                
         except Exception as e:
-            print(f"Error processing {file_path}: {e}")
+            print(f"❌ Error processing {file_path}: {e}")
     
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     return text_splitter.split_documents(documents)
 
 def load_or_create_chunks():
     """创建所有chunks（仅在需要时调用）"""
-    print("Generating chunks from all markdown files...")
-    all_files = [str(path) for path in base.rglob("*.md")]
+    print("Generating chunks from all markdown, PDF and HTML files...")
+    
+    def safe_search_files(pattern):
+        """安全地搜索文件，跳过有问题的目录"""
+        found_files = []
+        try:
+            # 使用os.walk而不是rglob，这样可以更好地控制错误处理
+            for root, dirs, files in os.walk(base):
+                # 跳过有问题的目录
+                dirs[:] = [d for d in dirs if d not in ['ZV57IZ8F', 'YNWF5S9T', 'Q3EW7QZM', '5M8QRA2Y', '2TBX76BP', 'K8VLV9BV']]
+                
+                for file in files:
+                    if file.endswith(pattern):
+                        try:
+                            file_path = os.path.join(root, file)
+                            found_files.append(file_path)
+                        except OSError:
+                            continue
+        except Exception as e:
+            print(f"⚠️ 搜索{pattern}文件时遇到错误: {e}")
+        
+        return found_files
+    
+    # 搜索各种文件类型
+    md_files = safe_search_files(".md")
+    pdf_files = safe_search_files(".pdf")
+    html_files = safe_search_files(".html")
+    
+    print(f"📄 Found {len(md_files)} markdown files")
+    print(f"📕 Found {len(pdf_files)} PDF files")
+    print(f"🌐 Found {len(html_files)} HTML files")
+    
+    all_files = md_files + pdf_files + html_files
+    print(f"📚 Total files to process: {len(all_files)}")
+    
     chunks = create_chunks_from_files(all_files)
-    print(f"Generated {len(chunks)} chunks from {len(all_files)} files")
+    print(f"✅ Generated {len(chunks)} chunks from {len(all_files)} files")
     return chunks
 
 # 智能加载或创建向量数据库
