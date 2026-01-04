@@ -253,12 +253,6 @@ def _is_safe_for_tokenization(text: str) -> bool:
     special_chars = sum(1 for c in text if c in '!@#$%^&*()_+-=[]{}|;:,.<>?')
     if special_chars > len(text) * 0.6:  # Increased to 60% for academic content
         return False
-    
-    # Check for reasonable line lengths (more permissive for academic content)
-    for line in lines:
-        if len(line.strip()) > 2000:  # Increased to 2000 chars for academic content
-            return False
-    
     return True
 
 
@@ -399,6 +393,12 @@ class Config:
         # File Processing Configuration
         self.base_path = Path(os.getenv('BASE_PATH', '/home/wukong/Zotero/storage'))
         self.supported_extensions = ['.md', '.pdf', '.html']
+        
+        # HTML Processing Optimization
+        self.html_batch_size = int(os.getenv('HTML_BATCH_SIZE', '100'))
+        self.html_workers = int(os.getenv('HTML_WORKERS', '4'))
+        self.html_sample_size = int(os.getenv('HTML_SAMPLE_SIZE', '10240'))  # 10KB
+        self.html_max_file_size = int(os.getenv('HTML_MAX_FILE_SIZE', '52428800'))  # 50MB
         
         # Directory filtering configuration
         self.excluded_directories = self._get_excluded_directories()
@@ -566,31 +566,104 @@ class DocumentProcessor:
         """Create chunks from specified file list with optional callback for real-time processing"""
         documents = []
         
-        for file_path in tqdm(file_paths, desc="Processing files"):
-            try:
-                file_path = Path(file_path)
-                file_extension = file_path.suffix.lower()
-                
-                if file_extension == '.md':
-                    docs = self._process_markdown(file_path)
-                elif file_extension == '.pdf':
+        # Group files by type for batch processing
+        html_files = []
+        pdf_files = []
+        md_files = []
+        other_files = []
+        
+        for file_path in file_paths:
+            file_path = Path(file_path)
+            file_extension = file_path.suffix.lower()
+            
+            if file_extension == '.html':
+                html_files.append(file_path)
+            elif file_extension == '.pdf':
+                pdf_files.append(file_path)
+            elif file_extension == '.md':
+                md_files.append(file_path)
+            else:
+                other_files.append(file_path)
+        
+        print(f"📁 File grouping for batch processing:")
+        print(f"   HTML files: {len(html_files)}")
+        print(f"   PDF files: {len(pdf_files)}")
+        print(f"   Markdown files: {len(md_files)}")
+        print(f"   Other files: {len(other_files)}")
+        
+        # Process HTML files in batch (most time-consuming)
+        if html_files:
+            print(f"\n🚀 Processing {len(html_files)} HTML files in batch...")
+            html_docs = self._process_html_batch(html_files)
+            documents.extend(html_docs)
+            
+            # If callback is provided, process HTML chunks immediately
+            if callback and html_docs:
+                html_chunks = self._split_documents_to_chunks(html_docs)
+                if html_chunks:
+                    callback(html_chunks, Path("HTML_BATCH"))
+        
+        # Process PDF files
+        if pdf_files:
+            print(f"\n📄 Processing {len(pdf_files)} PDF files...")
+            for file_path in tqdm(pdf_files, desc="Processing PDFs"):
+                try:
                     docs = self._process_pdf(file_path)
-                elif file_extension == '.html':
-                    docs = self._process_html(file_path)
-                else:
-                    print(f"⚠️ Unsupported file type: {file_path}")
-                    continue
-                
-                documents.extend(docs)
-                
-                # If callback is provided, process chunks immediately
-                if callback and docs:
-                    chunks = self._split_documents_to_chunks(docs)
-                    if chunks:
-                        callback(chunks, file_path)
-                
-            except Exception as e:
-                print(f"❌ Error processing {file_path}: {e}")
+                    documents.extend(docs)
+                    
+                    # If callback is provided, process PDF chunks immediately
+                    if callback and docs:
+                        chunks = self._split_documents_to_chunks(docs)
+                        if chunks:
+                            callback(chunks, file_path)
+                            
+                except Exception as e:
+                    print(f"❌ Error processing PDF {file_path}: {e}")
+        
+        # Process Markdown files
+        if md_files:
+            print(f"\n📝 Processing {len(md_files)} Markdown files...")
+            for file_path in tqdm(md_files, desc="Processing Markdown"):
+                try:
+                    docs = self._process_markdown(file_path)
+                    documents.extend(docs)
+                    
+                    # If callback is provided, process MD chunks immediately
+                    if callback and docs:
+                        chunks = self._split_documents_to_chunks(docs)
+                        if chunks:
+                            callback(chunks, file_path)
+                            
+                except Exception as e:
+                    print(f"❌ Error processing Markdown {file_path}: {e}")
+        
+        # Process other files
+        if other_files:
+            print(f"\n🔧 Processing {len(other_files)} other files...")
+            for file_path in tqdm(other_files, desc="Processing Others"):
+                try:
+                    # Try to process with UnstructuredFileLoader
+                    docs = UnstructuredFileLoader(str(file_path)).load()
+                    for doc in docs:
+                        doc.metadata["doc_type"] = file_path.parent.name
+                        doc.metadata["file_type"] = file_path.suffix[1:] if file_path.suffix else "unknown"
+                        doc.metadata["source"] = str(file_path)
+                        try:
+                            doc.metadata["last_modified"] = os.path.getmtime(str(file_path))
+                            doc.metadata["size"] = os.path.getsize(str(file_path))
+                        except Exception:
+                            pass
+                    
+                    documents.extend(docs)
+                    
+                    # If callback is provided, process other chunks immediately
+                    if callback and docs:
+                        chunks = self._split_documents_to_chunks(docs)
+                        if chunks:
+                            callback(chunks, file_path)
+                            
+                except Exception as e:
+                    print(f"❌ Error processing {file_path}: {e}")
         
         # If no callback, return all chunks at once (backward compatibility)
         if not callback:
@@ -671,25 +744,103 @@ class DocumentProcessor:
                 print(f"❌ UnstructuredFileLoader also failed for {file_path}: {unstructured_error}")
                 return []
     
-
-    
-    def _process_html(self, file_path: Path) -> List[Document]:
-        """Process HTML files with quality filtering and fallback options"""
+    def _process_html_batch(self, file_paths: List[Path]) -> List[Document]:
+        """Process multiple HTML files in batch for better performance"""
+        if not file_paths:
+            return []
+        
+        print(f"📚 Processing {len(file_paths)} HTML files in batch...")
+        
+        # Use multiprocessing for parallel HTML processing
         try:
-            # First, read the raw content to check quality
+            from multiprocessing import Pool, cpu_count
+            from functools import partial
+            
+            # Determine optimal number of workers
+            num_workers = min(
+                self.config.html_workers,
+                cpu_count(), 
+                8  # Cap at 8 to avoid overwhelming system
+            )
+            
+            print(f"🚀 Using {num_workers} parallel workers for HTML processing")
+            print(f"   Batch size: {self.config.html_batch_size}")
+            print(f"   Sample size: {self.config.html_sample_size / 1024:.1f} KB")
+            print(f"   Max file size: {self.config.html_max_file_size / 1024 / 1024:.1f} MB")
+            
+            # Process files in batches to avoid memory issues
+            all_docs = []
+            total_batches = (len(file_paths) + self.config.html_batch_size - 1) // self.config.html_batch_size
+            
+            for batch_num in range(total_batches):
+                start_idx = batch_num * self.config.html_batch_size
+                end_idx = min(start_idx + self.config.html_batch_size, len(file_paths))
+                batch_files = file_paths[start_idx:end_idx]
+                
+                print(f"   Processing batch {batch_num + 1}/{total_batches} ({len(batch_files)} files)...")
+                
+                # Process batch in parallel
+                with Pool(processes=num_workers) as pool:
+                    # Use partial to pass the quality check functions
+                    process_func = partial(self._process_single_html_file)
+                    results = list(pool.map(process_func, batch_files))
+                
+                # Flatten results
+                for docs in results:
+                    if docs:
+                        all_docs.extend(docs)
+                
+                print(f"   Batch {batch_num + 1} completed: {len(all_docs)} total documents so far")
+            
+            print(f"✅ Batch HTML processing completed: {len(all_docs)} documents generated")
+            return all_docs
+            
+        except ImportError:
+            print("⚠️  Multiprocessing not available, falling back to sequential processing")
+            return self._process_html_sequential(file_paths)
+        except Exception as e:
+            print(f"⚠️  Parallel processing failed: {e}, falling back to sequential")
+            return self._process_html_sequential(file_paths)
+    
+    def _process_html_sequential(self, file_paths: List[Path]) -> List[Document]:
+        """Fallback sequential HTML processing"""
+        all_docs = []
+        for file_path in file_paths:
+            docs = self._process_single_html_file(file_path)
+            if docs:
+                all_docs.extend(docs)
+        return all_docs
+    
+    def _process_single_html_file(self, file_path: Path) -> List[Document]:
+        """Process a single HTML file with optimized quality checks"""
+        try:
+            # Quick file size check first (very fast)
+            file_size = file_path.stat().st_size
+            
+            # Skip extremely large files that are likely problematic
+            if file_size > self.config.html_max_file_size:
+                print(f"⚠️  Skipping extremely large HTML file: {file_path.name} ({file_size / 1024 / 1024:.1f} MB)")
+                return []
+            
+            # Quick content sampling for quality check (read only sample size)
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                raw_content = f.read()
+                sample_content = f.read(self.config.html_sample_size)
             
-            # Check if this is a SingleFile page or low-quality HTML
-            if self._is_singlefile_page(raw_content):
-                print(f"⚠️  Skipping SingleFile page: {file_path.name} (low quality content)")
+            # Fast quality checks using sample content
+            if self._is_low_quality_html_fast(sample_content):
+                print(f"⚠️  Skipping low-quality HTML (fast check): {file_path.name}")
                 return []
             
-            if self._is_low_quality_html(raw_content):
-                print(f"⚠️  Skipping low-quality HTML: {file_path.name} (insufficient meaningful content)")
+            # If sample passes, read full content for detailed processing
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                full_content = f.read()
+            
+            # Final quality check on full content
+            if self._is_singlefile_page(full_content) or self._is_low_quality_html(full_content):
+                print(f"⚠️  Skipping low-quality HTML (detailed check): {file_path.name}")
                 return []
             
-            # If content passes quality checks, proceed with normal processing
+            # Process with UnstructuredHTMLLoader
             docs = UnstructuredHTMLLoader(str(file_path)).load()
             for doc in docs:
                 doc.metadata["doc_type"] = file_path.parent.name
@@ -697,11 +848,13 @@ class DocumentProcessor:
                 doc.metadata["source"] = str(file_path)
                 try:
                     doc.metadata["last_modified"] = os.path.getmtime(str(file_path))
-                    doc.metadata["size"] = os.path.getsize(str(file_path))
+                    doc.metadata["size"] = file_size
                 except Exception:
                     pass
-            print(f"✅ Successfully processed HTML: {file_path}")
+            
+            print(f"✅ Successfully processed HTML: {file_path.name}")
             return docs
+            
         except Exception as html_error:
             print(f"⚠️ HTML processing failed for {file_path}: {html_error}")
             # Try UnstructuredFileLoader as fallback
@@ -713,7 +866,7 @@ class DocumentProcessor:
                     doc.metadata["source"] = str(file_path)
                     try:
                         doc.metadata["last_modified"] = os.path.getmtime(str(file_path))
-                        doc.metadata["size"] = os.path.getsize(str(file_path))
+                        doc.metadata["size"] = file_size
                     except Exception:
                         pass
                 print(f"✅ HTML processed with UnstructuredFileLoader: {file_path.name}")
@@ -721,6 +874,45 @@ class DocumentProcessor:
             except Exception as unstructured_error:
                 print(f"❌ UnstructuredFileLoader also failed for {file_path}: {unstructured_error}")
                 return []
+    
+    def _is_low_quality_html_fast(self, content: str) -> bool:
+        """Fast quality check using only sample content"""
+        if not content or len(content) < 100:
+            return True
+        
+        content_lower = content.lower()
+        
+        # Quick checks that don't require full content analysis
+        singlefile_indicators = [
+            'page saved with singlefile',
+            'data:image/',
+            'data:text/css', 
+            'data:application/javascript',
+            'base64,',
+            '<!-- saved from url=',
+            '<!-- saved date='
+        ]
+        
+        if any(indicator in content_lower for indicator in singlefile_indicators):
+            return True
+        
+        # Check for excessive base64 content in sample
+        base64_count = content.count('base64,')
+        if base64_count > 3:  # Lower threshold for sample
+            return True
+        
+        # Check for common low-quality indicators
+        low_quality_indicators = [
+            'login', 'signin', 'sign-in', 'auth', 'authentication',
+            'error', '404', 'not found', 'page not found',
+            'redirect', 'redirecting', 'please wait',
+            'blank', 'empty', 'welcome', 'homepage'
+        ]
+        
+        if any(indicator in content_lower for indicator in low_quality_indicators):
+            return True
+        
+        return False
 
 class VectorDatabaseManager:
     """Manages vector database operations"""
@@ -1426,6 +1618,16 @@ class RAGSystem:
         print(f"🔍 Debug: Checking {len(files_info)} files against {len(existing_metadata)} existing records")
         print(f"🔍 Debug: First few existing metadata keys: {list(existing_metadata.keys())[:3]}")
 
+        # OPTIMIZATION: Fetch all metadata once at the beginning instead of in the loop
+        print("🔍 Debug: Fetching all database metadata for duplicate detection...")
+        try:
+            all_results = self.vectorstore._collection.get(include=["metadatas"])
+            all_metadatas = all_results.get('metadatas', []) if all_results else []
+            print(f"🔍 Debug: Retrieved {len(all_metadatas)} metadata records from database")
+        except Exception as e:
+            print(f"⚠️  Could not fetch all metadata: {e}")
+            all_metadatas = []
+
         for file_path, file_info in files_info.items():
             existing_info = existing_metadata.get(file_path)
             
@@ -1449,46 +1651,44 @@ class RAGSystem:
                         current_mtime = file_info.get('last_modified') or file_info.get('mtime')
                         
                         duplicate_found = False
-                        if current_size and current_mtime:
-                            # Search for files with same filename and similar characteristics
-                            all_results = self.vectorstore._collection.get(include=["metadatas"])
-                            if all_results and all_results.get('metadatas'):
-                                for meta in all_results['metadatas']:
-                                    if meta and 'source' in meta:
-                                        source = meta['source']
-                                        if os.path.basename(source) == filename:
-                                            # Found same filename, check if it's the same content
-                                            stored_size = meta.get('size')
-                                            stored_mtime = meta.get('last_modified')
-                                            
-                                            if (stored_size and stored_size == current_size and 
-                                                stored_mtime and abs(stored_mtime - current_mtime) < 60):  # Within 60 seconds
-                                                print(f"🔍 Debug: {file_path} found as duplicate of {source} (same filename, size, and mtime)")
-                                                duplicate_found = True
-                                                break
+                        if current_size and current_mtime and all_metadatas:
+                            # Use the pre-fetched metadata instead of calling database again
+                            for meta in all_metadatas:
+                                if meta and 'source' in meta:
+                                    source = meta['source']
+                                    if os.path.basename(source) == filename:
+                                        # Found same filename, check if it's the same content
+                                        stored_size = meta.get('size')
+                                        stored_mtime = meta.get('last_modified')
+                                        
+                                        if (stored_size and stored_size == current_size and 
+                                            stored_mtime and abs(stored_mtime - current_mtime) < 60):  # Within 60 seconds
+                                            print(f"🔍 Debug: {file_path} found as duplicate of {source} (same filename, size, and mtime)")
+                                            duplicate_found = True
+                                            break
                         
-                                            if duplicate_found:
-                                                # Treat as existing duplicate
-                                                continue
-                                            else:
-                                                # Before adding to new_files, check if it's a low-quality HTML that should be filtered
-                                                if file_path.endswith('.html'):
-                                                    try:
-                                                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                                                            content = f.read()
-                                                        
-                                                        # Check if this HTML should be filtered
-                                                        if self._is_singlefile_page(content) or self._is_low_quality_html(content):
-                                                            print(f"🔍 Debug: {file_path} is low-quality HTML, skipping (not adding to new_files)")
-                                                            continue
-                                                    except Exception as e:
-                                                        print(f"🔍 Debug: Error reading {file_path} for quality check: {e}")
-                                                        # If we can't read the file, skip it to be safe
-                                                        continue
-                                                
-                                                print(f"🔍 Debug: {file_path} NOT found in DB, adding to new_files")
-                                                new_files.append(file_path)
-                                                continue
+                        if duplicate_found:
+                            # Treat as existing duplicate
+                            continue
+                        else:
+                            # Before adding to new_files, check if it's a low-quality HTML that should be filtered
+                            if file_path.endswith('.html'):
+                                try:
+                                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                        content = f.read()
+                                    
+                                    # Check if this HTML should be filtered
+                                    if self._is_singlefile_page(content) or self._is_low_quality_html(content):
+                                        print(f"🔍 Debug: {file_path} is low-quality HTML, skipping (not adding to new_files)")
+                                        continue
+                                except Exception as e:
+                                    print(f"🔍 Debug: Error reading {file_path} for quality check: {e}")
+                                    # If we can't read the file, skip it to be safe
+                                    continue
+                            
+                            print(f"🔍 Debug: {file_path} NOT found in DB, adding to new_files")
+                            new_files.append(file_path)
+                            continue
                         
                 except Exception as e:
                     print(f"🔍 Debug: Error querying DB for {file_path}: {e}")
